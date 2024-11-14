@@ -22,11 +22,11 @@
 ###########################################################################################
 
 
-from almos import almos 
+from al import al 
 from argument_parser import var_dict 
 
 def main():
-    almos(var_dict)  
+    al(var_dict)  
 
 if __name__ == "__main__":
     main()

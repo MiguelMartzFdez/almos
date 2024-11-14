@@ -5,7 +5,6 @@ from pathlib import Path
 import shutil
 import re
 from collections import Counter
-import subprocess
 import ast
 
 from utils import Logger
@@ -32,19 +31,22 @@ class Args:
         self.tolerance_level = var_dict['tolerance_level']
         self.tolerance = var_dict['tolerance_levels'][var_dict['tolerance_level']]
 
-class almos:
+class al:
     """
     Class containing all the functions from the active almos module
 
     """
     def __init__(self, var_dict):        #, **kwargs):
 
+        # Initialize the timer
         start_time_overall = time.time()
 
         # # load default and user-specified variables
-        # self.args = load_variables(kwargs, "active_learning")
+        # self.args = load_variables(kwargs, "al")
         # Define self.args as a dictionary with values from var_dict
         self.args = Args(var_dict)
+
+        # CHECK dependencies (module, al)
 
         # check inputs are valid and load
         self.check_inputs_active_learning()
@@ -62,8 +64,8 @@ class almos:
         # Initialize EarlyStopping
         early_stopping = EarlyStopping(
             logger=self.logger,
-            rmse_min_delta=self.tolerance,
-            sd_min_delta=self.tolerance
+            rmse_min_delta=self.args.tolerance,
+            sd_min_delta=self.args.tolerance
         )
         # Check for convergence using EarlyStopping
         results_plot_no_pfi_df, results_plot_pfi_df = early_stopping.check_convergence(
@@ -72,12 +74,26 @@ class almos:
         # Generate plots
         self.generate_plots(results_plot_no_pfi_df, results_plot_pfi_df)
 
-        # Stop the timer and calculate the total time taken
-        elapsed_time = round(time.time() - start_time_overall, 2)
         # Log the total time and finalize
-        self.log.write("\n==========================================\n")
-        self.log.write(f"Process Completed! Total time taken for the process: {elapsed_time:.2f} seconds")
-        self.log.finalize()  
+        self.finalize_process(start_time_overall)
+    
+    
+    def finalize_process(self, start_time_overall):
+        """Stop the timer and calculate the total time taken"""
+        
+        elapsed_time = round(time.time() - start_time_overall, 2)
+
+        # Log the total time and finalize
+        self.logger.write("\n==========================================\n")
+        self.logger.write(f"Process Completed! Total time taken for the process: {elapsed_time:.2f} seconds")
+        self.logger.finalize()
+
+        # Move the .dat file to the proper batch folder
+        log_file = Path.cwd() / "active_learning_log.dat"  # Path to the log file in the current directory
+        log_destination = os.path.join(self.data_path, "active_learning_log.dat")  # Define the destination path
+        shutil.move(log_file, log_destination)  # Move the file
+
+
 
     def check_inputs_active_learning(self):
         """
@@ -105,13 +121,13 @@ class almos:
                     self.args.ignore_list = ast.literal_eval(options['ignore'])
 
         # Load CSV file
-        self.path_csv_name, self.csv_name = self.find_csv_file(self.args.csv_name)
-        self.args.base_name_raw = os.path.splitext(self.csv_name)[0]
+        self.path_csv_name, self.args.csv_name = self.find_csv_file(self.args.csv_name)
+        self.base_name_raw = os.path.splitext(self.args.csv_name)[0]
         self.df_raw = pd.read_csv(self.path_csv_name)
 
         # Validate column names and set base name
-        match = re.search(r'_b(\d+)', self.args.base_name_raw)
-        self.args.base_name = re.sub(r'_b\d+', '', self.args.base_name_raw) if match else self.args.base_name_raw
+        match = re.search(r'_b(\d+)', self.base_name_raw)
+        self.base_name = re.sub(r'_b\d+', '', self.base_name_raw) if match else self.base_name_raw
         if 'code_name' in self.df_raw.columns:
             self.args.name_column = 'code_name'
 
@@ -155,7 +171,7 @@ class almos:
         # Validate batch column and assign batch number
         if self.args.batch_column in self.df_raw.columns:
             max_batch_number = int(self.df_raw[self.args.batch_column].max())
-            self.args.current_number_batch = max_batch_number + 1
+            self.current_number_batch = max_batch_number + 1
 
             last_batch = self.df_raw[self.df_raw[self.args.batch_column] == max_batch_number]
             if not last_batch[self.args.target_column].notna().all():
@@ -166,7 +182,7 @@ class almos:
             if self.args.target_column in self.df_raw.columns and self.df_raw[self.args.target_column].notna().any():
                 self.df_raw[self.args.batch_column] = self.df_raw[self.args.target_column].notna().astype(int)
                 self.df_raw.to_csv(self.path_csv_name, index=False)
-                self.args.current_number_batch = 1
+                self.current_number_batch = 1
             else:
                 print(f"\nWARNING! '{self.args.batch_column}' column not found, and '{self.args.target_column}' has no valid data. Exiting.")
                 sys.exit()
@@ -177,7 +193,7 @@ class almos:
 
         options_df = pd.DataFrame({
             'y': [self.args.target_column],
-            'csv_name': [self.csv_name],
+            'csv_name': [self.args.csv_name],
             'ignore': [str(self.args.ignore_list)],
             'names': [self.args.name_column],
         })
@@ -236,7 +252,7 @@ class almos:
         # Log parameters for the process
         self.logger.write("Parameters:\n")
         self.logger.write("-------------------------------\n")
-        self.logger.write(f"CSV test file       : {self.csv_name}\n")
+        self.logger.write(f"CSV test file       : {self.args.csv_name}\n")
         self.logger.write(f"Name column         : {self.args.name_column}\n")
         self.logger.write(f"Target column       : {self.args.target_column}\n")
         self.logger.write(f"Number of new points: {self.args.number_of_new_points}\n")
@@ -248,12 +264,12 @@ class almos:
         robert_model_df = self.df_raw[self.df_raw[self.args.batch_column].notna()]
 
         # Create the CSV filename and save it for ROBERT
-        filename_model_csv = f"{self.args.base_name}_ROBERT_b{self.args.current_number_batch}.csv"
+        filename_model_csv = f"{self.base_name}_ROBERT_b{self.current_number_batch}.csv"
         robert_model_df.to_csv(filename_model_csv, index=False)
 
         if os.path.exists(filename_model_csv):
             # Create directory for saving ROBERT model results
-            self.robert_folder = f'ROBERT_b{self.args.current_number_batch}'
+            self.robert_folder = f'ROBERT_b{self.current_number_batch}'
             robert_path = Path.cwd() / self.robert_folder
             robert_path.mkdir(parents=True, exist_ok=True)
 
@@ -266,6 +282,10 @@ class almos:
             print(f"WARNING! The file '{filename_model_csv}' has not been found. Please check that the file exists.")
             sys.exit()
 
+        # Trying to avoid error in subprocess with tkinter
+        # Use "Agg" backend to prevent matplotlib from using tkinter, avoiding "main thread" errors in headless or multi-threaded environments.
+        os.environ["MPLBACKEND"] = "Agg"
+
         # Build and run the command for updating the ROBERT model
         command = f'python -m robert --csv_name {filename_model_csv} --name {self.args.name_column} --y {self.args.target_column} --ignore "{self.args.ignore_list}"'
         self.logger.write("\n")
@@ -273,53 +293,54 @@ class almos:
         self.logger.write("  Generating the ROBERT model updated\n")
         self.logger.write("=======================================\n")
 
-        # Start the process and capture output
-        with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1) as process:
-            for line in process.stdout:
-                print(line.strip())
-            for line in process.stderr:
-                self.logger.write(line.strip() + "\n")
-        exit_code = process.wait()
+        # Run the command and check for errors
+        exit_code = os.system(command)
         if exit_code != 0:
             self.logger.write(f"Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
         # Check if the ROBERT model report was generated
         if os.path.exists('ROBERT_report.pdf'):
-            self.logger.write("ROBERT model updated and generated successfully!\n")
+            self.logger.write("\nROBERT model updated and generated successfully!\n")
         else:
-            self.logger.write("WARNING! ROBERT model was not generated\n")
+            self.logger.write("\nWARNING! ROBERT model was not generated\n")
             sys.exit()
 
-        # Move back to the parent directory and copy the CSV file to the result directory
-        os.chdir(Path.cwd().parent)
-        shutil.copy(self.path_csv_name, robert_path)
+        # Define paths for the source file and destination directory
+        source = os.path.join(self.path_csv_name)
+        destination_dir = Path(Path.cwd().parent, self.robert_folder)  # Ensure destination is a directory
+        destination_dir.mkdir(parents=True, exist_ok=True)  # Create the directory if it doesn't exist
+        destination = destination_dir / Path(source).name  # Complete path for the destination file
+
+        # Check if the source file exists before copying
+        if os.path.isfile(source):
+            # Copy the file from source to destination
+            print(f"Copying file from {source} \nto {destination}")
+            shutil.copy(source, destination)
+        else:
+            print(f" File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
 
         # Build and run the command for generating predictions
-        command = f'python -m robert --name {self.args.name_column} --csv_test {self.args.path_csv_name} --ignore "{self.args.ignore_list}" --predict'
+        command = f'python -m robert --name {self.args.name_column} --csv_test {self.args.csv_name} --ignore "{self.args.ignore_list}" --predict'
         self.logger.write("\n")
         self.logger.write("==================================================\n")
         self.logger.write("  Generating predictions with ROBERT model updated\n")
         self.logger.write("==================================================\n")
 
-        with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1) as process:
-            for line in process.stdout:
-                print(line.strip())
-            for line in process.stderr:
-                self.logger.write(line.strip() + "\n")
-        exit_code = process.wait()
+        # Run the command and check for errors
+        exit_code = os.system(command)
         if exit_code != 0:
             self.logger.write(f"Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
         # Check if predictions were created correctly
-        self.path_predictions = robert_path / 'PREDICT' / 'csv_test' / f"{self.args.base_name}_predicted_PFI.csv"
+        self.path_predictions = robert_path / 'PREDICT' / 'csv_test' / f"{self.base_name_raw}_predicted_PFI.csv"
         if self.path_predictions.exists():
-            # Clean up: remove the test CSV file if it exists in another directory
-            os.remove(self.path_csv_name)
-            self.logger.write("New predictions generated successfully!\n")
+            # Clean up: remove the test CSV file if it exists in main directory
+            os.remove(destination)
+            self.logger.write("New predictions generated successfully!")
         else:
-            self.logger.write("WARNING! Predictions were not generated\n")
+            self.logger.write(f"WARNING! Predictions were not generated in {self.path_predictions}")
             sys.exit()
 
     def active_learning_process(self):
@@ -368,7 +389,7 @@ class almos:
         # Log results and initial data sizes
         self.logger.write("\n")
         self.logger.write("================================================\n")
-        self.logger.write(f"             Results for Batch {self.args.current_number_batch}\n")
+        self.logger.write(f"             Results for Batch {self.current_number_batch}\n")
         self.logger.write("================================================\n")
 
         size_counters = get_size_counters(quartile_df_exp)
@@ -380,11 +401,11 @@ class almos:
 
         # Exploitation: Select top rows for q4 based on the predictions
         top_q4_df = predictions_copy_df.nlargest(number_new_q4_values, predictions_column)
-        predictions_copy_df.loc[top_q4_df.index, self.args.batch_column] = self.args.current_number_batch
+        predictions_copy_df.loc[top_q4_df.index, self.args.batch_column] = self.current_number_batch
 
         # Exploration: Assign values to the first three quartiles based on proximity to quartile medians
         assigned_points, min_size_quartiles = assign_values(
-            predictions_copy_df[predictions_copy_df[self.batch_column].isna()],
+            predictions_copy_df[predictions_copy_df[self.args.batch_column].isna()],
             number_new_q1_q2_q3_values,
             quartile_medians, 
             size_counters, 
@@ -399,7 +420,7 @@ class almos:
             idx_list = predictions_copy_df[predictions_copy_df[predictions_column] == value].index
             if not idx_list.empty:
                 indices_to_update = idx_list[:times_value_appears]
-                predictions_copy_df.loc[indices_to_update, self.args.batch_column] = self.args.current_number_batch
+                predictions_copy_df.loc[indices_to_update, self.args.batch_column] = self.current_number_batch
 
         # Log quartile information
         self.logger.write(f"\nQuartile medians of dataset: {quartile_medians}\n")
@@ -417,18 +438,18 @@ class almos:
         df_raw_copy.drop([predictions_column, sd_column], axis=1, inplace=True)
 
         # Build the filename for the updated dataset and save it
-        output_file = f"{self.args.base_name}_b{self.args.current_number_batch}.csv"
+        output_file = f"{self.base_name}_b{self.current_number_batch}.csv"
         df_raw_copy.to_csv(output_file, index=False)
 
         # Create a batch directory and move relevant files
-        data_path = Path.cwd() / f'batch_{self.args.current_number_batch}'
-        data_path.mkdir(parents=True, exist_ok=True)
+        self.data_path = Path.cwd() / f'batch_{self.current_number_batch}'
+        self.data_path.mkdir(parents=True, exist_ok=True)
 
-        shutil.move(self.robert_folder, data_path)
-        shutil.move(output_file, data_path)
+        shutil.move(self.robert_folder, self.data_path)
+        shutil.move(output_file, self.data_path)
 
         self.logger.write("\n")
-        self.logger.write(f"Results generated successfully in folder 'batch_{self.args.current_number_batch}'\n")
+        self.logger.write(f"Results generated successfully in folder 'batch_{self.current_number_batch}'\n")
 
     def generate_plots(self, results_plot_no_pfi_df, results_plot_pfi_df):
         """
@@ -443,7 +464,7 @@ class almos:
             DataFrame containing the results for the 'PFI' model.
         """
         for model_type, df in [('no_PFI', results_plot_no_pfi_df), ('PFI', results_plot_pfi_df)]:
-            plot_metrics_subplots(df, model_type, output_dir="batch_plots", batch_count = self.args.current_number_batch)
+            plot_metrics_subplots(df, model_type, output_dir="batch_plots", batch_count = self.current_number_batch)
 
         # Log confirmation after generating both plots
         self.logger.write("\n==========================================")
