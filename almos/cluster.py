@@ -1,0 +1,698 @@
+"""
+Parameters
+----------
+
+General
++++++++
+
+   csv_name : str, default = '' 
+      Current file extension: .csv (i.e. example.csv). 
+      If the descriptors are to be obtained through aqme two columns are required, 'code_name' with the names and 'SMILES' for the SMILES string. 
+      If the CSV already contains descriptors, it must contain at least 3.
+      For both cases, there cannot be any column named 'batch'.
+   n_clusters : int, default = None 
+      Number of clusters for the clustered.
+   seed_clustered: int, default = 0
+      ¿¿¿¿???? 
+   descp_level: str, default = 'interpret'
+     The user can choose 'interpret', 'full', 'denovo'.
+      
+   ignore: list, default = []
+   
+   cluster: bool, default = False,
+   
+   qdescp_atoms: str, default = None
+      EN ESTOS DOS NO SE MUY BIEN QUÉ PUEDE IR, TENDRÉ QUE MIRAR EN AQME
+   
+   qdescp_solvent: str, default = None
+   
+   aqme_workflow: bool, default = True
+   
+   name: str, default = ''
+   
+   y: str, default = ''
+   
+   auto_fill: bool, default = True
+      If the CSV contains empty spaces (less than 30 % of NaN per column) , KNNImputer is applied, using the K-nearest neighbors method 
+      to estimate and fill missing values based on the closest values to each point in the dataset
+   categorical: str, default = 'onehot'
+      It can be used when the user provide their descriptors.
+      Mode to convert data from columns with categorical variables. As an example, a variable containing 4 types of C atoms 
+      (i.e. primary, secondary, tertiary, quaternary) will be converted into categorical variables. Options: 
+        1. 'onehot' (for one-hot encoding, ROBERT will create a descriptor for each type of C atom using 0s and 1s to indicate whether the C type is present)
+        2. 'numbers' (to describe the C atoms with numbers: 1, 2, 3, 4).
+   pca3d: bool, default = False
+      Submodule to generate a 3D representation of  PCA.
+      The submodule only runs if pca3d is True.
+      The program automatically generates in the folder batch_0 the file pca_b0.csv.
+   pca3d_csv: str, default = 'batch_0/pca_b0.csv'
+      Current file extension: .csv (i.e. batch_0/pca_b0.csv). The user can choose another CSV file.
+      It must contain the 3 components of the PCA, to make a 3D representation.
+    
+   
+
+"""
+######################################################.
+#        This file stores the cluster class           #
+#          used to generate the batch 0              #
+######################################################.
+
+import sys
+import os
+import subprocess
+import shutil
+import pandas as pd
+import numpy as np
+from rdkit import Chem
+from sklearn.cluster import KMeans
+import plotly.express as px
+from pca import pca
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from sklearn.impute import KNNImputer
+from rdkit import RDLogger
+import time
+
+
+'''
+FUNCIONES QUE SE USEN EN VARIOS MÓDULOS Y QUE ESTEN EN UTILS IMPORTARLAS AQUÍ:
+'''
+from almos.utils import (
+    run_command,
+    load_variables, # ME FALTA EN UTILS, LA QUITÉ PORQUE ERA GIGANTE Y NO LA ENTENDÍA BIEN
+    # LA CLASE LOGGER, QUE ESTÁ EN UTILS,N O SE INCLUYE AQUÍ??
+)
+
+
+
+class cluster:
+    """
+    Class containing all the functions from the CLUSTER module 
+    """
+
+    def __init__(self, **kwargs):
+
+        start_time_overall = time.time()
+
+        # load default and user-specified variables
+        self.args = load_variables(kwargs, "cluster")
+        self.vars = {}
+
+        # check whether dependencies are installed
+        _ = check_dependencies(self)
+
+        ''' FUNCIONES QUE VOY A PONER:'''
+        
+        # detect errors and update variables before the CLUSTER run
+        checking_cluster(self)
+        
+        # decide the path (with or without aqme_workflow)
+        set_up_cluster(self)
+        
+        # generate the descriptors if the user needs it
+        if self.args.aqme_workflow:
+            run_aqme(self)
+        
+        # prepare the CSV for the clustered
+        clean_up_cluster(self)
+        
+        # cluster execution    
+        cluster_workflow (self)
+        
+        # provide and save the representation of the PCA in 2D
+        pca_control(self)
+        
+        # generate 3D representation if the user required it
+        if self.args.pca3d:
+            pca_3d(self) # esto no tiene que ir como función aquí, sino en otro .py para poder hacer correrlo solo, no?
+        
+        elapsed_time = round(time.time() - start_time_overall, 2)
+        self.args.log.write(f"\nTime cluster: {elapsed_time} seconds\n")
+        self.args.log.finalize()
+    
+
+    def checking_cluster(self):
+        '''
+        Detects errors and updates variables before the CLUSTER run
+        '''
+        # check for existence of CSV file
+        if self.args.csv_name is not None and os.path.exists(self.args.csv_name) == False: 
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not exist! Please specify this name correctly")
+            self.args.log.finalize()
+            sys.exit()
+
+        # check that the number of clusters has been defined
+        if self.args.n_clusters == None:
+            self.args.log.write(f"\nx WARNING. Please, specify the number of clusters required, e.g. --n_clusters 20")
+            self.args.log.finalize()
+            sys.exit()
+
+        # check that ignore is defined correctly (as a list)
+        if self.args.ignore:  # enters the if block if the list ignore has elements
+            if (self.args.ignore.endswith("]") == False) or (self.args.ignore.startswith("[") == False):
+                self.args.log.write(f"\nx WARNING. The ignore provided ({self.args.ignore}) is not in list format. Please, specify it correctly usign [], e.g. ['code_name', 'SMILES', 'yield']")
+                self.args.log.finalize()
+                sys.exit()
+ 
+        # read the csv_name in a DataFrame
+        df_csv_name = pd.read_csv(self.args.csv_name)
+        
+        # check that elements of ignore are in the CSV
+        elements = []
+        for element in self.args.ignore:
+            if element not in df_csv_name.columns:
+                elements.append(element)
+        if elements != []:
+            self.args.log.write(f"\nx WARNING. Some columns ({elements}), named in ignore ({self.args.ignore}), do not exist in the csv_name provided ({self.args.csv_name}). Please, specify the list ignore correctly")
+            self.args.log.finalize()
+            sys.exit()
+
+        # check that there is no column named 'batch'
+        for col in df_csv_name.columns:
+            if 'batch' in col:
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) already contains a 'batch' column.")
+                self.args.log.finalize()
+                sys.exit()
+        
+        # check for duplicates, if any
+        if df_csv_name.duplicated().any(): # True if any
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicate rows, only the first one has been kept")
+            df_csv_name = df_csv_name.drop_duplicates() # This keep the first duplicate           
+
+        # if "y" has not been defined by the user, it does nothing, and if it has been defined and is in the csv_name, it is added to the ignore list
+        if self.args.y != "":
+            if self.args. y not in df_csv_name.columns:
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not contain the column idicated as: --y {self.args.y}")
+                self.args.log.finalize()
+                sys.exit()                    
+            if self.args.y not in self.args.ignore:
+                self.args.ignore.append(self.args.y) 
+        
+        # if 'name' is defined but not in the CSV, notify and exit the program 
+        if self.args.name !='':
+            if self.args.name not in df_csv_name.columns:
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not contain the column idicated as: --name {self.args.name}")
+                self.args.log.finalize()
+                sys.exit()
+            # if 'name' is defined and not in ignore list, add it 
+            if self.args.name not in self.args.ignore:
+                self.args.ignore.append(self.args.name)
+            # if 'name' is defined check for duplicates in column 'name'
+            if df_csv_name[self.args.name].duplicated().any(): # True if any
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicates in the column ({self.args.name}) with different values for the other columns of descriptors. Check the csv_name provided")
+                self.args.log.finalize()    
+                sys.exit() 
+                  
+        
+        return df_csv_name
+
+    def set_up_cluster(self):
+        '''
+        Decide the path (with or without aqme_workflow)
+        '''
+        
+        # function to unify the names, it is relevant for checking correctly if aqme_workflow = True or False
+        def fix_cols_names(df):
+            '''
+            Set code_name and SMILES using the right format
+            '''
+            
+            for col in df.columns:
+                if col.lower() == 'smiles':
+                    df = df.rename(columns={col: 'SMILES'})
+                if col.lower() == 'code_name':
+                    df = df.rename(columns={col: 'code_name'})
+            return df
+
+        # function to impute (or fill) null-values in a dataset
+        def auto_fill_knn(df):
+            '''
+            KNNImputer uses the K-nearest neighbors method to estimate and fill missing values based on the closest values to each point in the dataset
+            '''
+
+            imputer = KNNImputer(n_neighbors = 5, weights = 'uniform')
+            df = imputer.fit_transform(df)
+            return df
+
+        # function to categorical transform from ROBERT
+        # it can apply to the df with the columns of ignore list
+        def categorical_transform(self, df):
+            '''
+            Converts all columns with strings into categorical values (one hot encoding by default, can be set to numerical 1,2,3... with categorical = 'numbers').
+            Troubleshooting! For one-hot encoding, don't use variable names that are also column headers!
+            i.e. DESCRIPTOR "C_atom" contain C2 as a value, but C2 is already a header of a different column in the database.
+            Same applies for multiple columns containing the same variable names.
+            '''
+            
+            txt_categor = f'\no  Analyzing categorical variables'
+
+            categorical_vars, new_categor_desc = [],[]
+            for column in df.columns:
+                if column not in self.args.ignore and column != self.args.y:
+                    if(df[column].dtype == 'object'):
+                        categorical_vars.append(column)
+                        
+                        if self.args.categorical.lower() == 'numbers':
+                            df[column] = df[column].astype('category') # converts the columns to a category
+                            df[column] = df[column].cat.codes # .cat.codes returns the column values ​​as numeric codes, and stores them back into the column
+                        else:
+                            # each category in the column becomes a binary column
+                            categor_descs = pd.get_dummies(df[column]) # converts the 'object' column in  binary columns
+                            df = df.drop(column, axis=1) # delete the original column
+                            df = pd.concat([df, categor_descs], axis=1) # combine both df horizontally
+                            for desc in categor_descs: 
+                                new_categor_desc.append(desc)
+
+            if len(categorical_vars) == 0:
+                txt_categor += f'\n   - No categorical variables were found'
+            else:
+                txt_categor += f'\n   A total of {len(categorical_vars)} categorical variables were converted using the {self.args.categorical} mode in the categorical option:'
+                if self.args.categorical.lower() == 'numbers':
+                    txt_categor += '\n'.join(f'   - {var}' for var in categorical_vars)
+                else:
+                    txt_categor += f'\n   Initial descriptors:\n'
+                    txt_categor += '\n'.join(f'   - {var}' for var in categorical_vars)
+                    txt_categor += f'\n   Generated descriptors:\n'
+                    txt_categor += '\n'.join(f'   - {var}' for var in new_categor_desc)
+
+            self.args.log.write(f'{txt_categor}')
+
+            return df
+
+
+        # add a new column named batch, empty for now
+        df_csv_name['batch'] = ''
+        # add the column 'batch' to ignore list
+        self.args.ignore.append('batch') 
+        # create the folders batch_0, if there is not
+        os.makedirs('batch_0') if not os.path.exists('batch_0') else None
+
+    
+        # know if the csv has descriptors (aqme_workflow = False) or not (aqme_workflow = True, by default)   
+                                            
+        # check the CSV file contains or not the columns 'SMILES' and 'code_name'    
+        # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name'
+        if ('SMILES' and 'code_name') not in fix_cols_names(df_csv_name).columns:
+            # if 'name' is not defined, notify and exit the program 
+            if self.args.name == '':
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) must contain a column called 'SMILES' and another called 'code_name to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)")
+                self.args.log.finalize()
+                sys.exit()
+
+            # 'name' defined correctly, controlled in checking_cluster, and in ignore list
+            else:
+                    
+                # convert the df to int or float with the categorical_transform function, taken from ROBERT
+                df_csv_name = categorical_transform(df_csv_name)
+                
+                df_csv_name_descp = df_csv_name.drop(self.args.ignore, axis = 1) 
+                # if the csv has less than three columns corresponding to descriptors, exit the program
+                if len(df_csv_name_descp.columns) < 3:
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) must contain at least three columns of descriptors")
+                    self.args.log.finalize()
+                    sys.exit()
+                    
+                ''' ESTA PARTE CREO QUE DEBE IR EN LA FUNCIÓN DE CLEAN UP, ACTUALIZANDOLA PARA QUE ME SIRVA PARA AMBOS CAMINOS
+                # check that there are no NaNs in df_csv_name_descp
+                if df_csv_name_descp.isnull().any().any() == True:
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function.
+                                        If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")
+                    # auto_fill : True by default
+                    if self.args.auto_fill:
+                        self.args.df_csv_name_descp = auto_fill_knn(self.args.df_csv_name_descp)
+                    # auto_fill : False
+                    else:
+                        self.args.log.final 
+                        sys.exit()    
+                '''
+                self.args.workflow_aqme = False          
+            
+        else:
+            # aqme_workflow = True (default) and modify the df with the correct names ('SMILES' and 'code_name')
+            df_csv_name = fix_cols_names(df_csv_name)
+            # add the columns 'SMILES' and 'code_name' to ignore list
+            if 'SMILES' not in self.args.ignore:
+                self.args.ignore.append('SMILES')
+            if 'code_name' not in self.args.ignore:
+                self.args.ignore.append('code_name')
+            # create the folder aqme, if there are not
+            os.makedirs('aqme') if not os.path.exists('aqme') else None
+            
+            # prepare the new csv with canonical smiles and delete columns with invalid smiles
+            invalid_smiles = []
+            df_csv_name['SMILES'] = df_csv_name['SMILES'].apply(lambda x: Chem.MolToSmiles(Chem.MolFromSmiles(x)) if Chem.MolFromSmiles(x) else invalid_smiles.append(x) or None)    
+            if invalid_smiles:
+                self.args.log.write(f"\nx  WARNING. These invalid smiles from ({self.args.csv_name}) have been removed: {invalid_smiles}")
+                df_csv_name = df_csv_name.dropna (subset = ['SMILES'])
+                
+            # check for duplicates in column 'SMILES', if any
+            if df_csv_name['SMILES'].duplicated().any(): # True if any
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicate canonicalized SMILES, only the first one has been kept")
+                df_csv_name = df_csv_name.drop_duplicates(subset=['SMILES']) # This keep the first duplicate
+                                                                               
+
+        # create a new CSV file with the modifications in the subfolder 'batch_0', if the file exists, replaces it
+        csv = self.args.csv_name.split('.', 1) # because the name of the file could have more dots
+        df_csv_name.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)
+           
+        descp_file = f'batch_0/{csv[0]}_b0.csv'  
+                      
+        return descp_file, df_csv_name, df_csv_name_descp, csv   # revisar este return
+       
+ 
+    def run_aqme(self, csv, descp_file):
+        '''
+        Generate the descriptors if the user needs it
+        '''
+
+        cmd_qdescp = ["python", "-m", "aqme",  "--qdescp", "--input", descp_file]
+
+        if self.args.qdescp_atoms is not None:
+            cmd_qdescp += ["--qdescp_atoms", self.args.qdescp_atoms]
+        if self.args.qdescp_solvent is not None:
+            cmd_qdescp += ["--qdescp_solvent", self.args.qdescp_solvent]
+
+        subprocess.run(cmd_qdescp) 
+
+        # move these files to aqme subfolder
+        files_to_aqme = [f'AQME-ROBERT_denovo_{csv[0]}.csv', 
+                        f'AQME-ROBERT_interpret_{csv[0]}.csv', 
+                        f'AQME-ROBERT_full_{csv[0]}.csv', 
+                        'QDESCP_data.dat', 
+                        'CSEARCH_data.dat',
+                        'CSEARCH',
+                        'QDESCP']
+        folders = ['CSEARCH', 'QDESCP']
+
+        for file in files_to_aqme:
+            destination = f'aqme/{file}'
+            if os.path.exists(f'aqme/{file}'):       # if file exists in destination
+                if file in folders:                  # if it is a folder, remove it
+                    shutil.rmtree(f'aqme/{file}')
+                else:                                # if it is a file, remove it
+                    os.remove(f'aqme/{file}')
+        
+            if os.path.exists(file):                 # move the file
+                shutil.move(file, destination) 
+            
+        # after running the code, the variable descp_file is updated with the chosen file with the descriptors
+        descp_file = f'aqme/AQME-ROBERT_{self.args.descp_level}_{csv[0]}.csv' 
+        
+        return descp_file
+    
+            
+    def clean_up_cluster(self, descp_file):
+        '''
+        Prepare the CSV (descp_file) of both paths for the clustered
+        '''
+        
+        # function to impute (or fill) null-values in a dataset
+        def auto_fill_knn(df):
+            '''
+            KNNImputer uses the K-nearest neighbors method to estimate and fill missing values based on the closest values to each point in the dataset
+            '''
+
+            imputer = KNNImputer(n_neighbors = 5, weights = 'uniform')
+            df = imputer.fit_transform(df)
+            return df
+
+        # function to categorical transform from ROBERT
+        # it can apply to the df with the columns of ignore list
+        def categorical_transform(self, df):
+            '''
+            Converts all columns with strings into categorical values (one hot encoding by default, can be set to numerical 1,2,3... with categorical = 'numbers').
+            Troubleshooting! For one-hot encoding, don't use variable names that are also column headers!
+            i.e. DESCRIPTOR "C_atom" contain C2 as a value, but C2 is already a header of a different column in the database.
+            Same applies for multiple columns containing the same variable names.
+            '''
+            
+            txt_categor = f'\no  Analyzing categorical variables'
+
+            categorical_vars, new_categor_desc = [],[]
+            for column in df.columns:
+                if column not in self.args.ignore and column != self.args.y:
+                    if(df[column].dtype == 'object'):
+                        categorical_vars.append(column)
+                        
+                        if self.args.categorical.lower() == 'numbers':
+                            df[column] = df[column].astype('category') # converts the columns to a category
+                            df[column] = df[column].cat.codes # .cat.codes returns the column values ​​as numeric codes, and stores them back into the column
+                        else:
+                            # each category in the column becomes a binary column
+                            categor_descs = pd.get_dummies(df[column]) # converts the 'object' column in  binary columns
+                            df = df.drop(column, axis=1) # delete the original column
+                            df = pd.concat([df, categor_descs], axis=1) # combine both df horizontally
+                            for desc in categor_descs: 
+                                new_categor_desc.append(desc)
+
+            if len(categorical_vars) == 0:
+                txt_categor += f'\n   - No categorical variables were found'
+            else:
+                txt_categor += f'\n   A total of {len(categorical_vars)} categorical variables were converted using the {self.args.categorical} mode in the categorical option:'
+                if self.args.categorical.lower() == 'numbers':
+                    txt_categor += '\n'.join(f'   - {var}' for var in categorical_vars)
+                else:
+                    txt_categor += f'\n   Initial descriptors:\n'
+                    txt_categor += '\n'.join(f'   - {var}' for var in categorical_vars)
+                    txt_categor += f'\n   Generated descriptors:\n'
+                    txt_categor += '\n'.join(f'   - {var}' for var in new_categor_desc)
+
+            self.args.log.write(f'{txt_categor}')
+
+            return df
+
+        
+        # read created csv with information, diferent for each aqme_workflow
+        descp_df = pd.read_csv(descp_file)  
+          
+        # in case the user has deleted a column from the CSV file incorrectly and 'Unnamed' appears in the aqme CSV, add it to ignore list
+        for col in descp_df.columns:
+            if 'Unnamed' in col:
+                descp_df.drop(col, axis = 1)  
+        
+        # remove columns with less than 70% of the data
+        col_to_drop = []
+        for col in descp_df.columns:
+            if descp_df[col].isna().mean() > 0.3:
+                self.args.log.write(f"\nx WARNING. The column ({col}) in the csv_name provided ({self.args.csv_name}) has lessless than 70% of the data, so it has been deleted")
+                col_to_drop.append(col)
+        if col_to_drop != []:
+            descp_df = descp_df.drop(self.args.col_to_drop, axis = 1)     
+        
+        # delete columns from ignore list
+        descp_df_drop = descp_df.drop(self.args.ignore, axis = 1) 
+            
+        # convert the df to int or float with the categorical_transform function, taken from ROBERT
+        descp_df_drop = categorical_transform(descp_df_drop)
+        
+
+        # if the csv has less than three columns corresponding to descriptors, exit the program
+        if len(descp_df_drop.columns) < 3:
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) must contain at least three columns of descriptors")
+            self.args.log.finalize()
+            sys.exit()
+            
+        # check that there are no NaNs in descp_df and apply the auto_fill_knn function
+        if descp_df_drop.isnull().any().any() == True:
+            if self.args.aqme_workflow == False:
+                if self.args.auto_fill: # auto_fill: True by default
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
+                else: # auto_fill : False
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has empty spaces in the descriptor columns. If you want them to be auto-completed, set --auto_fill True, and these will be filled with the auto_fill_knn function.")
+                    self.args.log.finalize()
+                    sys.exit()       
+            filled_array = auto_fill_knn(descp_df_drop)
+            # rebuild descp_df_drop from NumPy array (filled_array)
+            descp_df_drop = pd.DataFrame(filled_array, columns = descp_df_drop.columns, index = descp_df_drop.index)
+            # update descp_df values
+            descp_df.update(descp_df_drop)
+        filled_array = descp_df_drop   
+        # overwrite the CSV file (descp_file) in the subfolder 'batch_0', with the auto_fill_knn
+        descp_df.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)
+        descp_file = 'batch_0/{csv[0]}_b0.csv'# update the variable for the clustered
+        
+        return descp_df, filled_array, descp_file
+      
+    def cluster_workflow(self, filled_array, descp_file):
+        ''' 
+        cluster execution   
+        '''
+
+        def k_neigh(X_scaled,seed_clustered,n_clusters):
+
+            '''
+            Returns the data points that will be used as molecules in lab in order to generate experimental data (k-neighbour clustering)
+
+            '''
+            # n clusters with all the cores, of those clusters you keep 1 point (1 core) closest to each cluster, 
+            # because what we are looking for is the most heterogeneous data possible
+
+            # user insert the number of clusters 
+            X_scaled_array = np.asarray(X_scaled)
+            closest_points_cluster = []
+
+            # runs the k-neighbours algorithm and keeps the closest point to the center of each cluster
+            kmeans = KMeans(n_clusters,random_state=seed_clustered)
+            kmeans.fit(X_scaled_array)
+
+            centers = kmeans.cluster_centers_
+            for i in range(n_clusters): # for each cluster lets find his closest point
+                results_cluster = 1000000 # introduce a high distance value so when evaluating the first point, it gets replaced easily
+                for k in range(len(X_scaled_array[:, 0])): #we evalue each point from array
+                    if k not in closest_points_cluster:
+                        # calculate the Euclidean distance in n-dimensions
+                        points_sum = 0
+                        for l in range(len(X_scaled_array[0])): # if the Euclidean distance is less that the actual number , it gets replaced
+                            points_sum += (X_scaled_array[:, l][k]-centers[:, l][i])**2 # with that loop we obtained the closest point for that cluster
+                        if np.sqrt(points_sum) < results_cluster:                       # and we repeat with each cluster
+                            results_cluster = np.sqrt(points_sum)
+                            closest_point_cluster = k
+                
+                closest_points_cluster.append(closest_point_cluster)
+            closest_points_cluster.sort()
+
+            return closest_points_cluster,kmeans,X_scaled_array
+
+        
+        # prepare array for kmeans
+        # standardize the data before k-neighbours-based data splitting
+        scaler = StandardScaler()
+
+        X_scaled= scaler.fit_transform(filled_array)
+
+        # saved points = n cores for index code, we can find them in descp_df with iloc
+        points,kmeans,X_scaled_array = k_neigh(X_scaled,self.args.seed_clustered,self.args.n_clusters)
+
+        # creating a list (batch_0) with the name of the molecules for the batch 0
+        descp_df = pd.read_csv(descp_file) # this is because in the previous descp_df the names of the molecules have been removed
+        if self.args.aqme_workflow:
+            name = 'code_name'
+        batch_0 = descp_df.iloc[points][name].tolist()
+        self.args.log.write(f'\no The molecules selected for the batch 0 of the CLUSTER module are: {batch_0}')        
+
+        # creating a .dat document with the name of the molecules for the batch 0 in the subfolder 'batch_0'    
+        path_batch_0 = os.path.join('batch_0', 'batch_0.dat')
+        with open (path_batch_0, 'w') as doc_batch_0:
+            doc_batch_0.writelines(line + '\n' for line in batch_0) # to write each element of the list (code_names) in a new line
+            
+        # on the df created for the batch_0 subfolder I add 0 to the molecules obtained from the initial clustering, for the aqme_workflow = False it's the unique csv generated, for the aqme_workflow = True the descriptors are not included
+        descp_df.loc[points, 'batch'] = 0
+        # overwriting the csv 
+        descp_df.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)
+
+        # PCA model
+        pcaModel = pca(normalize=True,n_components=3)
+        X_pca = pcaModel.fit_transform(X_scaled_array)
+
+        # with PC1,PC2 and PC3 we explain n% var of data
+        pca_var_cum = pcaModel.results['explained_var']
+        self.args.log.write(f"\n {pca_var_cum}")
+
+        pc1_var = round(pca_var_cum[0]*100, 1)
+        pc2_var = round((pca_var_cum[1]*100 - pc1_var), 1)
+        pc3_var = round((pca_var_cum[2]*100-pc1_var-pc2_var), 1)
+        pc_total_val = round(pc1_var + pc2_var + pc3_var, 1)
+
+        # print the explained variability
+        if pc_total_val >= 70:
+            self.args.log.write(f"\no GOOD. {pc_total_val} % explained variability. (PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %)")
+        else:
+            self.args.log.write(f"\nx POOR. {pc_total_val} % explained variability might not be high enough. (PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %)")
+            
+        # copy df, we add column with cluster for each molecule and additionally we map with symbol our points choosed
+        df_pca = descp_df.copy()
+        df_pca['Cluster'] = kmeans.labels_.astype(int)
+        df_pca['Point selected'] = 0
+        df_pca.loc[points, 'Point selected'] = 1
+
+        # df prepared with PC and cluster labels for each molecule
+        pcaModel.results['PC']
+        df_pca = pcaModel.results['PC'].join([df_pca['Cluster'], df_pca['Point selected']]) 
+        df_pca.to_csv(f'batch_0/pca_b0.csv', index=False, header=True)
+    
+    
+    def pca_control(self, pc_total_val, pc1_var, pc2_var, pc3_var):
+        '''
+        provide and save the representation of the PCA in 2D
+        '''        
+
+        # read the pca3d_csv in a DataFrame, by default 'batch_0/pca_b0.csv'
+        df_pca = pd.read_csv(self.args.pca3d_csv)
+        
+        # prepare 2 datashets for not selected and selected, we want to put dif sizes and we need 2 grap and then combine them
+        df_unselected = df_pca[df_pca['Point selected'] == 0]
+        df_selected = df_pca[df_pca['Point selected'] == 1]
+
+
+        # scatter of biplot for cluster
+        # grap selected
+        fig_selected = px.scatter_3d(df_selected, x='PC1', y='PC2', z='PC3', color='Cluster', symbol='Point selected', symbol_sequence=['circle'])
+        fig_selected.update_traces(marker=dict(size=7))  
+
+        # grap no selected
+        fig_unselected = px.scatter_3d(df_unselected, x='PC1', y='PC2', z='PC3', color='Cluster', symbol='Point selected', symbol_sequence=['cross'])
+        fig_unselected.update_traces(marker=dict(size=3)) 
+
+        # combine grap for selected and not selected
+        fig = fig_selected.add_traces(fig_unselected.data)
+
+        # defining the text for the legend
+        if pc_total_val >= 70:
+            text_legend = f"\n GOOD. {pc_total_val} % explained variability: PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %"
+        else:
+            text_legend = f"\n POOR. {pc_total_val} % explained variability might not be high enough: PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %"
+
+        fig.update_layout(
+            legend = dict(yanchor = 'top',xanchor = 'left'),
+            legend1 = dict(yanchor = 'top',xanchor = 'right'))
+        fig.add_annotation(text = text_legend, 
+                        xref = 'paper', yref = 'paper', 
+                        x = 0.5, y = -0.1, showarrow = False)
+        # plt.savefig(f'{NOMBRE}.png', dpi=300, bbox_inches='tight')
+
+
+        self.args.log.write(f"\no The 2D representation of the PCA has been save in the folder batch_0 as {self.args.csv_name}. If you want to check the 3D representation it is possible using the submodule --pca3d")
+        self.args.log.finalize()    
+    
+      
+    def pca_3d(self, pc_total_val, pc1_var, pc2_var, pc3_var):
+        '''
+        Generate 3D representation if the user required it
+        EN VERDAD ESTO ES UN SUBMÓDULO QUE FUNCIONA INDEPENDIÉNTEMENTE DE CLUSTER, ASÍ QUE DEBERÍA IR EN OTRO ARCHIVO .PY???
+        '''        
+
+        # read the pca3d_csv in a DataFrame, by default 'batch_0/pca_b0.csv'
+        df_pca = pd.read_csv(self.args.pca3d_csv)
+        
+        # prepare 2 datashets for not selected and selected, we want to put dif sizes and we need 2 grap and then combine them
+        df_unselected = df_pca[df_pca['Point selected'] == 0]
+        df_selected = df_pca[df_pca['Point selected'] == 1]
+
+
+        # scatter of biplot for cluster
+        # grap selected
+        fig_selected = px.scatter_3d(df_selected, x='PC1', y='PC2', z='PC3', color='Cluster', symbol='Point selected', symbol_sequence=['circle'])
+        fig_selected.update_traces(marker=dict(size=7))  
+
+        # grap no selected
+        fig_unselected = px.scatter_3d(df_unselected, x='PC1', y='PC2', z='PC3', color='Cluster', symbol='Point selected', symbol_sequence=['cross'])
+        fig_unselected.update_traces(marker=dict(size=3)) 
+
+        # combine grap for selected and not selected
+        fig = fig_selected.add_traces(fig_unselected.data)
+
+        # defining the text for the legend
+        if pc_total_val >= 70:
+            text_legend = f"\n GOOD. {pc_total_val} % explained variability: PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %"
+        else:
+            text_legend = f"\n POOR. {pc_total_val} % explained variability might not be high enough: PC1 {pc1_var} %, PC2 {pc2_var} %, PC3 {pc3_var} %"
+
+        fig.update_layout(
+            legend = dict(yanchor = 'top',xanchor = 'left'),
+            legend1 = dict(yanchor = 'top',xanchor = 'right'))
+        fig.add_annotation(text = text_legend, 
+                        xref = 'paper', yref = 'paper', 
+                        x = 0.5, y = -0.1, showarrow = False)
+        # plt.savefig(f'{NOMBRE}.png', dpi=300, bbox_inches='tight')
+        fig.show()
+                

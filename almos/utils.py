@@ -7,7 +7,14 @@ import sys
 import ast
 import getopt
 from pathlib import Path
+import time
 from argument_parser import set_options, var_dict
+
+robert_version = "1.2.2" 
+aqme_version = "1.7.1"
+almos_version = "0.1.0"
+time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
+almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana P. García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
 def command_line_args():
     """
@@ -18,13 +25,23 @@ def command_line_args():
     # First, create dictionary with user-defined arguments
     kwargs = {}
     available_args = ["help"]
-    bool_args = []
-    int_args = ["number_of_new_points"]
+    bool_args = [
+        "cluster",
+        "al",
+        "aqme_workflow",
+        "auto_fill",
+        "pca3d"
+    ]
+    int_args = [
+        "n_points",
+        "n_clusters",
+        "seed_clustered"
+    ]
     list_args = [
-        "ignore_list",  
+        "ignore"    
     ]
     float_args = [
-        "factor_explore",
+        "factor_exp",
     ]
 
     for arg in var_dict:
@@ -46,19 +63,17 @@ def command_line_args():
             arg_name = arg.split("-")[1].strip()
 
         if arg_name in ("h", "help"):
-            print(f"o  Module v {aqme_version} is installed correctly!")
+            print(f"o  ALMOS v {almos_version} is installed correctly! For more information, see the documentation in https://github.com/MiguelMartzFdez/almos")
             sys.exit()
         else:
                 # this converts the string parameters to lists
                 if arg_name in bool_args:
                     value = True                    
                 elif arg_name.lower() in list_args:
-                    value = format_lists(value,arg_name)
+                    value = format_lists(value)
                 elif arg_name.lower() in int_args:
                     if value is not None:
                         value = int(value)
-                    else:
-                        value = None
                 elif arg_name.lower() in float_args:
                     value = float(value)
                 elif value == "None":
@@ -76,83 +91,30 @@ def command_line_args():
     return args
 
 
-def load_variables(kwargs, program_module, create_dat=True):
+def load_variables(kwargs, almos_module, create_dat=True):
     """
     Load default and user-defined variables
+    
     """
 
     # first, load default values and options manually added to the function
     self = set_options(kwargs)
- 
-    if aqme_module != "command":
 
+    if almos_module != "command":
+
+        # Define path and other variables
         self.initial_dir = Path(os.getcwd())
-
-        # get PATH for the files option
-        self.files = get_files(self.files)
-
-        if not isinstance(self.files, list):
-            self.w_dir_main = os.path.dirname(self.files)
-        elif len(self.files) != 0:
-            self.w_dir_main = os.path.dirname(self.files[0])
-        else:
-            self.w_dir_main = os.getcwd()
-
-        if (
-            Path(f"{self.w_dir_main}").exists()
-            and os.getcwd() not in f"{self.w_dir_main}"
-        ):
-            self.w_dir_main = Path(f"{os.getcwd()}/{self.w_dir_main}")
-        else:
-            self.w_dir_main = Path(self.w_dir_main)
-
-        if self.isom_type is not None:
-            if (
-                Path(f"{self.isom_inputs}").exists()
-                and os.getcwd() not in f"{self.isom_inputs}"
-            ):
-                self.isom_inputs = Path(f"{os.getcwd()}/{self.isom_inputs}")
-            else:
-                self.isom_inputs = Path(self.isom_inputs)
-
         error_setup = False
-
-        if not self.w_dir_main.exists():
-            txt_yaml += "\nx  The PATH specified as input or files might be invalid!"
-            error_setup = True
-
-        if error_setup:
-            self.w_dir_main = Path(os.getcwd())
             
-        # start a log file to track the AQME modules
+        # start a log file to track the ALMOS modules
         if create_dat:
-            logger_1, logger_2 = "AQME", "data"
-            if aqme_module == "qcorr":
-                # detects cycle of analysis (0 represents the starting point)
-                self.round_num, self.resume_qcorr = check_run(self.w_dir_main)
-                logger_1 = "QCORR-run"
-                logger_2 = f"{str(self.round_num)}"
+            logger_1, logger_2 = "ALMOS", "data"
 
-            elif aqme_module == "csearch":
-                logger_1 = "CSEARCH"
+            if almos_module == "al":
+                logger_1 = "AL"
 
-            elif aqme_module == "cmin":
-                logger_1 = "CMIN"
-
-            elif aqme_module == "qprep":
-                logger_1 = "QPREP"
-
-            elif aqme_module == "qdescp":
-                logger_1 = "QDESCP"
-
-            if txt_yaml not in [
-                "",
-                f"\no  Importing AQME parameters from {self.varfile}",
-                "\nx  The specified yaml file containing parameters was not found! Make sure that the valid params file is in the folder where you are running the code.\n",
-            ]:
-                self.log = Logger(self.initial_dir / logger_1, logger_2, verbose=self.verbose)
-                self.log.write(txt_yaml)
-                error_setup = True
+            elif almos_module == "cluster":
+                logger_1 = "CLUSTER"
 
             if not error_setup:
                 if not self.command_line:
@@ -162,7 +124,7 @@ def load_variables(kwargs, program_module, create_dat=True):
                     path_command = Path(f"{os.getcwd()}")
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
 
-                self.log.write(f"AQME v {aqme_version} {time_run} \nCitation: {aqme_ref}\n")
+                self.log.write(f"ALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
 
                 if self.command_line:
                     cmd_print = ''
@@ -173,14 +135,6 @@ def load_variables(kwargs, program_module, create_dat=True):
                         if elem[-1] in ['"',"'"]:
                             elem = elem[:-1]
                         if elem != '-h' and elem.split('--')[-1] not in var_dict:
-                            # parse single elements of the list as strings (otherwise the commands cannot be reproduced)
-                            if cmd_args[i-1] == '--qdescp_atoms':
-                                elem = elem[1:-1]
-                                elem = elem.replace(', ',',').replace(' ,',',')
-                                new_elem = []
-                                for smarts_strings in elem.split(','):
-                                    new_elem.append(f'{smarts_strings}'.replace("'",''))
-                                elem = f'{new_elem}'.replace(" ","")
                             if cmd_args[i-1].split('--')[-1] in var_dict: # check if the previous word is an arg
                                 cmd_print += f'"{elem}'
                             if i == len(cmd_args)-1 or cmd_args[i+1].split('--')[-1] in var_dict: # check if the next word is an arg, or last word in command
@@ -190,7 +144,7 @@ def load_variables(kwargs, program_module, create_dat=True):
                         if i != len(cmd_args)-1:
                             cmd_print += ' '
 
-                    self.log.write(f"Command line used in AQME: python -m aqme {cmd_print}\n")
+                    self.log.write(f"Command line used in ALMOS: python -m almos {cmd_print}\n")
 
             if error_setup:
                 # this is added to avoid path problems in jupyter notebooks
@@ -201,10 +155,12 @@ def load_variables(kwargs, program_module, create_dat=True):
     return self
 
 
+
 def format_lists(value):
     '''
     Transforms strings into a list
     '''
+
     if not isinstance(value, list):
         try:
             value = ast.literal_eval(value)
@@ -213,46 +169,59 @@ def format_lists(value):
             value = value.replace('[',']').replace(',',']').replace("'",']').split(']')
             while('' in value):
                 value.remove('')
-    
     return value
+
 
 class Logger:
     """
-    A simple logger that writes messages to both a file and the console.
-
+    Class that wraps a file object to abstract the logging.
     """
 
-    def __init__(self, filein, append, suffix="dat"):
-        """
-        Initializes the Logger by opening a log file.
-        
-        Parameters:
-        ----------
-        filein : str
-            Base name of the log file.
-        append : str
-            String to append to the base name (e.g., "log").
-        suffix : str, optional
-            File extension (default is 'dat').
-        """
-        self.log = open(f"{filein}_{append}.{suffix}", "w")
+    # Class Logger to write output to a file
+    def __init__(self, filein, append, suffix="dat", verbose=True):
+        if verbose:
+            self.log = open(f"{filein}_{append}.{suffix}", "w")
+        else:
+            self.log = ''
 
     def write(self, message):
         """
-        Writes a message to both the log file and the console.
+        Appends a newline character to the message and writes it into the file.
 
-        Parameters:
+        Parameters
         ----------
         message : str
-            Message to log and print.
-            
+           Text to be written in the log file.
         """
-        self.log.write(f"{message}\n")
+        try:
+            self.log.write(f"{message}\n")
+        except AttributeError:
+            pass
         print(f"{message}\n")
 
     def finalize(self):
         """
-        Closes the log file.
-
+        Closes the file
         """
-        self.log.close()
+        try:
+            self.log.close()
+        except AttributeError:
+            pass
+
+# def check_dependencies(self):
+#     # this is a dummy command just to warn the user if OpenBabel is not installed
+#     try:
+#         command_run_1 = ["obabel", "-H"]
+#         subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#     except FileNotFoundError:
+#         self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
+#         self.args.log.finalize()
+#         sys.exit()
+
+#     # this is a dummy import just to warn the user if RDKit is not installed
+#     try: 
+#         from rdkit.Chem import AllChem as Chem
+#     except ModuleNotFoundError:
+#         self.args.log.write("x  RDKit is not installed! You can install the program with 'pip install rdkit' or 'conda install -y -c conda-forge rdkit'")
+#         self.args.log.finalize()
+#         sys.exit()

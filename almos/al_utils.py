@@ -23,7 +23,7 @@ def load_options_from_csv(options_file):
     Returns:
     --------
     dict or None
-        A dictionary containing the default values for 'target_column', 'ignore_list', and 'name' 
+        A dictionary containing the default values for 'y', 'ignore', and 'name' 
         if the file is successfully read. Returns None if the file is not found.
     """
     try:
@@ -31,7 +31,7 @@ def load_options_from_csv(options_file):
         options = {
             'y': df_options['y'].values[0],
             'ignore': df_options['ignore'].values[0],
-            'names': df_options['names'].values[0]
+            'name': df_options['name'].values[0]
         }
         return options
     except (FileNotFoundError, pd.errors.EmptyDataError, KeyError):
@@ -390,7 +390,7 @@ class EarlyStopping:
         self.score_tolerance = score_tolerance
         self.rmse_min_delta = rmse_min_delta
         self.sd_min_delta = sd_min_delta
-        self.logger = logger
+        self.log = logger
 
         # Define output folders for PFI and no_PFI
         self.output_folder = Path.cwd() / "batch_plots"
@@ -399,6 +399,7 @@ class EarlyStopping:
         self.output_folder_pfi = self.output_folder / 'PFI_plots'
         self.output_folder_no_pfi.mkdir(exist_ok=True)
         self.output_folder_pfi.mkdir(exist_ok=True)
+
 
     def check_metric_convergence(self, previous_row, last_row, metric_name, tolerance):
         """
@@ -467,11 +468,11 @@ class EarlyStopping:
             sd = df['SD_no_PFI'].tolist()
 
         # Display the summary for the given model type
-        self.logger.write(f"\nTotal Iterations: {len(batch)}")
-        self.logger.write(f"Final Score Model {model_type}: {scores[-1]} (Started at {scores[0]})")
-        self.logger.write(f"Final RMSE Model {model_type}: {rmse[-1]:.2f} (Started at {rmse[0]:.2f})")
-        self.logger.write(f"Final SD Model {model_type}: {sd[-1]:.2f} (Started at {sd[0]:.2f})")
-        self.logger.write(f"\nModel {model_type} has stabilized and will no longer improve significantly.\n")
+        self.log.write(f"\nTotal Iterations: {len(batch)}")
+        self.log.write(f"Final Score Model {model_type}: {scores[-1]} (Started at {scores[0]})")
+        self.log.write(f"Final RMSE Model {model_type}: {rmse[-1]:.2f} (Started at {rmse[0]:.2f})")
+        self.log.write(f"Final SD Model {model_type}: {sd[-1]:.2f} (Started at {sd[0]:.2f})")
+        self.log.write(f"\nModel {model_type} has stabilized and will no longer improve significantly.\n")
 
     def check_convergence_model(self, df, model_type):
         """
@@ -490,9 +491,9 @@ class EarlyStopping:
             The updated DataFrame with convergence columns and status.
         """
          # Print convergence report header
-        self.logger.write("\n===============================================")
-        self.logger.write(f"      Model {model_type} Convergence Report")
-        self.logger.write("===============================================")
+        self.log.write("\n===============================================")
+        self.log.write(f"      Model {model_type} Convergence Report")
+        self.log.write("===============================================")
                 
         # Determine column names based on model type
         if model_type == 'PFI':
@@ -517,7 +518,7 @@ class EarlyStopping:
         # Check if there are enough rows to proceed with convergence checking
         if df.shape[0] < 2:
             # Not enough data to check for convergence
-            self.logger.write(f"\nNot enough batches to check for convergence for Model {model_type}!")
+            self.log.write(f"\nNot enough batches to check for convergence for Model {model_type}!")
             return df  # Return the DataFrame with initialized columns
 
         # Initialize the no_improvement_streak variable
@@ -536,14 +537,14 @@ class EarlyStopping:
             }
 
             # Log convergence status for each metric in this row
-            self.logger.write(f"\nEvaluating Model {model_type} batch {int(current_row['batch'])}:")
+            self.log.write(f"\nEvaluating Model {model_type} batch {int(current_row['batch'])}:")
             for metric, converged in patience_convergence.items():
                 column_name = f"{metric}_converged"
                 if not converged:
-                    self.logger.write(f" X {metric} for {model_type} model has not converged.")
+                    self.log.write(f" X {metric} for {model_type} model has not converged.")
                     df.at[current_row.name, column_name] = 0  # Did not converge
                 else:
-                    self.logger.write(f" o {metric} for {model_type} model has converged.")
+                    self.log.write(f" o {metric} for {model_type} model has converged.")
                     df.at[current_row.name, column_name] = 1  # Converged
 
             # Check if all metrics have converged; if so, increment the no improvement streak
@@ -556,7 +557,7 @@ class EarlyStopping:
             df.loc[df.index[-self.patience:], 'convergence'] = 'yes'
             self.show_summary(df, model_type)  # Show final summary after convergence
         else:
-            self.logger.write('\nNot converged yet, keep working with active learning process!')
+            self.log.write('\nNot converged yet, keep working with active learning process!')
 
         return df  # Return the DataFrame with convergence results
  
