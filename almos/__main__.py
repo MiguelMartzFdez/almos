@@ -18,5 +18,3 @@ if __package__ != 'almos':
 if __name__ == '__main__':
     almos.main()
     sys.exit()
-
-' AQUÍ SOLO HABRÍA QUE CAMBIAR almos POR EL NOMBRE DEL PROGRAMA '

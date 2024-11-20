@@ -322,11 +322,11 @@ def process_batch(batch_number):
                 
                 return no_pfi_dict, pfi_dict
             else:
-                print(f"WARNING! Could not find RMSE or SD in batch {batch_number}")
+                print(f"x WARNING! Could not find RMSE or SD in batch {batch_number}")
                 return None
 
     except Exception as e:
-        print(f"WARNING! Fail processing batch {batch_number}: {e}")
+        print(f"x WARNING! Fail processing batch {batch_number}: {e}")
         return None
 
 def get_metrics_from_batches():
@@ -334,7 +334,7 @@ def get_metrics_from_batches():
     Generates metrics for plotting by processing each batch directory.
 
     Iterates over directories named 'batch_*' (excluding 'batch_plots' and 'batch_0') 
-    and collects metrics with and without PFI for each batch by calling `process_batch`.
+    and collects metrics with and without PFI for each batch by calling 'process_batch'.
 
     Returns:
         tuple: (results_plot_no_PFI, results_plot_PFI), lists of metrics without 
@@ -381,9 +381,9 @@ class EarlyStopping:
         output_folder : Path
             The root folder where all plots and convergence results will be saved.
         output_folder_no_pfi : Path
-            The subfolder within `output_folder` where results for the "no_PFI" model type will be stored.
+            The subfolder within 'output_folder' where results for the "no_PFI" model type will be stored.
         output_folder_pfi : Path
-            The subfolder within `output_folder` where results for the "PFI" model type will be stored.
+            The subfolder within 'output_folder' where results for the "PFI" model type will be stored.
 
         """
         self.patience = patience
@@ -427,7 +427,7 @@ class EarlyStopping:
         """
         # Calculate the difference between the previous and current metric values
         difference = previous_row[metric_name] - last_row[metric_name]
-
+        
         # If the metric has worsened (negative difference), return False (not converged)
         if difference < 0:
             return False
@@ -518,7 +518,7 @@ class EarlyStopping:
         # Check if there are enough rows to proceed with convergence checking
         if df.shape[0] < 2:
             # Not enough data to check for convergence
-            self.log.write(f"\nNot enough batches to check for convergence for Model {model_type}!")
+            self.log.write(f"\no Not enough batches to check for convergence for Model {model_type}!")
             return df  # Return the DataFrame with initialized columns
 
         # Initialize the no_improvement_streak variable
@@ -557,7 +557,7 @@ class EarlyStopping:
             df.loc[df.index[-self.patience:], 'convergence'] = 'yes'
             self.show_summary(df, model_type)  # Show final summary after convergence
         else:
-            self.log.write('\nNot converged yet, keep working with active learning process!')
+            self.log.write('\no Not converged yet, keep working with active learning process!')
 
         return df  # Return the DataFrame with convergence results
  

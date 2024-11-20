@@ -10,12 +10,13 @@
 ###  - Checking and validating input data for active learning                           ###
 ###  - Running model updates and generating predictions                                 ###
 ###  - Processing and selecting data points for new batches                             ###
-###  - Checking for convergence and generating diagnostic plots                         ###
+###  - Checking for convergence and generating convergence plots                        ###
 ###                                                                                     ###
 ###########################################################################################
 ###                                                                                     ###
 ###  Authors: Miguel Martínez Fernández, Susana P. García Abellán,                      ###
 ###           Juan V. Alegre Requena                                                    ###
+###                                                                                     ###
 ###                                                                                     ###
 ###                                                                                     ###
 ###  Please, report any bugs or suggestions to:                                         ###

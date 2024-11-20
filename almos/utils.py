@@ -1,5 +1,5 @@
 ######################################################.
-#     This file stores generic functions     #
+#         This file stores generic functions         #
 ######################################################.
 
 import os
@@ -85,7 +85,8 @@ def command_line_args():
 
                 kwargs[arg_name] = value
 
-    # Second, load all the default variables as an "add_option" object
+    # Second, combine all the default variables with the user-defined ones saved in "kwargs".
+    # This is done as an "add_option" object using the "set_options" function
     args = load_variables(kwargs, "command")
     
     return args
@@ -124,7 +125,7 @@ def load_variables(kwargs, almos_module, create_dat=True):
                     path_command = Path(f"{os.getcwd()}")
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
 
-                self.log.write(f"ALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
+                self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
 
                 if self.command_line:
                     cmd_print = ''
@@ -153,8 +154,6 @@ def load_variables(kwargs, almos_module, create_dat=True):
                 sys.exit()
 
     return self
-
-
 
 def format_lists(value):
     '''

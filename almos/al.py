@@ -1,3 +1,43 @@
+"""
+Parameters
+----------
+    al : bool
+        Indicates whether active learning process is enabled and should be performed. Defaults to "False".
+        This parameter is activated in command line (i.e. --al)
+    csv_name : str, default=''
+        Name of the CSV file containing the database. (i.e. 'FILE.csv'). 
+    y : str, default=''
+        Name of the column containing the response variable in the input CSV file (i.e. 'solubility'). 
+    name : str, default=''
+        Name of the column containing the molecule names in the input CSV file (i.e. 'names').
+    ignore : list, default=[]
+        List containing the columns of the input CSV file that will be ignored during the ROBERT process
+        (i.e. ['name','SMILES']). The descriptors will be included in the final CSV file. The y value and batch column
+        are automatically ignored by ROBERT.  
+    options_file : str
+        Name of the CSV file containing parameter settings, such as "y", "csv_name", "ignore", and "name".
+        Defaults to "option.csv".
+    batch_column : str
+        Name of the column in the CSV file that represents batches or groups for processing.
+    n_points : int or None
+        Specifies the number of new points the user wants to add during the active learning process for the next batch.
+        Defaults to "None", the program will issue a WARNING, as this information is required but not provided.
+    factor_exp : float
+        Factor used to calculate the number of points that will be used for exploration, the rest will be used for exploitation.
+        Defaults to "2/3" (i.e "0.5").
+    tolerance : str, default='medium'
+        Indicates the tolerance level for the convergence process, defining the percentage change threshold required for convergence. Options:
+        1. 'tight': Strictest level, convergence occurs if the metric improves by ≤1% (threshold = 0.01).
+        2. 'medium': Balanced level, convergence occurs if the metric improves by ≤5% (threshold = 0.05).
+        3. 'wide': Least strict, convergence occurs if the metric improves by ≤10% (threshold = 0.10).
+
+"""
+
+#####################################################
+#           This file stores the AL class           #
+#        used in the active learning process        #
+#####################################################
+
 import pandas as pd
 import time
 import os , sys
@@ -19,6 +59,7 @@ from al_utils import (
     EarlyStopping,
     plot_metrics_subplots
 )
+
 
 class al:
     """
@@ -48,51 +89,34 @@ class al:
         # Get metrics from batches
         results_plot_no_PFI, results_plot_PFI = get_metrics_from_batches()
 
-        # Initialize EarlyStopping
+        # Initialize EarlyStopping and checking for convergence using EarlyStopping
         early_stopping = EarlyStopping(
             logger=self.args.log,
             rmse_min_delta = self.args.levels_tolerance[self.args.tolerance],
             sd_min_delta = self.args.levels_tolerance[self.args.tolerance],
         )
-        # Check for convergence using EarlyStopping
+        
         results_plot_no_pfi_df, results_plot_pfi_df = early_stopping.check_convergence(
             results_plot_no_PFI, results_plot_PFI
         )
+
         # Generate plots
         self.generate_plots(results_plot_no_pfi_df, results_plot_pfi_df)
 
         # Log the total time and finalize
         self.finalize_process(start_time_overall)
     
-    
-    def finalize_process(self, start_time_overall):
-        """Stop the timer and calculate the total time taken"""
-        
-        elapsed_time = round(time.time() - start_time_overall, 2)
-
-        # Log the total time and finalize
-        self.args.log.write("\n==========================================\n")
-        self.args.log.write(f"Process Completed! Total time taken for the process: {elapsed_time:.2f} seconds")
-        self.args.log.finalize()
-
-        # Move the .dat file to the proper batch folder
-        log_file = Path.cwd() / "AL_data.dat"  # Path to the log file in the current directory
-        log_destination = os.path.join(self.data_path, "AL_data.dat")  # Define the destination path
-        shutil.move(log_file, log_destination)  # Move the file
-
-
-
     def check_inputs_active_learning(self):
         """
         Initializes and validates input parameters for active learning.
 
         This method:
-        - Loads default options and adds values for missing attributes (`target_column`, `name_column`, `ignore_list`).
+        - Loads default options and adds values for missing attributes ('target_column', 'name_column', 'ignore_list').
         - Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
         - Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
-        - Validates `factor_explore` and `number_of_new_points`, ensuring valid ranges.
-        - Manages the `batch_column`, adding or updating it as needed for data completeness.
-        - Updates `ignore_list` and saves final options to a file.
+        - Validates 'factor_explore' and 'number_of_new_points' and 'tolerance' ensuring valid ranges.
+        - Manages the 'batch_column', adding or updating it as needed for data completeness.
+        - Updates 'ignore_list' and saves final options to a file.
 
         Raises:
             SystemExit: If any required input is missing, invalid, or the file is not found.
@@ -101,7 +125,7 @@ class al:
         if not self.args.y or not self.args.name or not self.args.ignore:
             options = load_options_from_csv(self.args.options_file)
             if options is not None:
-                print("\nOptions loaded from CSV file!")
+                self.args.log.write("\no Options were loaded from the CSV file because some required attributes are missing in the input!")
                 # Assign values from options if available
                 self.args.y = options['y'] if not self.args.y else self.args.y
                 self.args.name = options['name'] if not self.args.name else self.args.name
@@ -120,40 +144,45 @@ class al:
             self.args.name = 'code_name'
 
         if not self.args.name:
-            self.args.name = input("\nWARNING! Specify the column containing molecule names: ")
+            self.args.name = input("\nx WARNING! Specify the column containing molecule names: ")
             if self.args.name not in self.df_raw.columns:
-                print(f"\nWARNING! The column '{self.args.name}' hasn't been found. Exiting.")
+                print(f"\nx WARNING! The column '{self.args.name}' hasn't been found. Exiting.")
                 sys.exit()
 
         # Validate target column
         if  not self.args.y:
-            print("\nWARNING! The target column has not been specified.")
-            self.args.y = input("\nSpecify the column containing target value: ")
+            self.args.y = input("\nx WARNING! The target column has not been specified. Specify the column: ")
 
         if self.args.y not in self.df_raw.columns:
-            print(f"\nWARNING! The target column '{self.args.y}' hasn't been found. Exiting.")
+            print(f"\nx WARNING! The target column '{self.args.y}' hasn't been found. Exiting.")
             sys.exit()
 
         # Validate factor_explore
         if not isinstance(self.args.factor_exp, (int, float)) or not (0 <= self.args.factor_exp <= 1):
-            self.args.factor_exp = input("\nWARNING! Enter a valid exploration factor (must be beetween 0 and 1): ")
+            self.args.factor_exp = input("\nx WARNING! Enter a valid exploration factor (must be beetween 0 and 1): ")
             try:
                 self.args.factor_exp = float(self.args.factor_exp)
                 if not (0 <= self.args.factor_exp <= 1):
                     raise ValueError
             except ValueError:
-                print("\nWARNING! The exploration factor must be between 0 and 1. Exiting.")
+                print("\nx WARNING! The exploration factor must be between 0 and 1. Exiting.")
                 sys.exit()
 
         # Validate number_of_new_points
         if self.args.n_points is None:
-            self.args.n_points = input("\nWARNING! The number of points has not been specified. Introduce the number of new points: ")
+            self.args.n_points = input("\nx WARNING! The number of points has not been specified. Introduce the number of new points: ")
             try:
                 self.args.n_points = int(self.args.n_points)
                 if self.args.n_points <= 0:
                     raise ValueError
             except ValueError:
-                print(f"\nWARNING! The number of new points '{self.args.n_points}' is not valid. Exiting.")
+                print(f"x WARNING! The number of new points '{self.args.n_points}' is not valid. Exiting.")
+                sys.exit()
+        # Validate tolerance level
+        if self.args.tolerance not in self.args.levels_tolerance:
+            self.args.tolerance = input("\nx WARNING! Enter a valid tolerance level ('tight':1%, 'medium':5%, 'wide':10%): ")
+            if self.args.tolerance not in self.args.levels_tolerance:
+                print(f"\nx WARNING! The tolerance level '{self.args.tolerance}' is not valid. Exiting.")
                 sys.exit()
 
         # Validate batch column and assign batch number
@@ -161,18 +190,27 @@ class al:
             max_batch_number = int(self.df_raw[self.args.batch_column].max())
             self.current_number_batch = max_batch_number + 1
 
+            # Check if there are missing values in y column
             last_batch = self.df_raw[self.df_raw[self.args.batch_column] == max_batch_number]
             if not last_batch[self.args.y].notna().all():
-                print(f"\nWARNING! The column '{self.args.y}' is missing values. Exiting.")
+                print(f"\nx WARNING! The column '{self.args.y}' contains missing values. Please check the data before proceeding! Exiting.")
+                sys.exit()
+            # Check if there are values in y but no values in batch column
+            if not self.df_raw[self.df_raw[self.args.y].notna() & self.df_raw[self.args.batch_column].isna()].empty:
+                print(f"\nx WARNING! The column '{self.args.y}' contains values, but there are missing entries in the column '{self.args.batch_column}'. Please fix the data before proceeding. Exiting.")
                 sys.exit()
 
         else:
+            # Create batch column if it doesn't exist when y has valid data
             if self.args.y in self.df_raw.columns and self.df_raw[self.args.y].notna().any():
-                self.df_raw[self.args.batch_column] = self.df_raw[self.args.y].notna().astype(int)
+                self.df_raw[self.args.batch_column] = 0
+                self.df_raw.loc[~self.df_raw[self.args.y].notna(), self.args.batch_column] = None
                 self.df_raw.to_csv(self.path_csv_name, index=False)
                 self.current_number_batch = 1
+                print(f"\nx WARNING! Batch column '{self.args.batch_column}' not found but valid data in '{self.args.y}'.") 
+                print(f"\no Batch column created successfully!")
             else:
-                print(f"\nWARNING! '{self.args.batch_column}' column not found, and '{self.args.y}' has no valid data. Exiting.")
+                print(f"\nx WARNING! '{self.args.batch_column}' column not found, and '{self.args.y}' has no values! Exiting.")
                 sys.exit()
 
         # Add batch column to ignore list and save options
@@ -186,31 +224,31 @@ class al:
             'name': [self.args.name],
         })
         options_df.to_csv('options.csv', index=False)
-        print("\nOptions saved successfully.\n")
+        print("\no Options saved successfully!\n")
 
     def find_csv_file(self, csv_name):
         """
         Locates the specified CSV file in the current or batch directories.
         """
         if not csv_name:
-            csv_name = input("\nWARNING! The name of the file was not introduced. Introduce name of the CSV file: ")
+            csv_name = input("\nx WARNING! The name of the file was not introduced. Introduce name of the CSV file: ")
             if not csv_name:
-                print("\nWARNING! The name of the file was not introduced. Exiting.")
+                print("\nx WARNING! The name of the file was not introduced. Exiting.")
                 sys.exit()
 
         if os.path.exists(csv_name):
-            print(f"\nFile '{csv_name}' found in the current directory.")
+            print(f"\no File '{csv_name}' found in the current directory.")
             return Path.cwd() / csv_name, csv_name
 
-        print(f"\nFile '{csv_name}' was not found in the current directory. Searching in batch directories...")
+        print(f"\no File '{csv_name}' was not found in the current directory. Searching in batch directories...")
         for batch_dir in Path.cwd().glob('batch_*'):
             if batch_dir.name != 'batch_plots':
                 potential_path = batch_dir / csv_name
                 if potential_path.exists():
-                    print(f"\nFile '{csv_name}' found in '{batch_dir}' directory.")
+                    print(f"\no File '{csv_name}' found in '{batch_dir}' directory.")
                     return potential_path, csv_name
 
-        print(f"\nWARNING! The file '{csv_name}' was not found. Exiting.")
+        print(f"\nx WARNING! The file '{csv_name}' was not found. Exiting.")
         sys.exit()
         
 
@@ -232,20 +270,20 @@ class al:
             SystemExit: Exits the program if any step fails or if required files are not found.
         """
         # Initialize the logger
-        # self.args.log = Logger(filein="AL", append="data")
+        self.args.log.write("\n")
         self.args.log.write("====================================\n")
         self.args.log.write("  Starting Active Learning process\n")
         self.args.log.write("====================================\n")
 
         # Log parameters for the process
-        self.args.log.write("Parameters:\n")
-        self.args.log.write("-------------------------------\n")
-        self.args.log.write(f"CSV test file       : {self.args.csv_name}\n")
-        self.args.log.write(f"Name column         : {self.args.name}\n")
-        self.args.log.write(f"Target column       : {self.args.y}\n")
-        self.args.log.write(f"Number of new points: {self.args.n_points}\n")
-        self.args.log.write(f"Ignore              : {self.args.ignore}\n")
-        self.args.log.write(f"Exploration factor  : {self.args.factor_exp}\n")
+        self.args.log.write("--- Parameters ---\n")
+        self.args.log.write(f"CSV test file          : {self.args.csv_name}\n")
+        self.args.log.write(f"Name column            : {self.args.name}\n")
+        self.args.log.write(f"Y column               : {self.args.y}\n")
+        self.args.log.write(f"Number of new points   : {self.args.n_points}\n")
+        self.args.log.write(f"Ignore columns         : {self.args.ignore}\n")
+        self.args.log.write(f"Exploration factor     : {self.args.factor_exp}\n")
+        self.args.log.write(f"Convergence tolerance  : {self.args.tolerance} ({self.args.levels_tolerance[self.args.tolerance] * 100:.2f}%)\n")
         self.args.log.write("-------------------------------\n")
 
         # Filter rows where value in the batch_column is not NaN for updating the model
@@ -267,7 +305,7 @@ class al:
             # Change to ROBERT directory
             os.chdir(robert_path)
         else:
-            print(f"WARNING! The file '{filename_model_csv}' has not been found. Please check that the file exists.")
+            print(f"x WARNING! The file '{filename_model_csv}' has not been found. Please check that the file exists.")
             sys.exit()
 
         # Trying to avoid error in subprocess with tkinter
@@ -284,14 +322,14 @@ class al:
         # Run the command and check for errors
         exit_code = os.system(command)
         if exit_code != 0:
-            self.args.log.write(f"Command failed with exit code {exit_code}. Exiting.\n")
+            self.args.log.write(f"x WARNING! Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
         # Check if the ROBERT model report was generated
         if os.path.exists('ROBERT_report.pdf'):
-            self.args.log.write("\nROBERT model updated and generated successfully!\n")
+            self.args.log.write("\no ROBERT model updated and generated successfully!\n")
         else:
-            self.args.log.write("\nWARNING! ROBERT model was not generated\n")
+            self.args.log.write("\nx WARNING! ROBERT model was not generated\n")
             sys.exit()
 
         # Define paths for the source file and destination directory
@@ -303,10 +341,9 @@ class al:
         # Check if the source file exists before copying
         if os.path.isfile(source):
             # Copy the file from source to destination
-            print(f"Copying file from {source} \nto {destination}")
             shutil.copy(source, destination)
         else:
-            print(f" File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
+            print(f"o File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
 
         # Build and run the command for generating predictions
         command = f'python -m robert --name {self.args.name} --csv_test {self.args.csv_name} --ignore "{self.args.ignore}" --predict'
@@ -318,17 +355,17 @@ class al:
         # Run the command and check for errors
         exit_code = os.system(command)
         if exit_code != 0:
-            self.args.log.write(f"Command failed with exit code {exit_code}. Exiting.\n")
+            self.args.log.write(f"x WARNING! Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
         # Check if predictions were created correctly
         self.path_predictions = robert_path / 'PREDICT' / 'csv_test' / f"{self.base_name_raw}_predicted_PFI.csv"
         if self.path_predictions.exists():
-            # Clean up: remove the test CSV file if it exists in main directory
+            # Clean up, remove the test CSV file if it exists in main directory
             os.remove(destination)
-            self.args.log.write("New predictions generated successfully!")
+            self.args.log.write("o New predictions generated successfully!")
         else:
-            self.args.log.write(f"WARNING! Predictions were not generated in {self.path_predictions}")
+            self.args.log.write(f"x WARNING! Predictions were not generated in {self.path_predictions}")
             sys.exit()
 
     def active_learning_process(self):
@@ -381,6 +418,8 @@ class al:
         self.args.log.write("================================================\n")
 
         size_counters = get_size_counters(quartile_df_exp)
+        # Dataset information
+        self.args.log.write("--- Dataset Information ---\n")
         self.args.log.write(f"\nInitial sizes of dataset: {size_counters}\n")
 
         # Determine the number of points for each quartile in exploration vs. exploitation
@@ -415,16 +454,21 @@ class al:
                 indices_to_update = idx_list[:times_value_appears]
                 predictions_copy_df.loc[indices_to_update, self.args.batch_column] = self.current_number_batch
 
-        # Log quartile information
-        self.args.log.write(f"\nQuartile medians of dataset: {quartile_medians}\n")
+        self.args.log.write(f"Quartile medians of dataset: {quartile_medians}\n")
         self.args.log.write(f"Boundaries range: Min = {min(boundaries)}, Max = {max(boundaries)}\n")
-        self.args.log.write(f"\nOrdered assigned points for exploration: {min_size_quartiles}\n")
-        self.args.log.write(f'\nNumber of points for exploitation: {number_new_q4_values}\n')
-        self.args.log.write(f"Assigned points for exploitation: {top_q4_df[predictions_column].tolist()}\n")
-        self.args.log.write(f'\nNumber of points for exploration: {number_new_q1_q2_q3_values}\n')
-        for q in ['q1', 'q2', 'q3']:
-            self.args.log.write(f"Assigned points for {q}: {assigned_points[q]}\n")
 
+        # Exploration results
+        self.args.log.write("\n--- Exploration ---\n")
+        self.args.log.write(f"Ordered assigned points: {min_size_quartiles}\n\n")
+        self.args.log.write(f"Number of points assigned for exploration: {number_new_q1_q2_q3_values}\n")
+        for q in ['q1', 'q2', 'q3']:
+            self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
+
+        # Exploitation results
+        self.args.log.write("\n--- Exploitation ---\n")
+        self.args.log.write(f"Number of points assigned for exploitation: {number_new_q4_values}\n")
+        self.args.log.write(f"    Points: {top_q4_df[predictions_column].tolist()}\n")
+          
         # Update batch column after exploration and exploitation
         df_raw_copy[self.args.batch_column] = df_raw_copy[self.args.batch_column].combine_first(predictions_copy_df[self.args.batch_column])
         # Drop predictions columns and save updated results
@@ -436,13 +480,21 @@ class al:
 
         # Create a batch directory and move relevant files
         self.data_path = Path.cwd() / f'batch_{self.current_number_batch}'
+
+        # Check if the directory exists and delete it if necessary
+        if self.data_path.exists():
+            self.args.log.write("\n")
+            self.args.log.write(f"x WARNING! Directory 'batch_{self.current_number_batch}' already exists. Deleting it...")
+            shutil.rmtree(self.data_path)
+        # Create the directory
         self.data_path.mkdir(parents=True, exist_ok=True)
 
+        # Move the files to the proper batch folder
         shutil.move(self.robert_folder, self.data_path)
         shutil.move(output_file, self.data_path)
 
-        self.args.log.write("\n")
-        self.args.log.write(f"Results generated successfully in folder 'batch_{self.current_number_batch}'\n")
+        # Log results
+        self.args.log.write(f"\no Results generated successfully in folder 'batch_{self.current_number_batch}'\n")
 
     def generate_plots(self, results_plot_no_pfi_df, results_plot_pfi_df):
         """
@@ -463,4 +515,19 @@ class al:
         self.args.log.write("\n==========================================")
         self.args.log.write("   Graph Generation Confirmation Report     ")
         self.args.log.write("==========================================\n")
-        self.args.log.write("Subplot figures have been generated and saved successfully!\n")
+        self.args.log.write("o Subplot figures have been generated and saved successfully!\n")
+        
+    def finalize_process(self, start_time_overall):
+        """Stop the timer and calculate the total time taken"""
+        
+        elapsed_time = round(time.time() - start_time_overall, 2)
+
+        # Log the total time and finalize
+        self.args.log.write("==========================================\n")
+        self.args.log.write(f"Process Completed! Total time taken for the process: {elapsed_time:.2f} seconds")
+        self.args.log.finalize()
+
+        # Move the .dat file to the proper batch folder
+        log_file = Path.cwd() / "AL_data.dat"  # Path to the log file in the current directory
+        log_destination = os.path.join(self.data_path, "AL_data.dat")  # Define the destination path
+        shutil.move(log_file, log_destination)  # Move the file
