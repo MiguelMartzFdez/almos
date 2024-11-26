@@ -5,6 +5,7 @@
 
 var_dict = {
     "varfile": None,
+    "extra_cmd": '',
     "verbose": True,
     "command_line": False,
     "csv_name": None,
@@ -13,18 +14,15 @@ var_dict = {
     "descp_level": "interpret",
     "ignore": [],
     "cluster": False,
-    "qdescp_atoms": None,
+    "qdescp_atoms": [],
     "qdescp_solvent": None,
     "aqme_workflow": True,
     "name": '',
     "y": '',
     "auto_fill": True,
     "categorical": "onehot",
-    "pca3d": False,
-    "pca3d_csv": "batch_0/pca_b0.csv",
     "al": False,          
     'n_points': None,                  
-    'factor_exp': 2/3,           
     'options_file': 'options.csv',
     'batch_column': 'batch',
     'tolerance': 'medium',
@@ -43,7 +41,7 @@ def set_options(kwargs):
     """
     Combine default settings with user-provided arguments.
 
-    This function merges the defaults from `var_dict` with the values in `kwargs`.
+    This function merges the defaults from 'var_dict' with the values in 'kwargs'.
     User-provided arguments override defaults, and all options are returned as
     attributes of an object. Unrecognized arguments trigger a warning.
 
@@ -51,6 +49,7 @@ def set_options(kwargs):
     -----------
     kwargs : dict
         User-provided arguments to override default settings.
+        From 'command_line_args()' function.
 
     Returns:
     --------
@@ -60,8 +59,8 @@ def set_options(kwargs):
     """
     # set default options and options provided
     options = options_add()
+    
     # dictionary containing default values for options
-
     for key in var_dict:
         vars(options)[key] = var_dict[key]
     for key in kwargs:

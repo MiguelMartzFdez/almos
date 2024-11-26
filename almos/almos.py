@@ -14,7 +14,7 @@
 ###                                                                                     ###
 ###########################################################################################
 ###                                                                                     ###
-###  Authors: Miguel Martínez Fernández, Susana P. García Abellán,                      ###
+###  Authors: Miguel Martínez Fernández, Susana García Abellán,                         ###
 ###           Juan V. Alegre Requena                                                    ###
 ###                                                                                     ###
 ###                                                                                     ###
@@ -26,9 +26,9 @@
 ###########################################################################################
 
 
-# from cluster import cluster
-from al import al    
-from utils import command_line_args
+from almos.cluster import cluster
+from almos.al import al    
+from almos.utils import command_line_args
 
 def main():
     """
@@ -42,7 +42,7 @@ def main():
     if not args.cluster and not args.al:
         print('x  No module was specified in the command line! (i.e. --cluster for Clustering Execution). If you did specify a module, check that you are using quotation marks when using options (i.e. --csv_name "*.csv").\n')
 
-    # Clustering
+    # Cluster
     if args.cluster:
         cluster(**vars(args))
 
