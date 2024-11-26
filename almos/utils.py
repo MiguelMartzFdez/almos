@@ -8,20 +8,30 @@ import ast
 import getopt
 from pathlib import Path
 import time
-from argument_parser import set_options, var_dict
+import subprocess
+from almos.argument_parser import set_options, var_dict
+from almos.al_utils import check_missing_outputs
 
-robert_version = "1.2.2" 
-aqme_version = "1.7.1"
-almos_version = "0.1.0"
+almos_version = "0.0.0"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
-almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana P. García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
+almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
 def command_line_args():
-    """
-    Load default and user-defined arguments specified through command lines. Arrguments are loaded as a dictionary
+    """     
+    Parse and process command-line arguments.
+
+    This function reads and processes arguments provided via the command line. 
+    It validates the arguments against a predefined set of valid options, converts 
+    them to their expected data types, and combines them with default values. 
+    The final configuration is returned as an object in args using the set_options function.
+
+    Returns:
+    --------
+    args : object
+        An object containing all configuration options, including default values 
+        and user-provided overrides.
 
     """
-
     # First, create dictionary with user-defined arguments
     kwargs = {}
     available_args = ["help"]
@@ -29,19 +39,20 @@ def command_line_args():
         "cluster",
         "al",
         "aqme_workflow",
-        "auto_fill",
-        "pca3d"
+        "auto_fill"
     ]
     int_args = [
-        "n_points",
         "n_clusters",
         "seed_clustered"
     ]
+    int_double_args = [
+        "n_points",
+    ]
     list_args = [
-        "ignore"    
+        "ignore",
+        "qdescp_atoms",   
     ]
     float_args = [
-        "factor_exp",
     ]
 
     for arg in var_dict:
@@ -74,6 +85,9 @@ def command_line_args():
                 elif arg_name.lower() in int_args:
                     if value is not None:
                         value = int(value)
+                elif arg_name.lower() in int_double_args:
+                     if ":" in value and len(value.split(":")) == 2: 
+                        value = tuple(map(int, value.split(":")))
                 elif arg_name.lower() in float_args:
                     value = float(value)
                 elif value == "None":
@@ -86,21 +100,38 @@ def command_line_args():
                 kwargs[arg_name] = value
 
     # Second, combine all the default variables with the user-defined ones saved in "kwargs".
-    # This is done as an "add_option" object using the "set_options" function
     args = load_variables(kwargs, "command")
     
     return args
 
 
 def load_variables(kwargs, almos_module, create_dat=True):
-    """
-    Load default and user-defined variables
+    """    
+    Combine user-defined arguments with default variables and set up the environment.
+
+    This function merges default values from 'var_dict' with user-provided arguments 
+    using 'set_options'. It also initializes additional variables, such as the 
+    working directory, sets up the logger and print command line used for depending on the module.
+
+    Parameters:
+    -----------
+    kwargs : dict
+        Dictionary of user-provided arguments to override default values.
+
+    Returns:
+    --------
+    self : object
+        An object containing all configuration options and additional setup attributes.
     
     """
 
     # first, load default values and options manually added to the function
     self = set_options(kwargs)
 
+    # check if outputs are missing and load, needed here for update "command line" with inputs.
+    if almos_module == "al":
+        self = check_missing_outputs(self)
+    
     if almos_module != "command":
 
         # Define path and other variables
@@ -130,12 +161,15 @@ def load_variables(kwargs, almos_module, create_dat=True):
                 if self.command_line:
                     cmd_print = ''
                     cmd_args = sys.argv[1:]
+                    if self.extra_cmd != '':
+                        for arg in self.extra_cmd.split():
+                            cmd_args.append(arg)
                     for i,elem in enumerate(cmd_args):
                         if elem[0] in ['"',"'"]:
                             elem = elem[1:]
                         if elem[-1] in ['"',"'"]:
                             elem = elem[:-1]
-                        if elem != '-h' and elem.split('--')[-1] not in var_dict:
+                        if elem != '-h' and elem.split('--')[-1] not in var_dict:                          
                             if cmd_args[i-1].split('--')[-1] in var_dict: # check if the previous word is an arg
                                 cmd_print += f'"{elem}'
                             if i == len(cmd_args)-1 or cmd_args[i+1].split('--')[-1] in var_dict: # check if the next word is an arg, or last word in command
@@ -207,20 +241,12 @@ class Logger:
         except AttributeError:
             pass
 
-# def check_dependencies(self):
-#     # this is a dummy command just to warn the user if OpenBabel is not installed
-#     try:
-#         command_run_1 = ["obabel", "-H"]
-#         subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-#     except FileNotFoundError:
-#         self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
-#         self.args.log.finalize()
-#         sys.exit()
-
-#     # this is a dummy import just to warn the user if RDKit is not installed
-#     try: 
-#         from rdkit.Chem import AllChem as Chem
-#     except ModuleNotFoundError:
-#         self.args.log.write("x  RDKit is not installed! You can install the program with 'pip install rdkit' or 'conda install -y -c conda-forge rdkit'")
-#         self.args.log.finalize()
-#         sys.exit()
+def check_dependencies(self):
+    # this is a dummy command just to warn the user if OpenBabel is not installed
+    try:
+        command_run_1 = ["obabel", "-H"]
+        subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
+        self.args.log.finalize()
+        sys.exit()

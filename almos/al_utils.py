@@ -10,6 +10,172 @@ import pdfplumber
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import ast
+import os , sys
+import shutil
+
+def check_missing_outputs(self):
+        """
+        Validates input parameters for active learning.
+
+        This method:
+        - Loads default options and adds values for missing attributes ('target_column', 'name_column', 'ignore_list').
+        - Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
+        - Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
+        - Validates 'n_points' and 'tolerance' ensuring valid ranges.
+        - Manages the 'batch_column', adding or updating it as needed for data completeness.
+        - Updates 'ignore_list' and saves final options to a file.
+
+        Raises:
+            SystemExit: If any required input is missing, invalid, or the file is not found.
+        """
+        # Load options if attributes are missing
+        if not self.y or not self.name or not self.ignore:
+            options = load_options_from_csv(self.options_file)
+            if options:
+                if not self.y:
+                    self.y = options['y']
+                    self.extra_cmd += f' --y {self.y}'
+                if not self.name:
+                    self.name = options['name']
+                    self.extra_cmd += f' --name {self.name}'
+                if not self.ignore and options['ignore']:
+                    self.ignore = ast.literal_eval(options['ignore'])
+                    self.extra_cmd += f' --ignore "[{",".join(self.ignore)}]"'
+
+
+        # Validate CSV file 
+        if not self.csv_name:
+            self.csv_name = input("\nx WARNING! The name of the file was not introduced. Introduce name of the CSV file: ")
+            self.extra_cmd += f' --csv_name {self.csv_name}'
+            if not self.csv_name:
+                print("\nx WARNING! The name of the file was not introduced. Exiting.")
+                sys.exit()
+
+        if os.path.exists(self.csv_name):
+            print(f"\no File '{self.csv_name}' found in the current directory.")
+            self.path_csv_name = Path.cwd() / self.csv_name
+        else:
+            print(f"\no File '{self.csv_name}' was not found in the current directory. Searching in batch directories...")
+            for batch_dir in Path.cwd().glob('batch_*'):
+                if batch_dir.name != 'batch_plots':
+                    potential_path = batch_dir / self.csv_name
+                    if potential_path.exists():
+                        print(f"\no File '{self.csv_name}' found in '{batch_dir}' directory.")
+                        self.path_csv_name = potential_path
+                        break
+            else:
+                print(f"\nx WARNING! The file '{self.csv_name}' was not found. Exiting.")
+                sys.exit()
+
+        self.base_name_raw = os.path.splitext(self.csv_name)[0]
+        self.df_raw = pd.read_csv(self.path_csv_name)
+
+        # Validate column names and set base name
+        match = re.search(r'_b(\d+)', self.base_name_raw)
+        self.base_name = re.sub(r'_b\d+', '', self.base_name_raw) if match else self.base_name_raw
+        if 'code_name' in self.df_raw.columns:
+            self.name = 'code_name'
+
+        if not self.name:
+            self.name = input("\nx WARNING! Specify the column containing molecule names: ")
+            self.extra_cmd += f' --name {self.name}'
+            if self.name not in self.df_raw.columns:
+                print(f"\nx WARNING! The column '{self.name}' hasn't been found. Exiting.")
+                sys.exit()
+
+        # Validate target column
+        if not self.y:
+            self.y = input("\nx WARNING! The target column has not been specified correctly. Specify the column: ")
+            self.extra_cmd += f' --y {self.y}'
+
+        if self.y not in self.df_raw.columns:
+            print(f"\nx WARNING! The target column '{self.y}' hasn't been found. Exiting.")
+            sys.exit()
+
+       # Validate n_points
+        if self.n_points is None or not isinstance(self.n_points, tuple) or len(self.n_points) != 2:
+            self.n_points = input("\nx WARNING! The number of points to explore and exploit has not been specified correctly. Introduce the values as 'explore:exploit': ")
+            try:
+                # Ensure the input is in the correct format and contains two positive integers
+                parts = self.n_points.split(":")
+                n_points = tuple(map(int, parts))  # Convert parts to integers
+                if len(parts) != 2 or n_points[0] <= 0 or n_points[1] <= 0:
+                    raise ValueError
+                self.n_points = n_points
+                # Add to extra_cmd if the input is valid
+                self.extra_cmd += f' --n_points {self.n_points[0]}:{self.n_points[1]}'
+            except ValueError:
+                print(f"\nx WARNING! Invalid input '{self.n_points}'. Expected format: 'explore:exploit' with two positive integers. Exiting.")
+                sys.exit()
+
+
+        # Validate tolerance level
+        if self.tolerance not in self.levels_tolerance:
+            self.tolerance = input("\nx WARNING! Enter a valid tolerance level ('tight':1%, 'medium':5%, 'wide':10%): ")
+            self.extra_cmd += f' --tolerance {self.tolerance}'
+            if self.tolerance not in self.levels_tolerance:
+                print(f"\nx WARNING! The tolerance level '{self.tolerance}' is not valid. Exiting.")
+                sys.exit()
+
+        # Validate batch column and assign batch number
+        if self.batch_column in self.df_raw.columns:
+            max_batch_number = int(self.df_raw[self.batch_column].max())
+            self.current_number_batch = max_batch_number + 1
+
+            # Check if there are missing values in y column
+            last_batch = self.df_raw[self.df_raw[self.batch_column] == max_batch_number]
+            if not last_batch[self.y].notna().all():
+                print(f"\nx WARNING! The column '{self.y}' contains missing values. Please check the data before proceeding! Exiting.")
+                sys.exit()
+            # Check if there are values in y but no values in batch column
+            if not self.df_raw[self.df_raw[self.y].notna() & self.df_raw[self.batch_column].isna()].empty:
+                print(f"\nx WARNING! The column '{self.y}' contains values, but there are missing entries in the column '{self.batch_column}'. Please fix the data before proceeding. Exiting.")
+                sys.exit()
+
+        else:
+            # Create batch column if it doesn't exist when y has valid data
+            if self.y in self.df_raw.columns and self.df_raw[self.y].notna().any():
+                self.df_raw[self.batch_column] = 0
+                self.df_raw.loc[~self.df_raw[self.y].notna(), self.batch_column] = None
+                self.df_raw.to_csv(self.path_csv_name, index=False)
+                self.current_number_batch = 1
+                print(f"\nx WARNING! Batch column '{self.batch_column}' not found but valid data in '{self.y}'.") 
+                print(f"\no Batch column created successfully!")
+            else:
+                print(f"\nx WARNING! '{self.batch_column}' column not found, and '{self.y}' has no values! Exiting.")
+                sys.exit()
+
+
+        # Check if the 'batch' folder already exists
+        self.data_path_check = Path.cwd() / f'batch_{self.current_number_batch}'
+        if self.data_path_check.exists():
+            overwrite = input(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
+            if overwrite == 'y':
+                shutil.rmtree(self.data_path_check)
+                print(f"\no Directory '{self.data_path_check.name}' has been deleted suscessfully!")
+            else:
+                # Delete the log file and cancel the actual process
+                log_file = Path.cwd() / "AL_data.dat"  
+                if log_file.exists():
+                    log_file.unlink()  # Use .unlink() for a single file 
+                print("\nx WARNING! Active learning process has been canceled. Exiting.")
+                exit()
+
+        # Add batch column to ignore list and save options
+        self.ignore.append(self.batch_column)
+        self.ignore = list(set(self.ignore))
+
+        options_df = pd.DataFrame({
+            'y': [self.y],
+            'csv_name': [self.csv_name],
+            'ignore': [str(self.ignore)],
+            'name': [self.name],
+        })
+        options_df.to_csv('options.csv', index=False)
+        print("\no Options saved successfully!\n")   
+
+        return self
 
 def load_options_from_csv(options_file):
     """
@@ -428,6 +594,11 @@ class EarlyStopping:
         # Calculate the difference between the previous and current metric values
         difference = previous_row[metric_name] - last_row[metric_name]
         
+        print(f"difference: {difference}")
+        print(f"previous: {previous_row[metric_name]}")
+        print(f"current: {last_row[metric_name]}")
+        print(f"tolerance: {tolerance * previous_row[metric_name]}")
+        
         # If the metric has worsened (negative difference), return False (not converged)
         if difference < 0:
             return False
@@ -535,7 +706,7 @@ class EarlyStopping:
                 'SD': self.check_metric_convergence(previous_row, current_row, sd_column, self.sd_min_delta),
                 'score': self.check_score_convergence(previous_row, current_row, score_column, self.score_tolerance)
             }
-
+            print(patience_convergence)
             # Log convergence status for each metric in this row
             self.log.write(f"\nEvaluating Model {model_type} batch {int(current_row['batch'])}:")
             for metric, converged in patience_convergence.items():
