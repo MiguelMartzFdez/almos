@@ -9,7 +9,7 @@ setup(
     description="Active Learning Molecular Selection",
     long_description="Documentation in Read The Docs: https://almos.readthedocs.io",
     long_description_content_type="text/markdown",
-    author="Miguel Martínez Fernández, Susana P. García Abellán, Juan V. Alegre Requena",
+    author="Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena",
     author_email="miguel.martinez@csic.es",
     keywords=[
         "workflows",
@@ -31,7 +31,7 @@ setup(
         "Programming Language :: Python :: 3.12",
     ],
     install_requires=[
-        "almos==0.1.0",
+        "aqme==1.7.0",
         "robert==1.2.2",
         "plotly==5.24.1",
         "pca==2.0.7"

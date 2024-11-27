@@ -70,7 +70,6 @@ from sklearn.impute import KNNImputer
 from rdkit import RDLogger
 import time
 import plotly.graph_objects as go
-import csv
 
 
 
@@ -117,6 +116,8 @@ class cluster:
         elapsed_time = round(time.time() - start_time_overall, 2)
         self.args.log.write(f"\nTime cluster: {elapsed_time} seconds\n")
         self.args.log.finalize()
+        
+        shutil.move('CLUSTER_data.dat', 'batch_0/CLUSTER_data.dat') # move the DAT file to the subfolder of batch_0
     
 
     def checking_cluster(self):
