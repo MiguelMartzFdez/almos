@@ -30,7 +30,8 @@ var_dict = {
         'tight': 0.01,
         'medium': 0.05,
         'wide': 0.10,
-    }, 
+    },
+    "robert_keywords" : '', 
 }
 
 # part for using the options in a script or jupyter notebook

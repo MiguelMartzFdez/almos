@@ -12,22 +12,20 @@ Parameters
         Name of the column containing the molecule names in the input CSV file (i.e. 'names').
     ignore : list, default=[]
         List containing the columns of the input CSV file that will be ignored during the ROBERT process
-        (i.e. --ignore "['name','SMILES']"). The descriptors will be included in the final CSV file. The y value, name column and batch column
+        (i.e. --ignore "[name,SMILES]"). The descriptors will be included in the final CSV file. The y value, name column and batch column
         are automatically ignored by ROBERT.  
-    options_file : str
-        Name of the CSV file containing parameter settings, such as "y", "csv_name", "ignore", and "name".
-        Defaults to "option.csv".
-    batch_column : str
-        Name of the column in the CSV file that represents batches or groups for processing.
     n_points : tuple of two int 
         Specifies the number of new points for exploration and exploitation in the next batch. 
-        The first value is for exploration, and the second is for exploitation. (i.e. '5:10')
+        The first value is for exploration, and the second is for exploitation. (i.e. '--n_points 5:10')
         If not provided or invalid, the program will request the values in the format 'explore:exploit'.
     tolerance : str, default='medium'
         Indicates the tolerance level for the convergence process, defining the percentage change threshold required for convergence. Options:
         1. 'tight': Strictest level, convergence occurs if the metric improves by ≤1% (threshold = 0.01).
         2. 'medium': Balanced level, convergence occurs if the metric improves by ≤5% (threshold = 0.05).
         3. 'wide': Least strict, convergence occurs if the metric improves by ≤10% (threshold = 0.10).
+        (i.e. '--tolerance tight')
+    robert_keywords : str, default=""
+        Additional keywords to be passed to the ROBERT model generation (i.e. --robert_keywords "--model RF --train [70] --seed [0]") 
 
 """
 
@@ -40,10 +38,9 @@ import pandas as pd
 import time
 import os , sys
 from pathlib import Path
-import shutil
 import re
+import shutil
 from collections import Counter
-import ast
 
 from almos.utils import (
     load_variables
@@ -72,9 +69,6 @@ class al:
         self.args = load_variables(kwargs, "al")
 
         # CHECK dependencies (module, al)
-
-        # # check inputs are valid and load
-        # self.check_inputs_active_learning()
         
         # run robert model updated and generate predictions
         self.run_robert_process()
@@ -85,10 +79,8 @@ class al:
         # Check for convergence in the batches
         # Get metrics from batches
         results_plot_no_PFI, results_plot_PFI = get_metrics_from_batches()
-        print(results_plot_no_PFI)
-        print(results_plot_PFI)
 
-        # Initialize EarlyStopping and checking for convergence using EarlyStopping
+        # Initialize EarlyStopping to check for convergence
         early_stopping = EarlyStopping(
             logger=self.args.log,
             rmse_min_delta = self.args.levels_tolerance[self.args.tolerance],
@@ -98,165 +90,12 @@ class al:
         results_plot_no_pfi_df, results_plot_pfi_df = early_stopping.check_convergence(
             results_plot_no_PFI, results_plot_PFI
         )
-        print(results_plot_no_pfi_df)
-        print(results_plot_pfi_df)
         
         # Generate plots
         self.generate_plots(results_plot_no_pfi_df, results_plot_pfi_df)
 
         # Log the total time and finalize
         self.finalize_process(start_time_overall)
-    
-    # def check_inputs_active_learning(self):
-    #     """
-    #     Initializes and validates input parameters for active learning.
-
-    #     This method:
-    #     - Loads default options and adds values for missing attributes ('target_column', 'name_column', 'ignore_list').
-    #     - Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
-    #     - Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
-    #     - Validates 'n_points' and 'tolerance' ensuring valid ranges.
-    #     - Manages the 'batch_column', adding or updating it as needed for data completeness.
-    #     - Updates 'ignore_list' and saves final options to a file.
-
-    #     Raises:
-    #         SystemExit: If any required input is missing, invalid, or the file is not found.
-    #     """
-    #     # Load options if attributes are missing
-    #     if not self.args.y or not self.args.name or not self.args.ignore:
-    #         options = load_options_from_csv(self.args.options_file)
-    #         if options is not None:
-    #             self.args.log.write("\no Options were loaded from the CSV file because some required attributes are missing in the input!")
-    #             # Assign values from options if available
-    #             self.args.y = options['y'] if not self.args.y else self.args.y
-    #             self.args.name = options['name'] if not self.args.name else self.args.name
-    #             if not self.args.ignore and options['ignore'] is not None:
-    #                 self.args.ignore = ast.literal_eval(options['ignore'])
-
-    #     # Load CSV file
-    #     self.path_csv_name, self.args.csv_name = self.find_csv_file(self.args.csv_name)
-    #     self.base_name_raw = os.path.splitext(self.args.csv_name)[0]
-    #     self.df_raw = pd.read_csv(self.path_csv_name)
-
-    #     # Validate column names and set base name
-    #     match = re.search(r'_b(\d+)', self.base_name_raw)
-    #     self.base_name = re.sub(r'_b\d+', '', self.base_name_raw) if match else self.base_name_raw
-    #     if 'code_name' in self.df_raw.columns:
-    #         self.args.name = 'code_name'
-
-    #     if not self.args.name:
-    #         self.args.name = input("\nx WARNING! Specify the column containing molecule names: ")
-    #         if self.args.name not in self.df_raw.columns:
-    #             print(f"\nx WARNING! The column '{self.args.name}' hasn't been found. Exiting.")
-    #             sys.exit()
-
-    #     # Validate target column
-    #     if  not self.args.y:
-    #         self.args.y = input("\nx WARNING! The target column has not been specified. Specify the column: ")
-
-    #     if self.args.y not in self.df_raw.columns:
-    #         print(f"\nx WARNING! The target column '{self.args.y}' hasn't been found. Exiting.")
-    #         sys.exit()
-
-    #     # Validate factor_explore
-    #     if not isinstance(self.args.factor_exp, (int, float)) or not (0 <= self.args.factor_exp <= 1):
-    #         self.args.factor_exp = input("\nx WARNING! Enter a valid exploration factor (must be beetween 0 and 1): ")
-    #         try:
-    #             self.args.factor_exp = float(self.args.factor_exp)
-    #             if not (0 <= self.args.factor_exp <= 1):
-    #                 raise ValueError
-    #         except ValueError:
-    #             print("\nx WARNING! The exploration factor must be between 0 and 1. Exiting.")
-    #             sys.exit()
-
-    #     # Validate number_of_new_points
-    #     if self.args.n_points is None:
-    #         self.args.n_points = input("\nx WARNING! The number of points has not been specified. Introduce the number of new points: ")
-    #         try:
-    #             self.args.n_points = int(self.args.n_points)
-    #             if self.args.n_points <= 0:
-    #                 raise ValueError
-    #         except ValueError:
-    #             print(f"x WARNING! The number of new points '{self.args.n_points}' is not valid. Exiting.")
-    #             sys.exit()
-
-    #     # Validate n_points
-    #     if self.args.n_points is None or len(self.args.n_points) != 2: #or not isinstance(self.args.n_points, tuple)
-    #         self.args.n_points = input(f"\nx WARNING! The number of points '{self.args.n_points}' to explore and exploit has not been specified correctly. Introduce the values as 'explore:exploit': ")
-    #         try:
-    #             # Ensure the input is in the correct format and contains two positive integers
-    #             parts = self.args.n_points.split(":")
-    #             n_points = tuple(map(int, parts))  # Convert parts to integers
-    #             if len(parts) != 2 or n_points[0] <= 0 or n_points[1] <= 0:
-    #                 raise ValueError
-    #             self.args.n_points = n_points
-    #         except ValueError:
-    #             print(f"\nx WARNING! Invalid input '{self.args.n_points}'. Expected format: 'explore:exploit' with two positive integers. Exiting.")
-    #             sys.exit()
-
-    #     # Validate tolerance level
-    #     if self.args.tolerance not in self.args.levels_tolerance:
-    #         self.args.tolerance = input("\nx WARNING! Enter a valid tolerance level ('tight':1%, 'medium':5%, 'wide':10%): ")
-    #         if self.args.tolerance not in self.args.levels_tolerance:
-    #             print(f"\nx WARNING! The tolerance level '{self.args.tolerance}' is not valid. Exiting.")
-    #             sys.exit()
-
-    #     # Validate batch column and assign batch number
-    #     if self.args.batch_column in self.df_raw.columns:
-    #         max_batch_number = int(self.df_raw[self.args.batch_column].max())
-    #         self.current_number_batch = max_batch_number + 1
-
-    #         # Check if there are missing values in y column
-    #         last_batch = self.df_raw[self.df_raw[self.args.batch_column] == max_batch_number]
-    #         if not last_batch[self.args.y].notna().all():
-    #             print(f"\nx WARNING! The column '{self.args.y}' contains missing values. Please check the data before proceeding! Exiting.")
-    #             sys.exit()
-    #         # Check if there are values in y but no values in batch column
-    #         if not self.df_raw[self.df_raw[self.args.y].notna() & self.df_raw[self.args.batch_column].isna()].empty:
-    #             print(f"\nx WARNING! The column '{self.args.y}' contains values, but there are missing entries in the column '{self.args.batch_column}'. Please fix the data before proceeding. Exiting.")
-    #             sys.exit()
-
-    #     else:
-    #         # Create batch column if it doesn't exist when y has valid data
-    #         if self.args.y in self.df_raw.columns and self.df_raw[self.args.y].notna().any():
-    #             self.df_raw[self.args.batch_column] = 0
-    #             self.df_raw.loc[~self.df_raw[self.args.y].notna(), self.args.batch_column] = None
-    #             self.df_raw.to_csv(self.path_csv_name, index=False)
-    #             self.current_number_batch = 1
-    #             print(f"\nx WARNING! Batch column '{self.args.batch_column}' not found but valid data in '{self.args.y}'.") 
-    #             print(f"\no Batch column created successfully!")
-    #         else:
-    #             print(f"\nx WARNING! '{self.args.batch_column}' column not found, and '{self.args.y}' has no values! Exiting.")
-    #             sys.exit()
-
-
-    #     # Check if the 'batch' folder already exists
-    #     self.data_path_check = Path.cwd() / f'batch_{self.current_number_batch}'
-    #     if self.data_path_check.exists():
-    #         overwrite = input(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
-    #         if overwrite == 'y':
-    #             shutil.rmtree(self.data_path_check)
-    #             print(f"\no Directory '{self.data_path_check.name}' has been deleted suscessfully!")
-    #         else:
-    #             # Delete the log file and cancel the actual process
-    #             log_file = Path.cwd() / "AL_data.dat"  
-    #             if log_file.exists():
-    #                 log_file.unlink()  # Use .unlink() for a single file 
-    #             print("\nx WARNING! Active learning process has been canceled. Exiting.")
-    #             exit()
-
-    #     # Add batch column to ignore list and save options
-    #     self.args.ignore.append(self.args.batch_column)
-    #     self.args.ignore = list(set(self.args.ignore))
-
-    #     options_df = pd.DataFrame({
-    #         'y': [self.args.y],
-    #         'csv_name': [self.args.csv_name],
-    #         'ignore': [str(self.args.ignore)],
-    #         'name': [self.args.name],
-    #     })
-    #     options_df.to_csv('options.csv', index=False)
-    #     print("\no Options saved successfully!\n")
         
     def run_robert_process(self):
         """
@@ -274,6 +113,20 @@ class al:
         Raises:
             SystemExit: Exits the program if any step fails or if required files are not found.
         """
+        # Get the base name of the CSV file without the extension if the csv is introduced as path 
+        self.args.csv_name = os.path.basename(self.args.csv_name)
+        self.args.base_name_raw = os.path.splitext(self.args.csv_name)[0]
+
+        # Handle cases of different batches (i.e test_b1, test_b2, etc), in order to extract the base name.
+        base_name = os.path.splitext(self.args.csv_name)[0]
+        match = re.match(r"^(.*)_b\d+$", base_name)
+        if match:
+            # If the name matches the pattern, extract the base name
+            self.args.base_name = match.group(1)
+        else:
+            # Otherwise, use the entire base name
+            self.args.base_name = self.args.base_name_raw
+
         # Initialize the logger
         self.args.log.write("\n")
         self.args.log.write("====================================\n")
@@ -291,34 +144,43 @@ class al:
         self.args.log.write(f"Convergence tolerance  : {self.args.tolerance} ({self.args.levels_tolerance[self.args.tolerance] * 100:.2f}%)\n")
         self.args.log.write("-------------------------------\n")
 
+        # Main directory for the process
+        self.main_folder = os.getcwd()
+        
         # Filter rows where value in the batch_column is not NaN for updating the model
         robert_model_df = self.args.df_raw[self.args.df_raw[self.args.batch_column].notna()]
 
-        # Create the CSV filename and save it for ROBERT
-        filename_model_csv = f"{self.args.base_name}_ROBERT_b{self.args.current_number_batch}.csv"
-        robert_model_df.to_csv(filename_model_csv, index=False)
+        # Ensure the folder for ROBERT model results exists
+        self.robert_folder = f'ROBERT_b{self.args.current_number_batch}'
+        robert_path = Path(self.main_folder) / self.robert_folder
+        robert_path.mkdir(parents=True, exist_ok=True)
 
-        if os.path.exists(filename_model_csv):
-            # Create directory for saving ROBERT model results
-            self.robert_folder = f'ROBERT_b{self.args.current_number_batch}'
-            robert_path = Path.cwd() / self.robert_folder
-            robert_path.mkdir(parents=True, exist_ok=True)
+        # Create and save the CSV file inside the folder
+        filename_model_csv = robert_path / f"{self.args.base_name}_ROBERT_b{self.args.current_number_batch}.csv"
+        try:
+            robert_model_df.to_csv(filename_model_csv, index=False)
+            print(f"o File successfully saved: {filename_model_csv}")
 
-            # Move the generated file into the new folder
-            shutil.move(filename_model_csv, robert_path / filename_model_csv)
-
-            # Change to ROBERT directory
-            os.chdir(robert_path)
-        else:
-            print(f"x WARNING! The file '{filename_model_csv}' has not been found. Please check that the file exists.")
+        except Exception as e:
+            print(f"x WARNING! Could not save the file: {e}")
             sys.exit()
+
+        # Change to the newly created ROBERT directory
+        os.chdir(robert_path)
 
         # Trying to avoid error in subprocess with tkinter
         # Use "Agg" backend to prevent matplotlib from using tkinter, avoiding "main thread" errors in headless or multi-threaded environments.
         os.environ["MPLBACKEND"] = "Agg"
 
         # Build and run the command for updating the ROBERT model
-        command = f'python -m robert --csv_name {filename_model_csv} --name {self.args.name} --y {self.args.y} --ignore "{self.args.ignore}"'
+        command = (
+            f'python -m robert --csv_name {filename_model_csv} '
+            f'--name {self.args.name} '
+            f'--y {self.args.y} '
+            f'--ignore "{self.args.ignore}" '
+            f'{self.args.robert_keywords}'  # Include keywords only if not empty works
+        )
+
         self.args.log.write("\n")
         self.args.log.write("=======================================\n")
         self.args.log.write("  Generating the ROBERT model updated\n")
@@ -349,6 +211,7 @@ class al:
             shutil.copy(source, destination)
         else:
             print(f"o File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
+
 
         # Build and run the command for generating predictions
         command = f'python -m robert --name {self.args.name} --csv_test {self.args.csv_name} --ignore "{self.args.ignore}" --predict'

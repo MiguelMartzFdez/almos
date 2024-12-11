@@ -29,19 +29,25 @@ def check_missing_outputs(self):
         Raises:
             SystemExit: If any required input is missing, invalid, or the file is not found.
         """
-        # Load options if attributes are missing
+       # Load options if attributes are missing
         if not self.y or not self.name or not self.ignore:
             options = load_options_from_csv(self.options_file)
             if options:
-                if not self.y:
+                if not self.y and 'y' in options and options['y'] is not None and not pd.isna(options['y']):
                     self.y = options['y']
                     self.extra_cmd += f' --y {self.y}'
-                if not self.name:
+                    self.log.write(f"\no Target column updated from 'options.csv': {self.y}")
+                if not self.name and 'name' in options and options['name'] is not None and not pd.isna(options['name']):
                     self.name = options['name']
                     self.extra_cmd += f' --name {self.name}'
-                if not self.ignore and options['ignore']:
+                    self.log.write(f"\no Name column updated from 'options.csv': {self.name}")
+
+                if not self.ignore and 'ignore' in options and options['ignore'] is not None and not pd.isna(options['ignore']):
                     self.ignore = ast.literal_eval(options['ignore'])
                     self.extra_cmd += f' --ignore "[{",".join(self.ignore)}]"'
+                    self.log.write(f"\no Ignore list of columns updated from 'options.csv': {self.ignore}")
+            else:
+                self.log.write("o Options file was not found. Parameters will be asked for if necessary.")
 
 
         # Validate CSV file 
@@ -147,19 +153,31 @@ def check_missing_outputs(self):
                 sys.exit()
 
 
-        # Check if the 'batch' folder already exists
+        # Check if the 'batch' folder already exists only if the current batch is the maximum of all existing batch folders
+        existing_batches = [
+            int(folder.name.split('_')[1]) for folder in Path.cwd().iterdir()
+            if folder.is_dir() and folder.name.startswith('batch_') and folder.name.split('_')[1].isdigit()
+        ]
+        
+        # Determine the maximum batch number and the path of the current batch if it exists
+        max_existing_batch = max(existing_batches) if existing_batches else 0
         self.data_path_check = Path.cwd() / f'batch_{self.current_number_batch}'
         if self.data_path_check.exists():
-            overwrite = input(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
-            if overwrite == 'y':
-                shutil.rmtree(self.data_path_check)
-                print(f"\no Directory '{self.data_path_check.name}' has been deleted suscessfully!")
+            if self.current_number_batch == max_existing_batch:
+                overwrite = input(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
+                if overwrite == 'y':
+                    shutil.rmtree(self.data_path_check)
+                    print(f"\no Directory '{self.data_path_check.name}' has been deleted suscessfully!")
+                else:
+                    # Delete the log file and cancel the actual process
+                    self.log.finalize()
+                    log_file = Path.cwd() / "AL_data.dat"  
+                    if log_file.exists():
+                        log_file.unlink()  # Use .unlink() for a single file 
+                    print("\nx WARNING! Active learning process has been canceled. Exiting.")
+                    exit()
             else:
-                # Delete the log file and cancel the actual process
-                log_file = Path.cwd() / "AL_data.dat"  
-                if log_file.exists():
-                    log_file.unlink()  # Use .unlink() for a single file 
-                print("\nx WARNING! Active learning process has been canceled. Exiting.")
+                print(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists and the last batch is 'batch_{max_existing_batch}'. Exiting.")
                 exit()
 
         # Add batch column to ignore list and save options
@@ -200,7 +218,8 @@ def load_options_from_csv(options_file):
             'name': df_options['name'].values[0]
         }
         return options
-    except (FileNotFoundError, pd.errors.EmptyDataError, KeyError):
+    except Exception as e:
+        print(f"x WARNING! Error reading options file '{options_file}', default options will be used.")  # Print the error message (e)
         return None
     
 def generate_quartile_medians_df(df_total, df_exp, values_column):
@@ -347,25 +366,29 @@ def extract_rmse_and_score_from_column(page, bbox):
     # Extract the text from the defined bounding box
     text_page = page.within_bbox(bbox).extract_text()
 
-    # First try to match the "Test" pattern for RMSE
-    match_RMSE = re.search(r'Test : R[\d²] = [\d.]+, MAE = [\d.eE\+\-]+, RMSE = ([\d.]+(?:e[\+\-]?\d+)?)', text_page)
+    try:
+        # First try to match the "Test" pattern for RMSE
+        match_RMSE = re.search(r'Test : R[\d²] = [\d.]+, MAE = [\d.eE\+\-]+, RMSE = ([\d.]+(?:e[\+\-]?\d+)?)', text_page)
+        
+        # If "Test" pattern not found, try the "Valid" pattern for RMSE
+        if not match_RMSE:
+            match_RMSE = re.search(r'Valid\. : R[\d²] = [\d.]+, MAE = [\d.eE\+\-]+, RMSE = ([\d.]+(?:e[\+\-]?\d+)?)', text_page)
+        
+        # Extract the RMSE value if found
+        rmse_value = float(match_RMSE.group(1)) 
+
+        # Try to match the "Score" pattern
+        match_score = re.search(r'Score (\d+)', text_page)
+
+        # Extract the SCORE value if found
+        score_value = int(match_score.group(1)) 
+
+        # Return the matched values
+        return rmse_value, score_value
     
-    # If "Test" pattern not found, try the "Valid" pattern for RMSE
-    if not match_RMSE:
-        match_RMSE = re.search(r'Valid\. : R[\d²] = [\d.]+, MAE = [\d.eE\+\-]+, RMSE = ([\d.]+(?:e[\+\-]?\d+)?)', text_page)
-    
-    # Extract the RMSE value if found
-    rmse_value = float(match_RMSE.group(1)) if match_RMSE else None
-
-    # Try to match the "Score" pattern
-    match_score = re.search(r'Score (\d+)', text_page)
-
-    # Extract the SCORE value if found
-    score_value = int(match_score.group(1)) if match_score else None
-
-    # Return the matched values or (None, None) if not found
-    return rmse_value, score_value
-
+    except AttributeError:
+        # If no patterns match, return None for both values
+        return None, None
 
 def extract_sd_from_column(page, bbox):
     """
@@ -387,12 +410,13 @@ def extract_sd_from_column(page, bbox):
     text_page = page.within_bbox(bbox).extract_text()
 
     # Search for SD pattern
-    match_sd = re.search(r'High variation,\s*4\*SD\s*\((valid\.|test)\)\s*=\s*([\d.]+)\s*\([\d]+% y-range\)', text_page)
-    
-    if match_sd:
+    try:
+        match_sd = re.search(r'variation,\s*4\*SD(?:.|\s)*?\((valid\.?|test\.?)\)(?:.|\s)*?=\s*([\d.]+)', text_page)
         return float(match_sd.group(2)) / 4  # Dividing SD value by 4 as it's 4*SD in the PDF
-    return None
 
+    except AttributeError:
+        return None
+    
 def extract_points_from_csv(batch_number):
     """
     Extract validation and test points from CSV files for both PFI and No_PFI models.
@@ -489,11 +513,11 @@ def process_batch(batch_number):
                 return no_pfi_dict, pfi_dict
             else:
                 print(f"x WARNING! Could not find RMSE or SD in batch {batch_number}")
-                return None
+                exit()
 
     except Exception as e:
-        print(f"x WARNING! Fail processing batch {batch_number}: {e}")
-        return None
+        print(f"x WARNING! Fail processing batch {batch_number}")
+        exit()
 
 def get_metrics_from_batches():
     """
@@ -593,11 +617,6 @@ class EarlyStopping:
         """
         # Calculate the difference between the previous and current metric values
         difference = previous_row[metric_name] - last_row[metric_name]
-        
-        print(f"difference: {difference}")
-        print(f"previous: {previous_row[metric_name]}")
-        print(f"current: {last_row[metric_name]}")
-        print(f"tolerance: {tolerance * previous_row[metric_name]}")
         
         # If the metric has worsened (negative difference), return False (not converged)
         if difference < 0:
@@ -706,7 +725,7 @@ class EarlyStopping:
                 'SD': self.check_metric_convergence(previous_row, current_row, sd_column, self.sd_min_delta),
                 'score': self.check_score_convergence(previous_row, current_row, score_column, self.score_tolerance)
             }
-            print(patience_convergence)
+
             # Log convergence status for each metric in this row
             self.log.write(f"\nEvaluating Model {model_type} batch {int(current_row['batch'])}:")
             for metric, converged in patience_convergence.items():
@@ -736,50 +755,70 @@ class EarlyStopping:
     def check_convergence(self, results_plot_no_PFI, results_plot_PFI):
         """
         Check for convergence for both PFI and no_PFI models independently.
-        This function also creates appropriate folders for storing plots and saves the results in CSV format.
+        This function processes batch metrics, updates CSV files, and ensures
+        only new or updated batches are added.
         
         Parameters:
         -----------
         results_plot_no_PFI : list of dicts
-            A list of dictionaries containing batch data metrics for the no_PFI model.
+            Batch metrics for the no_PFI model.
         results_plot_PFI : list of dicts
-            A list of dictionaries containing batch data metrics for the PFI model.
+            Batch metrics for the PFI model.
         """
         
         # Paths to the CSV files for no_PFI and PFI
         no_pfi_csv_path = self.output_folder_no_pfi / 'results_plot_no_PFI.csv'
         pfi_csv_path = self.output_folder_pfi / 'results_plot_PFI.csv'
+        
+        def update_csv(existing_path, new_data, label):
+            """
+            Update the CSV file with new batch data. If the last batch is repeated,
+            replace it with the new data.
+            
+            """
+            # Convert new data to a DataFrame and preprocess it
+            new_data_df = pd.DataFrame(new_data)
+            new_data_df = self.check_convergence_model(new_data_df, label)
+            new_data_df['batch'] = new_data_df['batch'].astype(int)  # Ensure 'batch' column is integer
+            
+            if existing_path.exists():
+                # Load existing data
+                existing_df = pd.read_csv(existing_path)
+                existing_df['batch'] = existing_df['batch'].astype(int)  # Ensure 'batch' column is integer
+                
+                # Identify the last batch in existing data
+                last_batch_existing = existing_df['batch'].max()
+                
+                # Filter new data into higher batches and updates to the last batch
+                new_data_higher_batches = new_data_df[new_data_df['batch'] > last_batch_existing]
+                new_data_last_batch = new_data_df[new_data_df['batch'] == last_batch_existing]
+                
+                # Replace the last batch if new data for it exists
+                if not new_data_last_batch.empty:
+                    existing_df = existing_df[existing_df['batch'] != last_batch_existing]
+                    updated_df = pd.concat([existing_df, new_data_last_batch], ignore_index=True)
+                else:
+                    updated_df = existing_df
+                
+                # Add new higher batches
+                updated_df = pd.concat([updated_df, new_data_higher_batches], ignore_index=True)
+            else:
+                # If file does not exist, start with new data
+                updated_df = new_data_df
+            
+            # Save updated data to the CSV file
+            updated_df.to_csv(existing_path, index=False)
+            return updated_df
 
-        # Process no_PFI results
-        no_pfi_df = pd.DataFrame(results_plot_no_PFI)
-        no_pfi_df = self.check_convergence_model(no_pfi_df, 'no_PFI')
-        no_pfi_df['batch'] = no_pfi_df['batch'].astype(int)  # Ensure batch column is integer
-        if no_pfi_csv_path.exists():
-            existing_no_pfi_df = pd.read_csv(no_pfi_csv_path)
-            existing_no_pfi_df['batch'] = existing_no_pfi_df['batch'].astype(int)  # Ensure batch column is integer
-            last_batch_no_pfi = existing_no_pfi_df['batch'].max()
-            new_no_pfi_df = no_pfi_df[no_pfi_df['batch'] > last_batch_no_pfi]
-            updated_no_pfi_df = pd.concat([existing_no_pfi_df, new_no_pfi_df], ignore_index=True)
-        else:
-            updated_no_pfi_df = no_pfi_df
-        updated_no_pfi_df.to_csv(no_pfi_csv_path, index=False)
+        # Process and update no_PFI results
+        updated_no_pfi_df = update_csv(no_pfi_csv_path, results_plot_no_PFI, 'no_PFI')
 
-        # Process PFI results
-        pfi_df = pd.DataFrame(results_plot_PFI)
-        pfi_df = self.check_convergence_model(pfi_df, 'PFI')
-        pfi_df['batch'] = pfi_df['batch'].astype(int)  # Ensure batch column is integer
-        if pfi_csv_path.exists():
-            existing_pfi_df = pd.read_csv(pfi_csv_path)
-            existing_pfi_df['batch'] = existing_pfi_df['batch'].astype(int)  # Ensure batch column is integer
-            last_batch_pfi = existing_pfi_df['batch'].max()
-            new_pfi_df = pfi_df[pfi_df['batch'] > last_batch_pfi]
-            updated_pfi_df = pd.concat([existing_pfi_df, new_pfi_df], ignore_index=True)
-        else:
-            updated_pfi_df = pfi_df
-        updated_pfi_df.to_csv(pfi_csv_path, index=False)
+        # Process and update PFI results
+        updated_pfi_df = update_csv(pfi_csv_path, results_plot_PFI, 'PFI')
 
-        # Return the updated DataFrames for further use if needed
+        # Return updated DataFrames for further use
         return updated_no_pfi_df, updated_pfi_df
+
 
 def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_count=0):
     """
@@ -831,9 +870,10 @@ def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_coun
         axs[0].text(bar_val.get_x() + bar_val.get_width() / 2, bar_val.get_height() / 2,
                     f'{val}', ha='center', va='center', color='black', fontsize=10)
         
-        # Text for test points
-        axs[0].text(bar_test.get_x() + bar_test.get_width() / 2, bar_val.get_height() + bar_test.get_height() / 2,
-                    f'{test}', ha='center', va='center', color='black', fontsize=10)
+        # Text for test points only if it's not 0
+        if test != 0:
+            axs[0].text(bar_test.get_x() + bar_test.get_width() / 2, bar_val.get_height() + bar_test.get_height() / 2,
+                        f'{test}', ha='center', va='center', color='black', fontsize=10)
 
 
     # Plot 2 - Standard Deviation (SD)
@@ -880,6 +920,5 @@ def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_coun
     axs[3].legend(handles=[converged_patch], loc='upper right', fancybox=True, shadow=True)
 
     plt.tight_layout()
-    # plt.subplots_adjust(hspace=0.001)  # Reduce hspace to bring subplots closer together
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()  

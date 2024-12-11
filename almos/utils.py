@@ -38,8 +38,7 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
-        "aqme_workflow",
-        "auto_fill"
+        "aqme_workflow"
     ]
     int_args = [
         "n_clusters",
@@ -127,10 +126,6 @@ def load_variables(kwargs, almos_module, create_dat=True):
 
     # first, load default values and options manually added to the function
     self = set_options(kwargs)
-
-    # check if outputs are missing and load, needed here for update "command line" with inputs.
-    if almos_module == "al":
-        self = check_missing_outputs(self)
     
     if almos_module != "command":
 
@@ -155,6 +150,10 @@ def load_variables(kwargs, almos_module, create_dat=True):
                     # prevents errors when using command lines and running to remote directories
                     path_command = Path(f"{os.getcwd()}")
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
+
+                # check if outputs are missing and load, needed here for update "command line" with inputs.
+                if almos_module == "al":
+                    self = check_missing_outputs(self)
 
                 self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
 
