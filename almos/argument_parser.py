@@ -19,7 +19,7 @@ var_dict = {
     "aqme_workflow": True,
     "name": '',
     "y": '',
-    "auto_fill": True,
+    "not_autofill": False,
     "categorical": "onehot",
     "al": False,          
     'n_points': None,                  

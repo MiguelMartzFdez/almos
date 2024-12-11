@@ -39,7 +39,7 @@ def command_line_args():
         "cluster",
         "al",
         "aqme_workflow",
-        "auto_fill"
+        "not_autofill"
     ]
     int_args = [
         "n_clusters",
