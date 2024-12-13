@@ -37,6 +37,9 @@ csv_to_remove = os.path.join(os.getcwd(), "options.csv")
         (
             "tolerance"
         ),  # check if change in tolerance parameter works   
+        (
+            "reverse"
+        ),  # check if we look for minimum values for exploitation with reverse parameter
     ],
 )
 
@@ -350,7 +353,7 @@ def test_AL(test_job):
             lambda: validate_dat_file(
                 "batch_1/AL_data.dat", 
                 {
-                    'initial_sizes': {"q1": 19, "q2": 20, "q3": 20},
+                    'initial_sizes': {"q1": 19, "q2": 20, "q3": 20, "q4": 1},
                     'order': ['q1', 'q1', 'q2'],
                     'convergence_reports': {
                         'no_PFI': "o Not enough batches to check for convergence for Model no_PFI!",
@@ -445,7 +448,7 @@ def test_AL(test_job):
             lambda: validate_dat_file(
             "batch_2/AL_data.dat", 
             {
-                'initial_sizes': {"q1": 21, "q2": 21, "q3": 22},
+                'initial_sizes': {"q1": 21, "q2": 21, "q3": 22, "q4": 1},
                 'order': ['q1', 'q2', 'q1'],
                 'convergence_reports': {
                     'no_PFI': {
@@ -550,7 +553,7 @@ def test_AL(test_job):
             lambda: validate_dat_file(
                 "batch_3/AL_data.dat", 
                 {
-                    'initial_sizes': {"q1": 24, "q2": 21, "q3": 23},
+                    'initial_sizes': {"q1": 24, "q2": 21, "q3": 23, "q4": 2},
                     'order': ['q2', 'q2', 'q2'],
                     'convergence_reports': {
                         'no_PFI': {
@@ -805,13 +808,52 @@ def test_AL(test_job):
             assert input_found, f"Missing input not found in batch_1/AL_data.dat for option {missing_option} in '{test_job}' test."
             assert al_valid, f"Subplot figures were not generated successfully! Option {missing_option} in '{test_job}' test."
 
-            # Directories to delete if they exist for finalize the process
-            for dir_path in glob.glob(batch_pattern):
-                if os.path.isdir(dir_path):  
-                    shutil.rmtree(dir_path)
-            if os.path.isdir(path_plots):
-                shutil.rmtree(path_plots)
+    elif test_job == 'reverse':
 
-            # Remove the CSV file 'options.csv' if it exists
-            if os.path.exists(csv_to_remove):
-                os.remove(csv_to_remove)
+        # Check if reverse works with negative values.
+        cmd = (
+            f"python -m almos --al --robert_keywords '--model RF --train [80]' "
+            f"--csv_name {path_tests}/AL_example_reverse.csv "
+            f"--n_points 3:2 --ignore index --y target --name name --reverse true"
+        )
+
+        # Execute the command with shell=True to enable redirection
+        subprocess.run(
+            cmd,
+            shell=True,           # Enable redirection and shell usage
+            capture_output=True,  # Capture stdout and stderr
+            text=True             # Decode output as text
+        )
+
+        # Check that the DAT file is created and has the correct information
+        filepath = os.path.join(os.getcwd(), "batch_1", "AL_data.dat")
+        assert os.path.exists(filepath), f"AL_data.dat file not found in '{test_job}' test."
+
+        # Read .dat file as a string
+        with open(filepath, "r") as file:
+            text = file.read()
+
+        q1_found, q2_found, q3_found, q4_found, al_valid = False, False, False, False, False
+        # Check the input is found in the .dat file
+        q1_found = "Points assigned to q1: [-75.25, -70.05]" in text
+        q2_found = "Points assigned to q2: [-66.45]" in text 
+        q3_found = "Points assigned to q3: [-46.55]" in text
+        q4_found = "Points assigned to q4: [-18.3]" in text
+
+        # Check if subplot figures were successfully generated
+        al_valid = 'o Subplot figures have been generated and saved successfully!' in text
+
+        # Assertions
+        assert q1_found and q2_found and q3_found and q4_found, f"Missing input not found in batch_1/AL_data.dat in '{test_job}' test."
+        assert al_valid, f"Subplot figures were not generated successfully! In '{test_job}' test."
+
+        # Directories to delete if they exist
+        for dir_path in glob.glob(batch_pattern):
+            if os.path.isdir(dir_path):  
+                shutil.rmtree(dir_path)
+        if os.path.isdir(path_plots):
+            shutil.rmtree(path_plots)
+
+        # Remove the CSV file 'options.csv' if it exists
+        if os.path.exists(csv_to_remove):
+            os.remove(csv_to_remove)

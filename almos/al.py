@@ -25,7 +25,9 @@ Parameters
         3. 'wide': Least strict, convergence occurs if the metric improves by ≤10% (threshold = 0.10).
         (i.e. '--tolerance tight')
     robert_keywords : str, default=""
-        Additional keywords to be passed to the ROBERT model generation (i.e. --robert_keywords "--model RF --train [70] --seed [0]") 
+        Additional keywords to be passed to the ROBERT model generation (i.e. --robert_keywords "--model RF --train [70] --seed [0]")
+    reverse : bool, default=False
+        If set to True, the order of the points in the new batch is reversed, prioritizing in exploitation lower values (i.e. --reverse True ).
 
 """
 
@@ -43,7 +45,8 @@ import shutil
 from collections import Counter
 
 from almos.utils import (
-    load_variables
+    load_variables,
+    check_dependencies
 )
 from almos.al_utils import (
     generate_quartile_medians_df,
@@ -68,7 +71,8 @@ class al:
         # load default and user-specified variables
         self.args = load_variables(kwargs, "al")
 
-        # CHECK dependencies (module, al)
+        # Check dependencies such as ROBERT, scikit-learn-intelex
+        _ = check_dependencies(self, "al")
         
         # run robert model updated and generate predictions
         self.run_robert_process()
@@ -294,17 +298,22 @@ class al:
         explore_points = int(self.args.n_points[0])
         exploit_points = int(self.args.n_points[1])
         
-        # Exploitation: Select top rows for q4 based on the predictions
-        top_q4_df = predictions_copy_df.nlargest(exploit_points, predictions_column)
-        predictions_copy_df.loc[top_q4_df.index, self.args.batch_column] = self.args.current_number_batch
+        # Exploitation: Select top rows for q4 or q1 based on the predictions and if the process is reverse or not
+        if self.args.reverse:
+            top_df = predictions_copy_df.nsmallest(exploit_points, predictions_column)
+        else:
+            top_df = predictions_copy_df.nlargest(exploit_points, predictions_column)
 
-        # Exploration: Assign values to the first three quartiles based on proximity to quartile medians
+        predictions_copy_df.loc[top_df.index, self.args.batch_column] = self.args.current_number_batch
+
+        # Exploration: Assign values to the exploration quartiles based on proximity to quartile medians
         assigned_points, min_size_quartiles = assign_values(
             predictions_copy_df[predictions_copy_df[self.args.batch_column].isna()],
             explore_points,
             quartile_medians, 
             size_counters, 
-            predictions_column
+            predictions_column,
+            self.args.reverse
         )
 
         # Count occurrences in exploration assignments
@@ -324,14 +333,21 @@ class al:
         self.args.log.write("\n--- Exploration ---\n")
         self.args.log.write(f"Ordered assigned points: {min_size_quartiles}\n\n")
         self.args.log.write(f"Number of points assigned for exploration: {explore_points}\n")
-        for q in ['q1', 'q2', 'q3']:
-            self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
+        if self.args.reverse:
+            for q in ['q2', 'q3', 'q4']:
+                self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
+        else:
+            for q in ['q1', 'q2', 'q3']:
+                self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
 
         # Exploitation results
         self.args.log.write("\n--- Exploitation ---\n")
         self.args.log.write(f"Number of points assigned for exploitation: {exploit_points}\n")
-        self.args.log.write(f"    Points: {top_q4_df[predictions_column].tolist()}\n")
-          
+        if self.args.reverse:
+            self.args.log.write(f"    Points assigned to q1: {top_df[predictions_column].tolist()}\n")  
+        else:
+            self.args.log.write(f"    Points assigned to q4: {top_df[predictions_column].tolist()}\n")
+
         # Update batch column after exploration and exploitation
         df_raw_copy[self.args.batch_column] = df_raw_copy[self.args.batch_column].combine_first(predictions_copy_df[self.args.batch_column])
         # Drop predictions columns and save updated results
@@ -374,7 +390,7 @@ class al:
         self.args.log.write("o Subplot figures have been generated and saved successfully!\n")
         
     def finalize_process(self, start_time_overall):
-        """Stop the timer and calculate the total time taken"""
+        """Stop the timer, calculate the total time taken and move the .dat file to the proper batch folder."""
         
         elapsed_time = round(time.time() - start_time_overall, 2)
 

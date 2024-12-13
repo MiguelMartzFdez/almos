@@ -241,42 +241,46 @@ def generate_quartile_medians_df(df_total, df_exp, values_column):
     df_exp : pd.DataFrame
         The experimental dataset with a new 'quartile' column, assigning each value to q1, q2, q3, or q4.
     quartile_medians : dict
-        A dictionary containing the median values for the first three quartiles (q1, q2, q3).
+        A dictionary containing the median values for the first three quartiles (q1, q2, q3, q4).
 
     """
-    # Find min and max values in the total dataset and adjust their range
-    min_val, max_val = df_total[values_column].min() * 0.7, df_total[values_column].max() * 1.3
+    # Find min and max values in the total dataset and adjust their range depending on their sign
+    min_val = df_total[values_column].min()
+    max_val = df_total[values_column].max()
+
+    adjusted_min = min_val * 1.3 if min_val < 0 else min_val * 0.7
+    adjusted_max = max_val * 1.3 if max_val > 0 else max_val * 0.7
 
     # Calculate the quartile boundaries
-    separation_range = (max_val - min_val) / 4
-    boundaries = [min_val + i * separation_range for i in range(5)]
+    separation_range = (adjusted_max - adjusted_min) / 4
+    boundaries = [adjusted_min + i * separation_range for i in range(5)]
     
     # Assign quartiles to the experimental dataset based on the boundaries
     df_exp['quartile'] = df_exp[values_column].apply(
         lambda val: 'q1' if val < boundaries[1] else 'q2' if val < boundaries[2] else 'q3' if val < boundaries[3] else 'q4'
     )
 
-    # Calculate the median value for the first three quartiles (q1, q2, q3)
-    quartile_medians = {f'q{q+1}': (boundaries[q] + boundaries[q+1]) / 2 for q in range(3)}
+    # Calculate the median value for the quartiles (q1, q2, q3, q4)
+    quartile_medians = {f'q{q+1}': (boundaries[q] + boundaries[q+1]) / 2 for q in range(4)}
 
     return df_exp, quartile_medians, boundaries
 
 
 def get_size_counters(df):
     """
-    Count the number of points in each quartile (q1, q2, q3).
+    Count the number of points in each quartile (q1, q2, q3, q4).
 
     Parameters:
     -----------
     df : pd.DataFrame
-        The DataFrame that contains a 'quartile' column, which categorizes values into quartiles (q1, q2, q3).
+        The DataFrame that contains a 'quartile' column, which categorizes values into quartiles (q1, q2, q3, 4).
 
     Returns:
     --------
     dict
-        A dictionary with keys 'q1', 'q2', and 'q3' where each key represents the number of points in that quartile.
+        A dictionary with keys 'q1', 'q2', 'q3' and 'q4' where each key represents the number of points in that quartile.
     """
-    return {q: df[df['quartile'] == q].shape[0] for q in ['q1', 'q2', 'q3']}
+    return {q: df[df['quartile'] == q].shape[0] for q in ['q1', 'q2', 'q3', 'q4']}
 
 
 def find_closest_value(df, target_median, target_column):
@@ -300,7 +304,7 @@ def find_closest_value(df, target_median, target_column):
     return df.iloc[(df[target_column] - target_median).abs().argmin()]
 
 
-def assign_values(df, number_of_values, quartile_medians, size_counters, target_column):
+def assign_values(df, number_of_values, quartile_medians, size_counters, target_column, reverse):
     """
     Assign values to quartiles with the fewest points based on proximity to the quartile medians.
 
@@ -313,18 +317,28 @@ def assign_values(df, number_of_values, quartile_medians, size_counters, target_
     quartile_medians : dict
         A dictionary containing the median values for each quartile.
     size_counters : dict
-        A dictionary containing the number of points currently assigned to each quartile (q1, q2, q3).
+        A dictionary containing the number of points currently assigned to each quartile (q1, q2, q3, q4).
     target_column : str
         The name of the column in the DataFrame from which values will be assigned.
+    reverse : bool
+        If True, assigns values only to the last three quartiles ('q2', 'q3', 'q4').
+        If False, assigns values only to the first three quartiles ('q1', 'q2', 'q3').
 
     Returns:
     --------
     assigned_points : dict
-        A dictionary with quartiles ('q1', 'q2', 'q3') as keys and the list of assigned values for each quartile.
+        A dictionary with quartiles ('q1', 'q2', 'q3', 'q4') as keys and the list of assigned values for each quartile.
+        If 'reverse' is True, only 'q2', 'q3', and 'q4' will be included. If False, only 'q1', 'q2', and 'q3' will.
     min_size_quartiles : list
         A list of the quartiles with the fewest points during each iteration.
     """
-    assigned_points = {q: [] for q in ['q1', 'q2', 'q3']}
+    if reverse:
+        assigned_points = {q: [] for q in ['q2', 'q3', 'q4']}
+        size_counters = {q: size_counters[q] for q in ['q2', 'q3', 'q4']}
+    else:
+        assigned_points = {q: [] for q in ['q1', 'q2', 'q3']}
+        size_counters = {q: size_counters[q] for q in ['q1', 'q2', 'q3']}
+
     min_size_quartiles = []
     
     for _ in range(number_of_values):

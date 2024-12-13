@@ -240,12 +240,62 @@ class Logger:
         except AttributeError:
             pass
 
-def check_dependencies(self):
-    # this is a dummy command just to warn the user if OpenBabel is not installed
-    try:
-        command_run_1 = ["obabel", "-H"]
-        subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
-        self.args.log.finalize()
-        sys.exit()
+def check_dependencies(self, module):
+    """
+    Checks if the required Python packages are installed for the specified module.
+
+    For module "al":
+    - Requires 'robert' on all platforms.
+    - Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).
+
+    Parameters:
+    -----------
+    module : str
+        The name of the module for which dependencies are being checked.
+    """
+    if module == "al":
+        # Check for 'robert'
+        try:
+            import robert
+        except ImportError:
+            self.args.log.write("\nx  The required package 'robert' is not installed! Install it with 'pip install robert'.")
+            self.args.log.finalize()
+            sys.exit()
+
+        # Check for glib, gtk3, pango, and mscorefonts
+        required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
+        missing_packages = []
+
+        # Use conda list to verify package installation
+        result = subprocess.run(
+            ["conda", "list"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True
+        )
+        installed_packages = result.stdout
+
+        # Check for each required package
+        for package in required_packages:
+            if package not in installed_packages:
+                missing_packages.append(package)
+
+        # Log missing packages and exit if necessary
+        if missing_packages:
+            self.args.log.write(
+                f"\nWARNING! The following required packages are missing: {', '.join(missing_packages)}"
+                "\nYou can install them with the command: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
+            )
+            self.args.log.finalize()
+            sys.exit()
+
+        # Check for 'scikit-learn-intelex'
+        try:
+            import sklearnex
+        except ImportError:
+            if sys.platform == "darwin":  # macOS
+                print("\nx WARNING! The package 'scikit-learn-intelex' is not installed on macOS. This is optional and the process will continue.")
+            else:  # Other platforms (e.g., Windows or Linux)
+                self.args.log.write("\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'.")
+                self.args.log.finalize()
+                sys.exit()
