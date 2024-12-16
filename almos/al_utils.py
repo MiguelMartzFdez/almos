@@ -244,16 +244,24 @@ def generate_quartile_medians_df(df_total, df_exp, values_column):
         A dictionary containing the median values for the first three quartiles (q1, q2, q3, q4).
 
     """
-    # Find min and max values in the total dataset and adjust their range depending on their sign
-    min_val = df_total[values_column].min()
-    max_val = df_total[values_column].max()
 
-    adjusted_min = min_val * 1.3 if min_val < 0 else min_val * 0.7
-    adjusted_max = max_val * 1.3 if max_val > 0 else max_val * 0.7
+    # Calculate min, max, and range from experimental values
+    min_val, max_val = df_exp[values_column].agg(['min', 'max'])
+    range_val = max_val - min_val
+    print(f"Original limits: Min = {min_val}, Max = {max_val}, Range = {max_val - min_val}") 
+
+    # Extend the range by 20% upwards and downwards
+    adjusted_min, adjusted_max = min_val - 0.2 * range_val, max_val + 0.2 * range_val
+    print(f"Adjusted limits 20%: Min = {adjusted_min}, Max = {adjusted_max}")
+
+    # Find the closest values in df_total (experimental and predicted values) to adjusted_min and adjusted_max
+    new_min = df_total.loc[(df_total[values_column] - adjusted_min).abs().idxmin(), values_column]
+    new_max = df_total.loc[(df_total[values_column] - adjusted_max).abs().idxmin(), values_column]
+    print(f"New limits: Min = {new_min}, Max = {new_max}")
 
     # Calculate the quartile boundaries
-    separation_range = (adjusted_max - adjusted_min) / 4
-    boundaries = [adjusted_min + i * separation_range for i in range(5)]
+    separation_range = (new_max - new_min) / 4
+    boundaries = [new_min + i * separation_range for i in range(5)]
     
     # Assign quartiles to the experimental dataset based on the boundaries
     df_exp['quartile'] = df_exp[values_column].apply(

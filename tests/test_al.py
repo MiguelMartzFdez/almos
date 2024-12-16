@@ -333,8 +333,8 @@ def test_AL(test_job):
                 {
                     'num_points': 60,
                     'rows': {
-                    'name': ["Molecule_1929", "Molecule_enant_5879", "Molecule_20", "Molecule_54", "Molecule_69"],
-                    'index': [1929, 5879, 20, 54, 69],
+                    'name': ["Molecule_262", "Molecule_1929", "Molecule_enant_5879", "Molecule_36", "Molecule_74"],
+                     'index': [262, 1929, 5879, 36, 74],
                     'batch': [1] * 5
                     }
                 },
@@ -353,8 +353,8 @@ def test_AL(test_job):
             lambda: validate_dat_file(
                 "batch_1/AL_data.dat", 
                 {
-                    'initial_sizes': {"q1": 19, "q2": 20, "q3": 20, "q4": 1},
-                    'order': ['q1', 'q1', 'q2'],
+                    'initial_sizes': {"q1": 16, "q2": 14, "q3": 15, "q4": 15},
+                    'order': ['q2', 'q2', 'q3'],
                     'convergence_reports': {
                         'no_PFI': "o Not enough batches to check for convergence for Model no_PFI!",
                         'PFI': "o Not enough batches to check for convergence for Model PFI!"
@@ -380,13 +380,13 @@ def test_AL(test_job):
                 "file": "results_plot_no_PFI.csv",
                 "data": {
                     "batch": [1, 2],
-                    "rmse_no_PFI": [23, 25],
-                    "SD_no_PFI": [30.8, 32.55],
+                    "rmse_no_PFI": [23, 19],
+                    "SD_no_PFI": [30.8, 30.075],
                     "score_no_PFI": [3, 3],
                     "validation_points_no_PFI": [11, 12],
                     "test_points_no_PFI": [6, 6],
                     "rmse_converged": [0, 0],
-                    "SD_converged": [0, 0],
+                    "SD_converged": [0, 1],
                     "score_converged": [0, 1],
                     "convergence": ["no", "no"]
                 }
@@ -395,13 +395,13 @@ def test_AL(test_job):
                 "file": "results_plot_PFI.csv",
                 "data": {
                     "batch": [1, 2],
-                    "rmse_PFI": [23, 29],
-                    "SD_PFI": [30.75, 27.45],
+                    "rmse_PFI": [23, 18],
+                    "SD_PFI": [30.75, 29.95],
                     "score_PFI": [4, 4],
                     "validation_points_PFI": [11, 12],
                     "test_points_PFI": [6, 6],
                     "rmse_converged": [0, 0],
-                    "SD_converged": [0, 0],
+                    "SD_converged": [0, 1],
                     "score_converged": [0, 1],
                     "convergence": ["no", "no"]
                 }
@@ -425,8 +425,8 @@ def test_AL(test_job):
                 {
                     'num_points': 65,
                     'rows': {
-                    "name": ["Molecule_262", "Molecule_2466", "Molecule_2559", "Molecule_29", "Molecule_61"],
-                    "index": [262, 2466, 2559, 29, 61],
+                    'name': ["Molecule_206", "Molecule_2466", "Molecule_2559", "Molecule_2869", "Molecule_28"],
+                    'index': [206, 2466, 2559, 2869, 28],
                     "batch": [2] * 5
                     }
                 },
@@ -448,17 +448,17 @@ def test_AL(test_job):
             lambda: validate_dat_file(
             "batch_2/AL_data.dat", 
             {
-                'initial_sizes': {"q1": 21, "q2": 21, "q3": 22, "q4": 1},
-                'order': ['q1', 'q2', 'q1'],
+                'initial_sizes': {"q1": 17, "q2": 15, "q3": 16, "q4": 17},
+                'order': ['q2', 'q2', 'q3'],
                 'convergence_reports': {
                     'no_PFI': {
                         'rmse': "X rmse for no_PFI model has not converged.",
-                        'SD': "X SD for no_PFI model has not converged.",
+                        'SD': "o SD for no_PFI model has converged.",
                         'score': "o score for no_PFI model has converged."
                     },
                     'PFI': {
                         'rmse': "X rmse for PFI model has not converged.",
-                        'SD': "X SD for PFI model has not converged.",
+                        'SD': "o SD for PFI model has converged.",
                         'score': "o score for PFI model has converged."
                     }
                 },
@@ -484,14 +484,14 @@ def test_AL(test_job):
                 "file": "results_plot_no_PFI.csv",
                 "data": {
                     "batch": [1, 2, 3],
-                    "rmse_no_PFI": [23, 25, 30],
-                    "SD_no_PFI": [30.8, 32.55, 33.2],
-                    "score_no_PFI": [3, 3, 2],
+                    "rmse_no_PFI": [23, 19, 20],
+                    "SD_no_PFI": [30.8, 30.075, 31.15],
+                    "score_no_PFI": [3, 3, 3],
                     "validation_points_no_PFI": [11, 12, 13],
                     "test_points_no_PFI": [6, 6, 7],
                     "rmse_converged": [0, 0, 0],
-                    "SD_converged": [0, 0, 0],
-                    "score_converged": [0, 1, 0],
+                    "SD_converged": [0, 1, 0],
+                    "score_converged": [0, 1, 1],
                     "convergence": ["no", "no", "no"]
                 }
             },
@@ -499,14 +499,14 @@ def test_AL(test_job):
                 "file": "results_plot_PFI.csv",
                 "data": {
                     "batch": [1, 2, 3],
-                    "rmse_PFI": [23, 29, 28],
-                    "SD_PFI": [30.75, 27.45, 35.425],
-                    "score_PFI": [4, 4, 2],
+                    "rmse_PFI": [23, 18, 20],
+                    "SD_PFI": [30.75, 29.95, 30.7],
+                    "score_PFI": [4, 4, 4],
                     "validation_points_PFI": [11, 12, 13],
                     "test_points_PFI": [6, 6, 7],
-                    "rmse_converged": [0, 0, 1],
-                    "SD_converged": [0, 0, 0],
-                    "score_converged": [0, 1, 0],
+                    "rmse_converged": [0, 0, 0],
+                    "SD_converged": [0, 1, 0],
+                    "score_converged": [0, 1, 1],
                     "convergence": ["no", "no", "no"]
                 }
             }
@@ -529,8 +529,8 @@ def test_AL(test_job):
                 {
                     'num_points': 70,
                     'rows': {
-                    "name": ["Molecule_2869", "Molecule_enant_3803", "Molecule_21", "Molecule_34", "Molecule_48"],
-                    "index": [2869, 3803, 21, 34, 48],
+                    'name': ["Molecule_6", "Molecule_34", "Molecule_55", "Molecule_69", "Molecule_71"],
+                    'index': [6, 34, 55, 69, 71],
                     "batch": [3] * 5
                                     }
                                 },
@@ -553,30 +553,30 @@ def test_AL(test_job):
             lambda: validate_dat_file(
                 "batch_3/AL_data.dat", 
                 {
-                    'initial_sizes': {"q1": 24, "q2": 21, "q3": 23, "q4": 2},
-                    'order': ['q2', 'q2', 'q2'],
+                    'initial_sizes': {"q1": 18, "q2": 17, "q3": 18, "q4": 17},
+                    'order': ['q2', 'q1', 'q2'],
                     'convergence_reports': {
                         'no_PFI': {
                             'batch_3': [
                                 "X rmse for no_PFI model has not converged.",
                                 "X SD for no_PFI model has not converged.",
-                                "X score for no_PFI model has not converged."
+                                "o score for no_PFI model has converged."
                             ],
                             'batch_2': [
                                 "X rmse for no_PFI model has not converged.",
-                                "X SD for no_PFI model has not converged.",
+                                "o SD for no_PFI model has converged.",
                                 "o score for no_PFI model has converged."
                             ]
                         },
                         'PFI': {
                             'batch_3': [
-                                "o rmse for PFI model has converged.",
+                                "X rmse for PFI model has not converged.",
                                 "X SD for PFI model has not converged.",
-                                "X score for PFI model has not converged."
+                                "o score for PFI model has converged."
                             ],
                             'batch_2': [
                                 "X rmse for PFI model has not converged.",
-                                "X SD for PFI model has not converged.",
+                                "o SD for PFI model has converged.",
                                 "o score for PFI model has converged."
                             ]
                         }
@@ -603,15 +603,15 @@ def test_AL(test_job):
             "no_PFI": {
                 "file": "results_plot_no_PFI.csv",
                 "data": {
-                    "batch": [1, 2, 3, 4 ],
-                    "rmse_no_PFI": [23, 25, 30, 26],
-                    "SD_no_PFI": [30.8, 32.55, 33.2, 37],
-                    "score_no_PFI": [3, 3, 2, 1],
+                    "batch": [1, 2, 3, 4],
+                    "rmse_no_PFI": [23, 19, 20, 22],
+                    "SD_no_PFI": [30.8, 30.075, 31.15, 32.55],
+                    "score_no_PFI": [3, 3, 3, 3],
                     "validation_points_no_PFI": [11, 12, 13, 14],
                     "test_points_no_PFI": [6, 6, 7, 7],
                     "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 0, 0, 0],
-                    "score_converged": [0, 1, 0, 0],
+                    "SD_converged": [0, 1, 0, 0],
+                    "score_converged": [0, 1, 1, 1],
                     "convergence": ["no", "no", "no", "no"]
                 }
             },
@@ -619,14 +619,14 @@ def test_AL(test_job):
                 "file": "results_plot_PFI.csv",
                 "data": {
                     "batch": [1, 2, 3, 4],
-                    "rmse_PFI": [23, 29, 28, 27],
-                    "SD_PFI": [30.75, 27.45, 35.425, 31.225],
-                    "score_PFI": [4, 4, 2, 1],
+                    "rmse_PFI": [23, 18, 20, 24],
+                    "SD_PFI": [30.75, 29.95, 30.7, 30.7],
+                    "score_PFI": [4, 4, 4, 4],
                     "validation_points_PFI": [11, 12, 13, 14],
                     "test_points_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 1, 1],
-                    "SD_converged": [0, 0, 0, 0],
-                    "score_converged": [0, 1, 0, 0],
+                    "rmse_converged": [0, 0, 0, 0],
+                    "SD_converged": [0, 1, 0, 1],
+                    "score_converged": [0, 1, 1, 1],
                     "convergence": ["no", "no", "no", "no"]
                 }
             }
@@ -705,14 +705,14 @@ def test_AL(test_job):
                 "file": "results_plot_no_PFI.csv",
                 "data": {
                     "batch": [1, 2, 3, 4],
-                    "rmse_no_PFI": [23, 25, 30, 26],
-                    "SD_no_PFI": [30.8, 32.55, 33.2, 35],
-                    "score_no_PFI": [3, 3, 2, 2],
+                    "rmse_no_PFI": [23, 19, 20, 26],
+                    "SD_no_PFI": [30.8, 30.075, 31.15, 35],
+                    "score_no_PFI": [3, 3, 3, 2],
                     "validation_points_no_PFI": [11, 12, 13, 14],
                     "test_points_no_PFI": [6, 6, 7, 7],
                     "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 0, 0, 0],
-                    "score_converged": [0, 1, 0, 1],
+                    "SD_converged": [0, 1, 0, 0],
+                    "score_converged": [0, 1, 1, 0],
                     "convergence": ["no", "no", "no", "no"]
                 }
             },
@@ -720,14 +720,14 @@ def test_AL(test_job):
                 "file": "results_plot_PFI.csv",
                 "data": {
                     "batch": [1, 2, 3, 4],
-                    "rmse_PFI": [23, 29, 28, 26],
-                    "SD_PFI": [30.75, 27.45, 35.425, 35.45],
-                    "score_PFI": [4, 4, 2, 3],
+                    "rmse_PFI": [23, 18, 20, 26],
+                    "SD_PFI": [30.75, 29.95, 30.7, 35.45],
+                    "score_PFI": [4, 4, 4, 3],
                     "validation_points_PFI": [11, 12, 13, 14],
                     "test_points_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 1, 0],
-                    "SD_converged": [0, 0, 0, 0],
-                    "score_converged": [0, 1, 0, 1],
+                    "rmse_converged": [0, 0, 0, 0],
+                    "SD_converged": [0, 1, 0, 0],
+                    "score_converged": [0, 1, 1, 0],
                     "convergence": ["no", "no", "no", "no"]
                 }
             }
@@ -814,7 +814,7 @@ def test_AL(test_job):
         cmd = (
             f"python -m almos --al --robert_keywords '--model RF --train [80]' "
             f"--csv_name {path_tests}/AL_example_reverse.csv "
-            f"--n_points 3:2 --ignore index --y target --name name --reverse true"
+            f"--n_points 3:2 --ignore index --y target --name name --reverse"
         )
 
         # Execute the command with shell=True to enable redirection
@@ -836,9 +836,9 @@ def test_AL(test_job):
         q1_found, q2_found, q3_found, q4_found, al_valid = False, False, False, False, False
         # Check the input is found in the .dat file
         q1_found = "Points assigned to q1: [-75.25, -70.05]" in text
-        q2_found = "Points assigned to q2: [-66.45]" in text 
-        q3_found = "Points assigned to q3: [-46.55]" in text
-        q4_found = "Points assigned to q4: [-18.3]" in text
+        q2_found = "Points assigned to q2: [-59.75]" in text
+        q3_found = "Points assigned to q3: [-37.95, -35.35]" in text
+        q4_found = "Points assigned to q4: []" in text
 
         # Check if subplot figures were successfully generated
         al_valid = 'o Subplot figures have been generated and saved successfully!' in text

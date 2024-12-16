@@ -27,7 +27,9 @@ Parameters
     robert_keywords : str, default=""
         Additional keywords to be passed to the ROBERT model generation (i.e. --robert_keywords "--model RF --train [70] --seed [0]")
     reverse : bool, default=False
-        If set to True, the order of the points in the new batch is reversed, prioritizing in exploitation lower values (i.e. --reverse True ).
+        If set to True, the order of the points in the new batch is reversed, prioritizing in exploitation lower values (i.e. --reverse ).
+    intelex : bool, default=False
+        If set to True, the program will not need module scikit-learn-intelex to speed up the model update process.
 
 """
 
@@ -71,7 +73,7 @@ class al:
         # load default and user-specified variables
         self.args = load_variables(kwargs, "al")
 
-        # Check dependencies such as ROBERT, scikit-learn-intelex
+        # Check dependencies such as scikit-learn-intelex
         _ = check_dependencies(self, "al")
         
         # run robert model updated and generate predictions

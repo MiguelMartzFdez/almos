@@ -38,7 +38,9 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
-        "aqme_workflow"
+        "aqme_workflow",
+        "reverse",
+        "intelex",
     ]
     int_args = [
         "n_clusters",
@@ -254,13 +256,6 @@ def check_dependencies(self, module):
         The name of the module for which dependencies are being checked.
     """
     if module == "al":
-        # Check for 'robert'
-        try:
-            import robert
-        except ImportError:
-            self.args.log.write("\nx  The required package 'robert' is not installed! Install it with 'pip install robert'.")
-            self.args.log.finalize()
-            sys.exit()
 
         # Check for glib, gtk3, pango, and mscorefonts
         required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
@@ -283,19 +278,23 @@ def check_dependencies(self, module):
         # Log missing packages and exit if necessary
         if missing_packages:
             self.args.log.write(
-                f"\nWARNING! The following required packages are missing: {', '.join(missing_packages)}"
+                f"\nx WARNING! The following required packages are missing: {', '.join(missing_packages)}"
                 "\nYou can install them with the command: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
             )
             self.args.log.finalize()
             sys.exit()
 
         # Check for 'scikit-learn-intelex'
-        try:
-            import sklearnex
-        except ImportError:
-            if sys.platform == "darwin":  # macOS
-                print("\nx WARNING! The package 'scikit-learn-intelex' is not installed on macOS. This is optional and the process will continue.")
-            else:  # Other platforms (e.g., Windows or Linux)
-                self.args.log.write("\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'.")
+        if not self.args.intelex:
+            try:
+                import sklearnex  
+            except ImportError:
+                self.args.log.write(
+                    "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
+                    "\nNote that 'scikit-learn-intelex' is required unless '--intelex' is set in the command line. Exiting.")
                 self.args.log.finalize()
                 sys.exit()
+        else:
+            self.args.log.write(
+                "\no Running without 'scikit-learn-intelex' as requested.\n"
+            )

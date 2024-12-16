@@ -32,7 +32,8 @@ var_dict = {
         'wide': 0.10,
     },
     "robert_keywords" : '',
-    "reverse" : False
+    "reverse" : False,
+    "intelex" : False
 }
 
 # part for using the options in a script or jupyter notebook
