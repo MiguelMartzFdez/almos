@@ -20,11 +20,6 @@ General
       List containing the columns of the input CSV file that will be ignored during the clustered process
       (i.e. ['code_name','SMILES']). The descriptors will be included in the clustered CSV file. The y value
       is automatically ignored.
-   qdescp_atoms : list of str, default=[]
-      Type of atom or group to calculate atomic properties. This option admits atoms 
-      (i.e., qdescp_atoms=['P']) and SMART patterns (i.e., qdescp_atoms=['C=O']).   
-   descp_solvent : str, default = None
-      Solvent used in the xTB property calculations (ALPB model)
    aqme_workflow : bool, default = True
       Enables the aqme workflow to generate descriptors. It is automatically disabled in set_up_cluster(self) if:
       - the CSV file does not contain the columns 'SMILES' and 'code_name'AND
@@ -34,17 +29,20 @@ General
       It is mandatory to define it if the clustering is to be done with the descriptors already defined by the user.
       If the descriptors are to be generated with the program (using AQME) 'name'' is not defined.
    y : str, default = ''
-      Name of the column containing the response variable in the input CSV file (i.e. 'solubility').    
-   not_autofill: bool, default = False
-      If the CSV contains empty spaces (less than 30 % of NaN per column) and not_autofill is False, KNNImputer is applied, 
-      using the K-nearest neighbors method to estimate and fill missing values based on the closest values to each point in the dataset.
-      If not_autofill is True, the KNNImputer is not applied (if there are still empty spaces the program finish).
+      Name of the column containing the response variable in the input CSV file (i.e. 'solubility').         
+   auto_fill: bool, default = True
+      If the CSV contains empty spaces (less than 30 % of NaN per column), KNNImputer is applied, using the K-nearest neighbors method 
+      to estimate and fill missing values based on the closest values to each point in the dataset.
+      If auto_fill is False, the KNNImputer is not applied (if there are still empty spaces the program finish).            
    categorical: str, default = 'onehot'
       It can be used when the user provide their descriptors.
       Mode to convert data from columns with categorical variables. As an example, a variable containing 4 types of C atoms 
       (i.e. primary, secondary, tertiary, quaternary) will be converted into categorical variables. Options: 
         1. 'onehot' (for one-hot encoding, ROBERT will create a descriptor for each type of C atom using 0s and 1s to indicate whether the C type is present)
         2. 'numbers' (to describe the C atoms with numbers: 1, 2, 3, 4).
+   aqme_keywords: str, default = ''
+       It can be used to use specific functions from aqme. The entire argument must be in quotation marks, as in the example.
+       (i.e., --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile") 
    varfile : str, default=None
       Option to parse the variables using a yaml file (specify the filename, i.e. varfile=FILE.yaml).  
    
@@ -71,6 +69,7 @@ from sklearn.impute import KNNImputer
 from rdkit import RDLogger
 import time
 import plotly.graph_objects as go
+import ast
 
 
 
@@ -155,7 +154,8 @@ class cluster:
             if element not in df_csv_name.columns:
                 elements.append(element)
         if elements != []:
-            self.args.log.write(f"\nx WARNING. Some columns ({elements}), named in ignore ({self.args.ignore}), do not exist in the csv_name provided ({name_of_csv}). Please, specify the list ignore correctly")
+            string_ignore = "[" + ",".join(str(x) for x in self.args.ignore) + "]" # Convert list to string with commas without spaces
+            self.args.log.write(f"\nx WARNING. Some columns ({elements}), named in --ignore {string_ignore}, do not exist in the csv_name provided ({name_of_csv}). Please, specify the list ignore correctly")
             self.args.log.finalize()
             sys.exit(5)
 
@@ -335,30 +335,25 @@ class cluster:
         '''
 
         cmd_qdescp = ["python", "-m", "aqme",  "--qdescp", "--input", descp_file]
-
-        if self.args.qdescp_atoms != []:
-            # self.args.log.write(f"\nx REVISANDO.{self.args.qdescp_atoms}")
-            # cmd_qdescp += ["--qdescp_atoms"]
-            # cmd_qdescp += self.args.qdescp_atoms
-            # for element in self.args.qdescp_atoms:
-            #     self.args.log.write(f"\nx WARNING.{element}")
-            #     cmd_qdescp += [f'{element}']
-            atoms_string ='['+','.join(str(element) for element in self.args.qdescp_atoms)+']'
-            # for element in self.args.qdescp_atoms:
-            #     self.args.log.write(f"\nx WARNING.{element}")
-            #     atoms_string += f'{element}'   
-            # atoms_string = atoms_string.strip()             
-            cmd_qdescp += ["--qdescp_atoms", f'{atoms_string}']
-        if self.args.qdescp_solvent is not None:
-            cmd_qdescp += ["--qdescp_solvent", self.args.qdescp_solvent]
         
-        # self.args.log.write(f"\nx REVISANDO.{cmd_qdescp}")
-        subprocess.run(cmd_qdescp) 
+        if self.args.aqme_keywords != '':
+            cmd_aqme = self.args.aqme_keywords.split()
+            for word in cmd_aqme:
+                word = word.replace('"','').replace("'","")                
+                cmd_qdescp.append(word)  
+                
+        string_cmd = ''
+        for cmd in cmd_qdescp:
+            string_cmd += f'{cmd} ' # adding blank space between words   
         
-        self.args.log.write(f"\no Command line used in AQME: {cmd_qdescp} ")
-        # self.args.log.write(f"\no Command line used in AQME: python -m aqme --qdescp --input {descp_file} --qdescp_atoms {atoms_string}")
+        exit_error = subprocess.run(cmd_qdescp)
+        self.args.log.write(f"\no Command line used in AQME: {string_cmd} ")
         
-        # move these files to aqme subfolder
+        # if exit_error.returncode != 0:
+        #     self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
+        #     self.args.log.finalize()
+        #     sys.exit()
+            
         files_to_aqme = [f'AQME-ROBERT_denovo_{csv[0]}_b0.csv', 
                         f'AQME-ROBERT_interpret_{csv[0]}_b0.csv', 
                         f'AQME-ROBERT_full_{csv[0]}_b0.csv', 
@@ -367,7 +362,14 @@ class cluster:
                         'CSEARCH',
                         'QDESCP']
         folders = ['CSEARCH', 'QDESCP']
-
+        
+        # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
+        if not os.path.exists('QDESCP_data.dat'):
+            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
+            self.args.log.finalize()
+            sys.exit(12)          
+        
+        # move files to aqme subfolder
         for file in files_to_aqme:
             destination = f'aqme/{file}'
             if os.path.exists(destination):       # if file exists in destination
@@ -417,10 +419,10 @@ class cluster:
         # check that there are no NaNs in descp_df and apply the auto_fill_knn function
         if descp_df_drop.isnull().any().any() == True:
             if self.args.aqme_workflow == False:
-                if self.args.not_autofill == False: # not_autofill: False by default
-                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --not_autofill, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
-                else: # if --not_autofill
-                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. If you want them to be auto-completed, don't set --not_autofill, and these will be filled with the auto_fill_knn function.")
+                if self.args.auto_fill: # auto_fill: True by default
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
+                else: # auto_fill : False
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. If you want them to be auto-completed, set --auto_fill True, and these will be filled with the auto_fill_knn function.")
                     self.args.log.finalize()
                     sys.exit(6)       
             filled_array = self.auto_fill_knn(descp_df_drop)
