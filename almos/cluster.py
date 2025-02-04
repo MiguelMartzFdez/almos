@@ -20,11 +20,6 @@ General
       List containing the columns of the input CSV file that will be ignored during the clustered process
       (i.e. ['code_name','SMILES']). The descriptors will be included in the clustered CSV file. The y value
       is automatically ignored.
-   qdescp_atoms : list of str, default=[]
-      Type of atom or group to calculate atomic properties. This option admits atoms 
-      (i.e., qdescp_atoms=['P']) and SMART patterns (i.e., qdescp_atoms=['C=O']).   
-   descp_solvent : str, default = None
-      Solvent used in the xTB property calculations (ALPB model)
    aqme_workflow : bool, default = True
       Enables the aqme workflow to generate descriptors. It is automatically disabled in set_up_cluster(self) if:
       - the CSV file does not contain the columns 'SMILES' and 'code_name'AND
@@ -34,16 +29,20 @@ General
       It is mandatory to define it if the clustering is to be done with the descriptors already defined by the user.
       If the descriptors are to be generated with the program (using AQME) 'name'' is not defined.
    y : str, default = ''
-      Name of the column containing the response variable in the input CSV file (i.e. 'solubility').    
+      Name of the column containing the response variable in the input CSV file (i.e. 'solubility').         
    auto_fill: bool, default = True
-      If the CSV contains empty spaces (less than 30 % of NaN per column) , KNNImputer is applied, using the K-nearest neighbors method 
+      If the CSV contains empty spaces (less than 30 % of NaN per column), KNNImputer is applied, using the K-nearest neighbors method 
       to estimate and fill missing values based on the closest values to each point in the dataset.
+      If auto_fill is False, the KNNImputer is not applied (if there are still empty spaces the program finish).            
    categorical: str, default = 'onehot'
       It can be used when the user provide their descriptors.
       Mode to convert data from columns with categorical variables. As an example, a variable containing 4 types of C atoms 
       (i.e. primary, secondary, tertiary, quaternary) will be converted into categorical variables. Options: 
         1. 'onehot' (for one-hot encoding, ROBERT will create a descriptor for each type of C atom using 0s and 1s to indicate whether the C type is present)
         2. 'numbers' (to describe the C atoms with numbers: 1, 2, 3, 4).
+   aqme_keywords: str, default = ''
+       It can be used to use specific functions from aqme. The entire argument must be in quotation marks, as in the example.
+       (i.e., --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile") 
    varfile : str, default=None
       Option to parse the variables using a yaml file (specify the filename, i.e. varfile=FILE.yaml).  
    
@@ -70,7 +69,7 @@ from sklearn.impute import KNNImputer
 from rdkit import RDLogger
 import time
 import plotly.graph_objects as go
-import csv
+import ast
 
 
 
@@ -96,20 +95,20 @@ class cluster:
         _ = check_dependencies(self)
         
         # detect errors and update variables before the CLUSTER run
-        self, df_csv_name = self.checking_cluster()
+        self, df_csv_name, name_of_csv = self.checking_cluster()
         
         # decide the path (with or without aqme_workflow)
-        self, descp_file, df_csv_name, csv = self.set_up_cluster(df_csv_name)
+        self, descp_file, df_csv_name, csv = self.set_up_cluster(df_csv_name, name_of_csv)
         
         # generate the descriptors if the user needs it
         if self.args.aqme_workflow:
             self, descp_file = self.run_aqme(csv, descp_file)
         
         # prepare the CSV for the clustered
-        self, filled_array, descp_file = self.clean_up_cluster(descp_file, csv)
+        self, filled_array, descp_file = self.clean_up_cluster(descp_file, csv, name_of_csv)
         
         # cluster execution    
-        self, pc_total_val, pc1_var, pc2_var, pc3_var, df_pca = self.cluster_workflow(filled_array, descp_file, csv)
+        self, pc_total_val, pc1_var, pc2_var, pc3_var, df_pca = self.cluster_workflow(filled_array, descp_file, csv, name_of_csv)
         
         # provide and save the representation of the PCA in 3D
         _ = self.pca_control(df_pca, pc_total_val, pc1_var, pc2_var, pc3_var)
@@ -117,6 +116,8 @@ class cluster:
         elapsed_time = round(time.time() - start_time_overall, 2)
         self.args.log.write(f"\nTime cluster: {elapsed_time} seconds\n")
         self.args.log.finalize()
+        
+        shutil.move('CLUSTER_data.dat', 'batch_0/CLUSTER_data.dat') # move the DAT file to the subfolder of batch_0
     
 
     def checking_cluster(self):
@@ -127,19 +128,22 @@ class cluster:
         if self.args.csv_name == None:
             self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --csv_name example.csv")
             self.args.log.finalize()
-            sys.exit()  
+            sys.exit(9)  
+        
+        name_of_csv = self.args.csv_name.split("/")
+        name_of_csv = name_of_csv[-1]
                       
         # check for existence of CSV file
         if self.args.csv_name is not None and os.path.exists(self.args.csv_name) == False: 
-            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not exist! Please specify this name correctly")
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) does not exist! Please specify this name correctly")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(10)
 
         # check that the number of clusters has been defined
         if self.args.n_clusters == None:
             self.args.log.write(f"\nx WARNING. Please, specify the number of clusters required, e.g. --n_clusters 20")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(11)
  
         # read the csv_name in a DataFrame
         df_csv_name = pd.read_csv(self.args.csv_name)
@@ -150,50 +154,52 @@ class cluster:
             if element not in df_csv_name.columns:
                 elements.append(element)
         if elements != []:
-            self.args.log.write(f"\nx WARNING. Some columns ({elements}), named in ignore ({self.args.ignore}), do not exist in the csv_name provided ({self.args.csv_name}). Please, specify the list ignore correctly")
+            string_ignore = "[" + ",".join(str(x) for x in self.args.ignore) + "]" # Convert list to string with commas without spaces
+            self.args.log.write(f"\nx WARNING. Some columns ({elements}), named in --ignore {string_ignore}, do not exist in the csv_name provided ({name_of_csv}). Please, specify the list ignore correctly")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(5)
 
         # check that there is no column named 'batch'
         for col in df_csv_name.columns:
             if 'batch' in col:
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) already contains a 'batch' column")
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) already contains a 'batch' column")
                 self.args.log.finalize()
-                sys.exit()
+                sys.exit(1)
         
         # check for duplicates, if any
         if df_csv_name.duplicated().any(): # True if any
             duplicate_rows = df_csv_name[df_csv_name.duplicated(keep=False)]
-            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicate rows, only the first one has been kept. The duplicate rows are: \n{duplicate_rows}")
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has duplicate rows, only the first one has been kept. The duplicate rows are: \n{duplicate_rows}")
 
             df_csv_name = df_csv_name.drop_duplicates() # This keep the first duplicate           
 
         # if "y" has not been defined by the user, it does nothing, and if it has been defined and is in the csv_name, it is added to the ignore list
         if self.args.y != "":
             if self.args. y not in df_csv_name.columns:
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not contain the column idicated as: --y {self.args.y}")
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) does not contain the column idicated as: --y {self.args.y}")
                 self.args.log.finalize()
-                sys.exit()                    
+                sys.exit(3)                    
             if self.args.y not in self.args.ignore:
                 self.args.ignore.append(self.args.y) 
         
         # if 'name' is defined but not in the CSV, notify and exit the program 
         if self.args.name !='':
             if self.args.name not in df_csv_name.columns:
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) does not contain the column idicated as: --name {self.args.name}")
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) does not contain the column idicated as: --name {self.args.name}")
                 self.args.log.finalize()
-                sys.exit()
+                sys.exit(4)
             # if 'name' is defined and not in ignore list, add it 
             if self.args.name not in self.args.ignore:
                 self.args.ignore.append(self.args.name)
             # if 'name' is defined check for duplicates in column 'name'
             if df_csv_name[self.args.name].duplicated().any(): # True if any
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicates in the column ({self.args.name}) with different values for the other columns of descriptors. Check the csv_name provided")
+                duplicate_names = df_csv_name[df_csv_name.duplicated(subset=[self.args.name], keep=False)]    
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has the next duplicates in the column ({self.args.name}) with different values for the other columns of descriptors: \n{duplicate_names} \nCheck the csv_name provided")
                 self.args.log.finalize()    
-                sys.exit() 
+                sys.exit(8) 
                   
         
-        return self, df_csv_name
+        return self, df_csv_name, name_of_csv
 
     def fix_cols_names(self, df):
         '''
@@ -262,7 +268,7 @@ class cluster:
 
         return df
 
-    def set_up_cluster(self, df_csv_name):
+    def set_up_cluster(self, df_csv_name, name_of_csv):
         '''
         Decide the path (with or without aqme_workflow)
         '''
@@ -278,12 +284,12 @@ class cluster:
                                             
         # check the CSV file contains or not the columns 'SMILES' and 'code_name'    
         # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name'
-        if ('SMILES' and 'code_name') not in self.fix_cols_names(df_csv_name).columns:
+        if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
             # if 'name' is not defined, notify and exit the program 
             if self.args.name == '':
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) must contain a column called 'SMILES' and another called 'code_name to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)")
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)")
                 self.args.log.finalize()
-                sys.exit()
+                sys.exit(2)
 
             # 'name' defined correctly, controlled in checking_cluster, and in ignore list
             else:
@@ -304,19 +310,19 @@ class cluster:
             invalid_smiles = []
             df_csv_name['SMILES'] = df_csv_name['SMILES'].apply(lambda x: Chem.MolToSmiles(Chem.MolFromSmiles(x)) if Chem.MolFromSmiles(x) else invalid_smiles.append(x) or None)    
             if invalid_smiles:
-                self.args.log.write(f"\nx  WARNING. These invalid smiles from ({self.args.csv_name}) have been removed: {invalid_smiles}")
+                self.args.log.write(f"\nx  WARNING. These invalid smiles from ({name_of_csv}) have been removed:\n {invalid_smiles}")
                 df_csv_name = df_csv_name.dropna (subset = ['SMILES'])
                 
             # check for duplicates in column 'SMILES', if any
             if df_csv_name['SMILES'].duplicated().any(): # True if any
                 
-                duplicate_smiles = df_csv_name[df_csv_name.duplicated(keep=False)]    
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has duplicate canonicalized SMILES, only the first one has been kept. The duplicate SMILES are: \n{duplicate_smiles}")
+                duplicate_smiles = df_csv_name[df_csv_name.duplicated(subset=['SMILES'], keep=False)]    
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has duplicate canonicalized SMILES, only the first one has been kept. The duplicate SMILES are: \n{duplicate_smiles}")
                 
                 df_csv_name = df_csv_name.drop_duplicates(subset=['SMILES']) # This keep the first duplicate
 
         # create a new CSV file with the modifications in the subfolder 'batch_0', if the file exists, replaces it
-        csv = self.args.csv_name.split('.', 1) # because the name of the file could have more dots
+        csv = name_of_csv.rsplit('.', 1) # because the name of the file could have more dots
         df_csv_name.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)
            
         descp_file = f'batch_0/{csv[0]}_b0.csv'  
@@ -329,15 +335,25 @@ class cluster:
         '''
 
         cmd_qdescp = ["python", "-m", "aqme",  "--qdescp", "--input", descp_file]
-
-        if self.args.qdescp_atoms != []:
-            cmd_qdescp += ["--qdescp_atoms", self.args.qdescp_atoms]
-        if self.args.qdescp_solvent is not None:
-            cmd_qdescp += ["--qdescp_solvent", self.args.qdescp_solvent]
-
-        subprocess.run(cmd_qdescp) 
-
-        # move these files to aqme subfolder
+        
+        if self.args.aqme_keywords != '':
+            cmd_aqme = self.args.aqme_keywords.split()
+            for word in cmd_aqme:
+                word = word.replace('"','').replace("'","")                
+                cmd_qdescp.append(word)  
+                
+        string_cmd = ''
+        for cmd in cmd_qdescp:
+            string_cmd += f'{cmd} ' # adding blank space between words   
+        
+        exit_error = subprocess.run(cmd_qdescp)
+        self.args.log.write(f"\no Command line used in AQME: {string_cmd} ")
+        
+        # if exit_error.returncode != 0:
+        #     self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
+        #     self.args.log.finalize()
+        #     sys.exit()
+            
         files_to_aqme = [f'AQME-ROBERT_denovo_{csv[0]}_b0.csv', 
                         f'AQME-ROBERT_interpret_{csv[0]}_b0.csv', 
                         f'AQME-ROBERT_full_{csv[0]}_b0.csv', 
@@ -346,7 +362,14 @@ class cluster:
                         'CSEARCH',
                         'QDESCP']
         folders = ['CSEARCH', 'QDESCP']
-
+        
+        # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
+        if not os.path.exists('QDESCP_data.dat'):
+            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
+            self.args.log.finalize()
+            sys.exit(12)          
+        
+        # move files to aqme subfolder
         for file in files_to_aqme:
             destination = f'aqme/{file}'
             if os.path.exists(destination):       # if file exists in destination
@@ -363,7 +386,7 @@ class cluster:
         
         return self, descp_file
     
-    def clean_up_cluster(self, descp_file, csv):
+    def clean_up_cluster(self, descp_file, csv, name_of_csv):
         '''
         Prepare the CSV (descp_file) of both paths for the clustered
         '''
@@ -378,7 +401,7 @@ class cluster:
         col_to_drop = []
         for col in descp_df_drop.columns:
             if descp_df_drop[col].isna().mean() > 0.3:
-                self.args.log.write(f"\nx WARNING. The column ({col}) in the csv_name provided ({self.args.csv_name}) has less than 70% of the data, so it has been deleted")
+                self.args.log.write(f"\nx WARNING. The column ({col}) in the csv_name provided ({name_of_csv}) has less than 70% of the data, so it has been deleted")
                 col_to_drop.append(col)
         if col_to_drop != []:
             descp_df_drop = descp_df_drop.drop(col_to_drop, axis = 1)     
@@ -389,19 +412,19 @@ class cluster:
 
         # if the csv has less than three columns corresponding to descriptors, exit the program
         if len(descp_df_drop.columns) < 3:
-            self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) must contain at least three columns of descriptors")
+            self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) must contain at least three columns of descriptors")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(7)
             
         # check that there are no NaNs in descp_df and apply the auto_fill_knn function
         if descp_df_drop.isnull().any().any() == True:
             if self.args.aqme_workflow == False:
                 if self.args.auto_fill: # auto_fill: True by default
-                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
                 else: # auto_fill : False
-                    self.args.log.write(f"\nx WARNING. The csv_name provided ({self.args.csv_name}) has empty spaces in the descriptor columns. If you want them to be auto-completed, set --auto_fill True, and these will be filled with the auto_fill_knn function.")
+                    self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. If you want them to be auto-completed, set --auto_fill True, and these will be filled with the auto_fill_knn function.")
                     self.args.log.finalize()
-                    sys.exit()       
+                    sys.exit(6)       
             filled_array = self.auto_fill_knn(descp_df_drop)
             # rebuild descp_df_drop from NumPy array (filled_array)
             descp_df_drop = pd.DataFrame(filled_array, columns = descp_df_drop.columns, index = descp_df_drop.index)
@@ -449,7 +472,7 @@ class cluster:
 
         return closest_points_cluster,kmeans,X_scaled_array
       
-    def cluster_workflow(self, filled_array, descp_file, csv):
+    def cluster_workflow(self, filled_array, descp_file, csv, name_of_csv):
         ''' 
         cluster execution   
         '''
@@ -472,7 +495,7 @@ class cluster:
 
         # creating a CSV file with the options for the next module of Active Learning
         options = {'y': self.args.y,
-                       'csv_name': self.args.csv_name,
+                       'csv_name': name_of_csv,
                        'ignore': [self.args.ignore],
                        'name': self.args.name
         } 

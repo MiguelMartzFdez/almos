@@ -41,17 +41,18 @@ def command_line_args():
         "aqme_workflow",
         "reverse",
         "intelex",
+
     ]
     int_args = [
         "n_clusters",
         "seed_clustered"
     ]
     int_double_args = [
-        "n_points",
+        "n_points"
     ]
     list_args = [
-        "ignore",
-        "qdescp_atoms",   
+        "ignore"
+ 
     ]
     float_args = [
     ]
@@ -201,6 +202,10 @@ def format_lists(value):
         except (SyntaxError, ValueError):
             # this line fixes issues when using "[X]" or ["X"] instead of "['X']" when using lists
             value = value.replace('[',']').replace(',',']').replace("'",']').split(']')
+            # these lines fix issues when there are blank spaces, in front or behind
+            # value = [ele[1:] for ele in value if ele[0] == ' ']
+            # value = [ele[:-1] for ele in value if ele[-1] == ' ']
+            # this not work, because the problem is another thing
             while('' in value):
                 value.remove('')
     return value
