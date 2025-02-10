@@ -26,7 +26,7 @@ path_tests = os.getcwd() + "/tests"
     [
         # test the route that GOES through AQME
         ("test_cluster1a.csv"),  # csv with column named batch, sys.exit(1)
-        ("test_cluster1b.csv"),  # --aqme_keywords     
+        ("test_cluster1b.csv"),  # --aqme_keywords, --nprocs     
         ("test_cluster1c.csv"),  # csv_name not defined, sys.exit(9)
         ("test_cluster1d.csv"),  # csv_name not found, sys.exit(10)
         ("test_cluster1e.csv"),  # n_clusters not defined, sys.exit(11)
@@ -34,8 +34,8 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster2.csv"),   # duplicate row, invalid SMILE, duplicate SMILE, test fix_cols_names, columns with single data 
         ("test_cluster3a.csv"),  # csv without SMILES or --name defined, sys.exit(2)
         ("test_cluster3b.csv"),  # csv without code_name , sys.exit(2)
-    
-         
+
+
         # test the route that DON'T GO through AQME       
         ("test_cluster4.csv"),   # set --y, but it doesn't appear in the CSV, sys.exit(3)
         ("test_cluster5.csv"),   # set --name, but it doesn't appear in the CSV, sys.exit(4)
@@ -84,7 +84,7 @@ def test_CLUSTER(test_job):
         "test_cluster7c.csv", 
         "test_cluster8.csv",
         "test_cluster9.csv"
-]      
+        ]    
          
     if test_job in not_aqme:
         cmd_cluster += ["--y","yield",
@@ -92,7 +92,9 @@ def test_CLUSTER(test_job):
         
     # specific commands for certain tests   
     if test_job == "test_cluster1b.csv":
-        cmd_cluster += ["--aqme_keywords", "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile"]  
+        cmd_cluster += ["--nprocs", "16",
+                        "--aqme_keywords", "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile",
+                        ]  
           
     if test_job == "test_cluster1c.csv": # change all the cmd_cluster
         cmd_cluster = [
@@ -138,6 +140,7 @@ def test_CLUSTER(test_job):
     # --y
     # --name
     # --aqme_keywords
+    # --nprocs
     # --ignore
     # --auto_fill
     # --categorical
@@ -165,6 +168,10 @@ def test_CLUSTER(test_job):
     if '--aqme_keywords' in cmd_cluster:
         position = cmd_cluster.index('--aqme_keywords')
         dict_cluster['aqme_keywords'] = cmd_cluster[position + 1]
+        
+    if '--nprocs' in cmd_cluster:
+        position = cmd_cluster.index('--nprocs')
+        dict_cluster['nprocs'] = cmd_cluster[position + 1]
         
     if '--ignore' in cmd_cluster:
         position = cmd_cluster.index('--ignore')
@@ -348,9 +355,9 @@ def test_CLUSTER(test_job):
     ]
     # Second: all the tests that end    
     if test_job in test_sys:        
-        subprocess.run(cmd_cluster)      
+        subprocess.run(cmd_cluster)
         # using CLUSTER
-        cluster(**dict_cluster)      
+        cluster(**dict_cluster)
         # open CLUSTER_data.dat to read
         with open("batch_0/CLUSTER_data.dat", "r") as file_cluster: 
             dat_cluster = file_cluster.readlines()
@@ -371,9 +378,9 @@ def test_CLUSTER(test_job):
         for file in files_of_aqme:
             destination = f'{path_cluster}/aqme/{file}'
             assert os.path.exists(destination) 
-   
+
         
-        aqme_keywords_cmd = f"o Command line used in AQME: python -m aqme --qdescp --input batch_0/test_cluster1b_b0.csv --qdescp_atoms [1,2] --qdescp_solvent acetonitrile"    
+        aqme_keywords_cmd = f"o Command line used in AQME: python -m aqme --qdescp --input batch_0/test_cluster1b_b0.csv --nprocs 16 --qdescp_atoms [1,2] --qdescp_solvent acetonitrile"    
         assert any (aqme_keywords_cmd in line for line in dat_cluster)
 
 
@@ -524,3 +531,18 @@ def test_CLUSTER(test_job):
     if os.path.exists("CLUSTER_data.dat"):
         os.remove("CLUSTER_data.dat")    
         
+# @pytest.mark.parametrize(
+# con aqme
+# )
+
+# def test_CLUSTER_2(test_job):
+#     XXX
+    
+
+# @pytest.mark.parametrize(
+# con aqme
+# )
+
+# def test_CLUSTER_3(test_job):
+#     XXX
+    

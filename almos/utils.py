@@ -45,7 +45,8 @@ def command_line_args():
     ]
     int_args = [
         "n_clusters",
-        "seed_clustered"
+        "seed_clustered",
+        "nprocs"
     ]
     int_double_args = [
         "n_points"

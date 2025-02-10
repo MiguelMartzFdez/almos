@@ -30,6 +30,7 @@ var_dict = {
         'medium': 0.05,
         'wide': 0.10,
     },
+    'nprocs': 8
     "robert_keywords" : '',
     "reverse" : False,
     "intelex" : False

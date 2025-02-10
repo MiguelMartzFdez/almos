@@ -45,7 +45,8 @@ General
        (i.e., --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile") 
    varfile : str, default=None
       Option to parse the variables using a yaml file (specify the filename, i.e. varfile=FILE.yaml).  
-   
+   nprocs: int, default=8
+      Number of processors used in AQME for the clustered
 
 """
 ######################################################.
@@ -327,7 +328,7 @@ class cluster:
            
         descp_file = f'batch_0/{csv[0]}_b0.csv'  
                       
-        return self, descp_file, df_csv_name, csv   # revisar este return
+        return self, descp_file, df_csv_name, csv   
        
     def run_aqme(self, csv, descp_file):
         '''
@@ -335,6 +336,9 @@ class cluster:
         '''
 
         cmd_qdescp = ["python", "-m", "aqme",  "--qdescp", "--input", descp_file]
+        
+        if self.args.nprocs != 8:  # it is 8 by default
+            cmd_qdescp += ["--nprocs", f"{self.args.nprocs}"]
         
         if self.args.aqme_keywords != '':
             cmd_aqme = self.args.aqme_keywords.split()
@@ -364,7 +368,7 @@ class cluster:
         folders = ['CSEARCH', 'QDESCP']
         
         # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
-        if not os.path.exists('QDESCP_data.dat'):
+        if not os.path.exists(f'AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
             self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
             self.args.log.finalize()
             sys.exit(12)          
