@@ -91,8 +91,8 @@ class cluster:
         self.args = load_variables(kwargs, "cluster")
         self.vars = {}
 
-        # check whether dependencies are installed
-        _ = check_dependencies(self)
+        # # check whether dependencies are installed
+        # _ = check_dependencies(self)
         
         # detect errors and update variables before the CLUSTER run
         self, df_csv_name, name_of_csv = self.checking_cluster()
