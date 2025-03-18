@@ -15,7 +15,7 @@ var_dict = {
     "ignore": [],
     "cluster": False,
     "aqme_keywords": '',
-    "aqme_workflow": True,
+    "aqme": False,
     "name": '',
     "y": '',
     "auto_fill": True,
@@ -30,7 +30,7 @@ var_dict = {
         'medium': 0.05,
         'wide': 0.10,
     },
-    'nprocs': 8
+    'nprocs': 8,
     "robert_keywords" : '',
     "reverse" : False,
     "intelex" : False

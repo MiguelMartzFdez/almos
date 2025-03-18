@@ -12,6 +12,7 @@ import subprocess
 from almos.argument_parser import set_options, var_dict
 from almos.al_utils import check_missing_outputs
 
+obabel_version = "3.1.1" # this MUST match the meta.yaml
 almos_version = "0.0.0"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
@@ -38,9 +39,9 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
-        "aqme_workflow",
         "reverse",
         "intelex",
+        "aqme"
 
     ]
     int_args = [
@@ -261,6 +262,25 @@ def check_dependencies(self, module):
     module : str
         The name of the module for which dependencies are being checked.
     """
+    if module == "cluster":
+        # this is a dummy command just to warn the user if OpenBabel is not installed
+        try:
+            command_run_1 = ["obabel", "-H"]
+            subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except FileNotFoundError:
+            self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
+            self.args.log.finalize()
+            sys.exit()
+
+        # this is a dummy import just to warn the user if RDKit is not installed
+        try: 
+            from rdkit.Chem import AllChem as Chem
+        except ModuleNotFoundError:
+            self.args.log.write("x  RDKit is not installed! You can install the program with 'pip install rdkit' or 'conda install -y -c conda-forge rdkit'")
+            self.args.log.finalize()
+            sys.exit()        
+    
+    
     if module == "al":
 
         # Check for glib, gtk3, pango, and mscorefonts

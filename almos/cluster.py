@@ -20,16 +20,13 @@ General
       List containing the columns of the input CSV file that will be ignored during the clustered process
       (i.e. ['code_name','SMILES']). The descriptors will be included in the clustered CSV file. The y value
       is automatically ignored.
-   aqme_workflow : bool, default = True
-      Enables the aqme workflow to generate descriptors. It is automatically disabled in set_up_cluster(self) if:
-      - the CSV file does not contain the columns 'SMILES' and 'code_name'AND
-      - the variable 'name' has been defined correctly AND
-      - the CSV file has at least 3 descriptor columns.
+   aqme : bool, default = False
+      Enables the aqme workflow to generate descriptors.
    name : str, default = ''
       It is mandatory to define it if the clustering is to be done with the descriptors already defined by the user.
       If the descriptors are to be generated with the program (using AQME) 'name'' is not defined.
    y : str, default = ''
-      Name of the column containing the response variable in the input CSV file (i.e. 'solubility').         
+      Name of the column containing the response variable in the input CSV file (i.e. 'yield').         
    auto_fill: bool, default = True
       If the CSV contains empty spaces (less than 30 % of NaN per column), KNNImputer is applied, using the K-nearest neighbors method 
       to estimate and fill missing values based on the closest values to each point in the dataset.
@@ -93,16 +90,16 @@ class cluster:
         self.vars = {}
 
         # check whether dependencies are installed
-        _ = check_dependencies(self)
+        _ = check_dependencies(self, "cluster")
         
         # detect errors and update variables before the CLUSTER run
         self, df_csv_name, name_of_csv = self.checking_cluster()
         
-        # decide the path (with or without aqme_workflow)
+        # prepare the CSV file
         self, descp_file, df_csv_name, csv = self.set_up_cluster(df_csv_name, name_of_csv)
         
         # generate the descriptors if the user needs it
-        if self.args.aqme_workflow:
+        if self.args.aqme:
             self, descp_file = self.run_aqme(csv, descp_file)
         
         # prepare the CSV for the clustered
@@ -125,7 +122,7 @@ class cluster:
         '''
         Detects errors and updates variables before the CLUSTER run
         '''
-        # check that the number of clusters has been defined
+        # check that the CSV name has been defined
         if self.args.csv_name == None:
             self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --csv_name example.csv")
             self.args.log.finalize()
@@ -174,7 +171,7 @@ class cluster:
 
             df_csv_name = df_csv_name.drop_duplicates() # This keep the first duplicate           
 
-        # if "y" has not been defined by the user, it does nothing, and if it has been defined and is in the csv_name, it is added to the ignore list
+        # if "y" has been defined and is in the csv_name, it is added to the ignore list
         if self.args.y != "":
             if self.args. y not in df_csv_name.columns:
                 self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) does not contain the column idicated as: --y {self.args.y}")
@@ -183,6 +180,12 @@ class cluster:
             if self.args.y not in self.args.ignore:
                 self.args.ignore.append(self.args.y) 
         
+        # if 'name' is not defined and program is not going through AQME workflow, notify and exit the program 
+        if self.args.name == '' and self.args.aqme == False:
+            self.args.log.write(f"\nx WARNING. Please, specify the name column of your CSV file, e.g. --name nitriles")
+            self.args.log.finalize()
+            sys.exit(13)              
+            
         # if 'name' is defined but not in the CSV, notify and exit the program 
         if self.args.name !='':
             if self.args.name not in df_csv_name.columns:
@@ -205,7 +208,7 @@ class cluster:
     def fix_cols_names(self, df):
         '''
         Set code_name and SMILES using the right format
-        Function to unify the names, it is relevant for checking correctly if aqme_workflow = True or False
+        Function to unify the names
         '''
         
         for col in df.columns:
@@ -227,7 +230,7 @@ class cluster:
 
     def categorical_transform(self, df):
         '''
-        Function to categorical transform from ROBERT. It can apply to the df with the columns of ignore list
+        Function to categorical transform from ROBERT. It can apply to the df without the columns of ignore list
         Converts all columns with strings into categorical values (one hot encoding by default, can be set to numerical 1,2,3... with categorical = 'numbers').
         Troubleshooting! For one-hot encoding, don't use variable names that are also column headers!
         i.e. DESCRIPTOR "C_atom" contain C2 as a value, but C2 is already a header of a different column in the database.
@@ -271,7 +274,7 @@ class cluster:
 
     def set_up_cluster(self, df_csv_name, name_of_csv):
         '''
-        Decide the path (with or without aqme_workflow)
+        Prepare the CSV file
         '''
         
         # add a new column named batch, empty for now
@@ -280,47 +283,55 @@ class cluster:
         self.args.ignore.append('batch') 
         # create the folders batch_0, if there is not
         os.makedirs('batch_0') if not os.path.exists('batch_0') else None
-    
-        # know if the csv has descriptors (aqme_workflow = False) or not (aqme_workflow = True, by default)   
-                                            
-        # check the CSV file contains or not the columns 'SMILES' and 'code_name'    
-        # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name'
-        if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
-            # if 'name' is not defined, notify and exit the program 
-            if self.args.name == '':
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)")
+        
+        
+        # if aqme = True, check the CSV has to contain the columns 'SMILES' and 'code_name'
+        # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name' 
+        if self.args.aqme:
+            if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
+                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme")
                 self.args.log.finalize()
                 sys.exit(2)
-
-            # 'name' defined correctly, controlled in checking_cluster, and in ignore list
-            else:
-                self.args.aqme_workflow = False          
-            
-        else:
-            # aqme_workflow = True (default) and modify the df with the correct names ('SMILES' and 'code_name')
-            df_csv_name = self.fix_cols_names(df_csv_name)
-            # add the columns 'SMILES' and 'code_name' to ignore list
-            if 'SMILES' not in self.args.ignore:
-                self.args.ignore.append('SMILES')
-            if 'code_name' not in self.args.ignore:
-                self.args.ignore.append('code_name')
             # create the folder aqme, if there are not
             os.makedirs('aqme') if not os.path.exists('aqme') else None
-            
-            # prepare the new csv with canonical smiles and delete columns with invalid smiles
-            invalid_smiles = []
-            df_csv_name['SMILES'] = df_csv_name['SMILES'].apply(lambda x: Chem.MolToSmiles(Chem.MolFromSmiles(x)) if Chem.MolFromSmiles(x) else invalid_smiles.append(x) or None)    
-            if invalid_smiles:
-                self.args.log.write(f"\nx  WARNING. These invalid smiles from ({name_of_csv}) have been removed:\n {invalid_smiles}")
-                df_csv_name = df_csv_name.dropna (subset = ['SMILES'])
-                
-            # check for duplicates in column 'SMILES', if any
-            if df_csv_name['SMILES'].duplicated().any(): # True if any
-                
-                duplicate_smiles = df_csv_name[df_csv_name.duplicated(subset=['SMILES'], keep=False)]    
-                self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has duplicate canonicalized SMILES, only the first one has been kept. The duplicate SMILES are: \n{duplicate_smiles}")
-                
-                df_csv_name = df_csv_name.drop_duplicates(subset=['SMILES']) # This keep the first duplicate
+        
+        # FOR BOTH WORKFLOWS                
+        # modify the df with the correct names ('SMILES' and 'code_name') if they are
+        df_csv_name = self.fix_cols_names(df_csv_name)
+        # add the columns 'SMILES' and 'code_name' to ignore list if they are
+        for col in df_csv_name.columns:
+            if col == 'SMILES':
+                if 'SMILES' not in self.args.ignore:
+                    self.args.ignore.append('SMILES')
+                # prepare the new csv with canonical smiles and delete columns with invalid smiles
+                invalid_smiles = []
+                df_csv_name['SMILES'] = df_csv_name['SMILES'].apply(lambda x: Chem.MolToSmiles(Chem.MolFromSmiles(x)) if Chem.MolFromSmiles(x) else invalid_smiles.append(x) or None)    
+                if invalid_smiles:
+                    # if the flow goes through AQME, remove the invalid smiles and report it
+                    if self.args.aqme:
+                        self.args.log.write(f"\nx  WARNING. These invalid smiles from ({name_of_csv}) have been removed:\n {invalid_smiles}")
+                        df_csv_name = df_csv_name.dropna (subset = ['SMILES'])
+                    # if the flow DOESN'T go through AQME, only report it
+                    else:
+                        self.args.log.write(f"\nx  WARNING. There are invalid smiles in ({name_of_csv}):\n {invalid_smiles}")
+
+                # check for duplicates in column 'SMILES', if any
+                if df_csv_name['SMILES'].duplicated().any(): # True if any
+                    duplicate_smiles = df_csv_name[df_csv_name.duplicated(subset=['SMILES'], keep=False)]    
+
+                    # if the flow goes through AQME, remove the duplicated smiles and report it
+                    if self.args.aqme:                    
+                        self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has duplicate canonicalized SMILES, only the first one has been kept. The duplicate SMILES are: \n{duplicate_smiles}")
+                        
+                        df_csv_name = df_csv_name.drop_duplicates(subset=['SMILES']) # This keep the first duplicate
+
+                    # if the flow DOESN'T go through AQME, only report it
+                    else:
+                        self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has duplicate canonicalized SMILES. The duplicate SMILES are: \n{duplicate_smiles}")
+                                                  
+            if col == 'code_name':
+                if 'code_name' not in self.args.ignore:
+                    self.args.ignore.append('code_name')
 
         # create a new CSV file with the modifications in the subfolder 'batch_0', if the file exists, replaces it
         csv = name_of_csv.rsplit('.', 1) # because the name of the file could have more dots
@@ -335,7 +346,7 @@ class cluster:
         Generate the descriptors if the user needs it
         '''
 
-        cmd_qdescp = ["python", "-m", "aqme",  "--qdescp", "--input", descp_file]
+        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file]
         
         if self.args.nprocs != 8:  # it is 8 by default
             cmd_qdescp += ["--nprocs", f"{self.args.nprocs}"]
@@ -395,7 +406,7 @@ class cluster:
         Prepare the CSV (descp_file) of both paths for the clustered
         '''
                 
-        # read created csv with information, diferent for each aqme_workflow
+        # read created csv with information, diferent for each aqme workflow
         descp_df = pd.read_csv(descp_file)  
                 
         # delete columns from ignore list
@@ -422,7 +433,7 @@ class cluster:
             
         # check that there are no NaNs in descp_df and apply the auto_fill_knn function
         if descp_df_drop.isnull().any().any() == True:
-            if self.args.aqme_workflow == False:
+            if self.args.aqme == False:
                 if self.args.auto_fill: # auto_fill: True by default
                     self.args.log.write(f"\nx WARNING. The csv_name provided ({name_of_csv}) has empty spaces in the descriptor columns. These will be filled with the auto_fill_knn function. You can see the generated values in the file {descp_file}. If you don't want them to be auto-completed, set --auto_fill False, in this case, if empty spaces are found, they will not be auto-completed and the program will end.")   
                 else: # auto_fill : False
@@ -492,7 +503,7 @@ class cluster:
 
         # creating a list (batch_0) with the name of the molecules for the batch 0
         descp_df = pd.read_csv(descp_file) # this is because in the previous descp_df the names of the molecules have been removed
-        if self.args.aqme_workflow:
+        if self.args.aqme:
             self.args.name = 'code_name'
         batch_0 = descp_df.iloc[points][self.args.name].tolist()
         self.args.log.write(f'\no The molecules selected for the batch 0 of the CLUSTER module are: {batch_0}')        
@@ -513,7 +524,7 @@ class cluster:
         with open (path_batch_0, 'w') as doc_batch_0:
             doc_batch_0.writelines(line + '\n' for line in batch_0) # to write each element of the list (code_names) in a new line
             
-        # on the df created for the batch_0 subfolder I add 0 to the molecules obtained from the initial clustering, for the aqme_workflow = False it's the unique csv generated, for the aqme_workflow = True the descriptors are not included
+        # on the df created for the batch_0 subfolder, add 0 to the molecules obtained from the initial clustering, for the aqme = False it's the unique csv generated, for the aqme = True the descriptors are not included
         descp_df.loc[points, 'batch'] = 0
         # overwriting the csv 
         descp_df.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)

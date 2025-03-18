@@ -32,8 +32,7 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster1e.csv"),  # n_clusters not defined, sys.exit(11)
         ("test_cluster1f.csv"),  # --aqme_keywords misspelled, sys.exit(12), 
         ("test_cluster2.csv"),   # duplicate row, invalid SMILE, duplicate SMILE, test fix_cols_names, columns with single data 
-        ("test_cluster3a.csv"),  # csv without SMILES or --name defined, sys.exit(2)
-        ("test_cluster3b.csv"),  # csv without code_name , sys.exit(2)
+        ("test_cluster3a.csv"),  # csv without SMILES or code_name defined, sys.exit(2)
 
 
         # test the route that DON'T GO through AQME       
@@ -45,6 +44,7 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster7c.csv"),  # set --categorical "numbers" and --auto_fill True       
         ("test_cluster8.csv"),   # less than three descriptors, sys.exit(7)
         ("test_cluster9.csv"),   # duplicate in the name column, sys.exit(8)
+        ("test_cluster10.csv")   # --name is NOT set, sys.exit(13)
     ],
 )
 
@@ -73,7 +73,22 @@ def test_CLUSTER(test_job):
         "--n_clusters", "2",
         "--csv_name", f'{path_tests}/{test_job}'
     ]
-    
+
+    # list of tests for which more commands need to be defined, because they do GO through AQME
+    aqme = [
+        "test_cluster1a.csv",
+        "test_cluster1b.csv",  
+        "test_cluster1c.csv", 
+        "test_cluster1d.csv",
+        "test_cluster1e.csv",
+        "test_cluster1f.csv", 
+        "test_cluster2.csv",
+        "test_cluster3a.csv"
+        ]    
+         
+    if test_job in aqme:
+        cmd_cluster += ["--aqme"]  
+
     # list of tests for which more commands need to be defined, because they do not go through AQME
     not_aqme = [
         "test_cluster4.csv",
@@ -83,7 +98,8 @@ def test_CLUSTER(test_job):
         "test_cluster7b.csv",
         "test_cluster7c.csv", 
         "test_cluster8.csv",
-        "test_cluster9.csv"
+        "test_cluster9.csv",
+        "test_cluster10.csv"
         ]    
          
     if test_job in not_aqme:
@@ -100,6 +116,7 @@ def test_CLUSTER(test_job):
         cmd_cluster = [
         "python",
         "-m", "almos",
+        "--aqme",
         "--cluster",
         "--n_clusters", "2",
     ]
@@ -108,6 +125,7 @@ def test_CLUSTER(test_job):
         cmd_cluster = [
         "python",
         "-m", "almos",
+        "--aqme",
         "--cluster",
         "--n_clusters", "2",
         "--csv_name", f'{path_tests}/csv_not_found.csv'
@@ -117,6 +135,7 @@ def test_CLUSTER(test_job):
         cmd_cluster = [
         "python",
         "-m", "almos",
+        "--aqme",
         "--cluster",
         "--csv_name", f'{path_tests}/{test_job}'
     ]
@@ -132,6 +151,14 @@ def test_CLUSTER(test_job):
         
     if test_job == "test_cluster7c.csv":
         cmd_cluster += ["--categorical", "numbers", "--auto_fill", "True"]
+        
+    if test_job == "test_cluster10.csv":
+        cmd_cluster = [ "python",
+                        "-m", "almos",
+                        "--cluster",
+                        "--n_clusters", "2",
+                        "--csv_name", f'{path_tests}/{test_job}',
+                        "--y","yield"]
         
     # CLUSTER
     
@@ -149,6 +176,10 @@ def test_CLUSTER(test_job):
     # it could be done with a for loop, but it would be less clear
     
     dict_cluster = {}
+    
+    if '--aqme' in cmd_cluster:
+        dict_cluster['aqme'] = True
+    
     if '--csv_name' in cmd_cluster:
         position = cmd_cluster.index('--csv_name')
         dict_cluster['csv_name'] = cmd_cluster[position + 1]
@@ -181,7 +212,6 @@ def test_CLUSTER(test_job):
         
     if '--auto_fill' in cmd_cluster:
         position = cmd_cluster.index('--auto_fill')
-        # dict_cluster['auto_fill'] = (cmd_cluster[position + 1]).replace('"','').replace("'","") # this not work
         dict_cluster['auto_fill'] = json.loads(cmd_cluster[position + 1].lower())
         
     if '--categorical' in cmd_cluster:
@@ -197,19 +227,19 @@ def test_CLUSTER(test_job):
                      "test_cluster1e.csv",
                      "test_cluster1f.csv",
                      "test_cluster3a.csv",
-                     "test_cluster3b.csv",
                      "test_cluster4.csv",
                      "test_cluster5.csv",
                      "test_cluster6.csv",
                      "test_cluster7b.csv",
                      "test_cluster8.csv",
-                     "test_cluster9.csv"
+                     "test_cluster9.csv",
+                     "test_cluster10.csv"
     ]
     # First: all the tests that don't end, sys.exit()
     if test_job in test_sys_exit:
         exit_error = subprocess.run(cmd_cluster)
         with open("CLUSTER_data.dat", "r") as file:  # the path of the DAT file is different for the test that finish from those that stop with sys.exit
-             dat_file = file.read()
+            dat_file = file.read()
              
 
     if test_job == "test_cluster1a.csv":
@@ -265,24 +295,14 @@ def test_CLUSTER(test_job):
         assert excinfo.value.code == 12 
         
     if test_job == "test_cluster3a.csv":
-        assert exit_error.returncode == 2, "The CSV file has not column define as smiles and --name has not been defined, and it has not exited the program"
-        error_2 = f"\nx WARNING. The csv_name provided ({test_job}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)"
-        assert error_2 in dat_file, f"The CSV file {test_job} must show a WARNING because has not column define as smiles and --name has not been defined"
+        assert exit_error.returncode == 2, "The CSV file has not column define as smiles and code_name, and it has not exited the program"
+        error_2 = f"\nx WARNING. The csv_name provided ({test_job}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme"
+        assert error_2 in dat_file, f"The CSV file {test_job} must show a WARNING because has not column define as smiles and code_name"
         
         # using CLUSTER
         with pytest.raises(SystemExit) as excinfo:
             cluster(**dict_cluster)
-        assert excinfo.value.code == 2          
-
-    if test_job == "test_cluster3b.csv":
-        assert exit_error.returncode == 2, "The CSV file has not column define as code_name and --name has not been defined, and it has not exited the program"
-        error_2 = f"\nx WARNING. The csv_name provided ({test_job}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors, or else provide the descriptors and a column with the 'name' of the molecules (e.g. --name molecules)"
-        assert error_2 in dat_file, f"The CSV file {test_job} must show a WARNING because has not column define as smiles and --name has not been defined"
-        
-        # using CLUSTER
-        with pytest.raises(SystemExit) as excinfo:
-            cluster(**dict_cluster)
-        assert excinfo.value.code == 2    
+        assert excinfo.value.code == 2           
         
     if test_job == "test_cluster4.csv":
         assert exit_error.returncode == 3,  "--y yield has been defined and the CSV file has not contain the column yield, and it has not exited the program"
@@ -343,7 +363,17 @@ def test_CLUSTER(test_job):
         # using CLUSTER
         with pytest.raises(SystemExit) as excinfo:  
             cluster(**dict_cluster)
-        assert excinfo.value.code == 8 
+        assert excinfo.value.code == 8
+        
+    if test_job == "test_cluster10.csv":
+        assert exit_error.returncode == 13, "The name not defined and it has not exited the program"
+        error_13 = f"\nx WARNING. Please, specify the name column of your CSV file, e.g. --name nitriles"
+        assert error_13 in dat_file, f"The CSV file {test_job} must show a WARNING about name has not been defined"
+        
+        # using CLUSTER, n_clusters not defined
+        with pytest.raises(SystemExit) as excinfo:
+            cluster(**dict_cluster)
+        assert excinfo.value.code == 13 
 
 
 
@@ -395,10 +425,8 @@ def test_CLUSTER(test_job):
         assert ("2a" and "2c") in dat_batch_0
           
     if test_job == "test_cluster2.csv":
-
-        assert path.exists(f"{path_cluster}/batch_0/pca_3d.html") 
           
-        # check the names of the files in batch_0 (aqme_workflow == True)
+        # check the names of the files in batch_0 (aqme == True)
         files_of_batch_0 = [f'test_cluster2_b0.csv', 
                             'batch_0.dat', 
                             'CLUSTER_data.dat',
@@ -428,7 +456,7 @@ def test_CLUSTER(test_job):
         
         # check test fix_cols_names
         test_cols_names1 = f"o For the clustering, the following columns of the CSV file batch_0/test_cluster2_b0.csv have been ignore:"
-        test_cols_names2 = f" ['batch', 'SMILES', 'code_name']"
+        test_cols_names2 = f" ['batch', 'code_name', 'SMILES']"
         assert any (test_cols_names1 in line for line in dat_cluster)
         assert any (test_cols_names2 in line for line in dat_cluster)
         columns_csv = pd.read_csv('batch_0/test_cluster2_b0.csv')  
@@ -446,7 +474,7 @@ def test_CLUSTER(test_job):
         
     if test_job == "test_cluster7a.csv":     
         
-        # check the names of the files in batch_0 (aqme_workflow == False)
+        # check the names of the files in batch_0 (aqme == False)
         files_of_batch_0 = [f'test_cluster7a_b0.csv', 
                             'batch_0.dat', 
                             'CLUSTER_data.dat',
