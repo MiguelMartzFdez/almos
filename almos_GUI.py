@@ -12,11 +12,6 @@ class ALMOSApp(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        # Set icon
-        path_icon = Path(__file__).parent / "icons" / "almos_icon.png"
-        self.icon_image = PhotoImage(file=str(path_icon))  # Store reference
-        self.iconphoto(False, self.icon_image)  # Set icon
-        
         # Create scrollable frame
         self.title("ALMOS")
         self.geometry("625x800")  # Initial window size
