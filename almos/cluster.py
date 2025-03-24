@@ -62,12 +62,10 @@ from sklearn.cluster import KMeans
 import plotly.express as px
 from pca import pca
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
 from sklearn.impute import KNNImputer
-from rdkit import RDLogger
 import time
 import plotly.graph_objects as go
-import ast
+
 
 
 
@@ -90,7 +88,8 @@ class cluster:
         self.vars = {}
 
         # check whether dependencies are installed
-        _ = check_dependencies(self, "cluster")
+        if self.args.aqme:
+            _ = check_dependencies(self, "cluster_aqme")       
         
         # detect errors and update variables before the CLUSTER run
         self, df_csv_name, name_of_csv = self.checking_cluster()
