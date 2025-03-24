@@ -233,7 +233,18 @@ class al:
             sys.exit(exit_code)
 
         # Check if predictions were created correctly
-        self.path_predictions = robert_path / 'PREDICT' / 'csv_test' / f"{self.args.base_name_raw}_predicted_PFI.csv"
+        # Define search path and pattern
+        search_path = robert_path / "PREDICT" / "csv_test"
+
+        # Get all matching files
+        matching_files = list(search_path.glob("*_PFI.csv"))
+
+        # Ensure we exclude "_No_PFI.csv"
+        filtered_files = [f for f in matching_files if f.name.endswith("_No_PFI.csv")]
+
+        # Take the first valid match
+        self.path_predictions = filtered_files[0] if filtered_files else None
+
         if self.path_predictions.exists():
             # Clean up, remove the test CSV file if it exists in main directory
             os.remove(destination)

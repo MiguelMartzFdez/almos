@@ -248,16 +248,13 @@ def generate_quartile_medians_df(df_total, df_exp, values_column):
     # Calculate min, max, and range from experimental values
     min_val, max_val = df_exp[values_column].agg(['min', 'max'])
     range_val = max_val - min_val
-    print(f"Original limits: Min = {min_val}, Max = {max_val}, Range = {max_val - min_val}") 
 
     # Extend the range by 20% upwards and downwards
     adjusted_min, adjusted_max = min_val - 0.2 * range_val, max_val + 0.2 * range_val
-    print(f"Adjusted limits 20%: Min = {adjusted_min}, Max = {adjusted_max}")
 
     # Find the closest values in df_total (experimental and predicted values) to adjusted_min and adjusted_max
     new_min = df_total.loc[(df_total[values_column] - adjusted_min).abs().idxmin(), values_column]
     new_max = df_total.loc[(df_total[values_column] - adjusted_max).abs().idxmin(), values_column]
-    print(f"New limits: Min = {new_min}, Max = {new_max}")
 
     # Calculate the quartile boundaries
     separation_range = (new_max - new_min) / 4
@@ -433,9 +430,10 @@ def extract_sd_from_column(page, bbox):
 
     # Search for SD pattern
     try:
-        match_sd = re.search(r'variation,\s*4\*SD(?:.|\s)*?\((valid\.?|test\.?)\)(?:.|\s)*?=\s*([\d.]+)', text_page)
-        return float(match_sd.group(2)) / 4  # Dividing SD value by 4 as it's 4*SD in the PDF
-
+        # match_sd = re.search(r'variation,\s*4\*SD(?:.|\s)*?\((valid\.?|test\.?)\)(?:.|\s)*?=\s*([\d.]+)', text_page)
+        match_sd = re.search(r'\b\w+\s+variation,\s*4\*SD\s*=\s*([\d.]+)', text_page)
+        return float(match_sd.group(1)) / 4  # Dividing SD value by 4 as it's 4*SD in the PDF
+        
     except AttributeError:
         return None
     
@@ -534,11 +532,11 @@ def process_batch(batch_number):
                 
                 return no_pfi_dict, pfi_dict
             else:
-                print(f"x WARNING! Could not find RMSE or SD in batch {batch_number}")
+                print(f"x WARNING! Could not find RMSE, SD, score or points in batch {batch_number}")
                 exit()
 
     except Exception as e:
-        print(f"x WARNING! Fail processing batch {batch_number}")
+        print(f"x WARNING! Fail extracting information from ROBERT report in batch {batch_number}")
         exit()
 
 def get_metrics_from_batches():
@@ -935,7 +933,11 @@ def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_coun
     axs[3].set_xlabel('Batch')
     axs[3].set_ylabel('Score Value')
     axs[3].set_xticks(batches)
-    axs[3].set_ylim(0, max(score_values) * 1.3)
+    if score_values.size > 0 and max(score_values) > 0:
+        axs[3].set_ylim(0, max(score_values) * 1.3)
+    else:
+        axs[3].set_ylim(0, 1)  # Set a default limit if no scores are available
+        
     for bar in bars:
         axs[3].text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f'{bar.get_height():.0f}', 
                     ha='center', va='bottom')

@@ -10,6 +10,7 @@ import pytest
 import shutil
 import subprocess
 import pandas as pd
+import re
 
 # saves the working directories and names of important files
 path_tests = os.getcwd() + "/tests"
@@ -63,7 +64,7 @@ def test_AL(test_job):
         "-m",
         "almos",
         "--al",
-        '--robert_keywords "--model RF --train [80]"',
+        '--robert_keywords "--model RF --repeat_kfolds 1 "',
         "--ignore", "index",
     ]
 
@@ -79,7 +80,7 @@ def test_AL(test_job):
         # Run the command and capture the output
         cmd_almos = (
             f"python -m almos --al --robert_keywords "
-            f'"--model RF --train [80]" '
+            f'"--model RF --repeat_kfolds 1 " '
             f"--ignore index --y target "
             f"--csv_name {path_tests}/AL_example_missing_targets.csv "
             f"--name name --n_points 3:2"
@@ -109,7 +110,7 @@ def test_AL(test_job):
             # Change the csv file for detect no batch column but valid values
             cmd_almos = (
                 f"python -m almos --al --robert_keywords "
-                f'"--model RF --train [80]" '
+                f'"--model RF --repeat_kfolds 1 " '
                 f"--ignore index --y target "
                 f"--csv_name {test_csv_path} "
                 f"--name name --n_points 3:2"
@@ -136,7 +137,7 @@ def test_AL(test_job):
     if test_job == "tolerance":
         cmd_almos = (
             f'python -m almos --al --robert_keywords '
-            f'"--model RF --train [80]" '
+            f'"--model RF --repeat_kfolds 1 " '
             f'--ignore index --y target '
             f'--csv_name {path_tests}/AL_example.csv '
             f'--name name --n_points 5:5 --tolerance tight'
@@ -187,8 +188,13 @@ def test_AL(test_job):
             assert all(word in db_save['ignore'][0] for word in expected_values['ignore']), (
                 f"'ignore' values mismatch! Expected {expected_values['ignore']}, got {db_save['ignore'][0]} in 'options.csv'"
             )
-            assert expected_values['csv_name'] in db_save['csv_name'][0], (
-                f"'csv_name' mismatch! Expected {expected_values['csv_name']}, got {db_save['csv_name'][0]} in 'options.csv'"
+
+            # Extract filename starting with "AL_example" and capturing everything after
+            actual_filename = re.search(r"(AL_example.*?\.csv)$", str(db_save['csv_name'][0]))
+            actual_filename = actual_filename.group(1) if actual_filename else None
+
+            assert expected_values['csv_name'] == actual_filename, (
+                f"'csv_name' mismatch! Expected {expected_values['csv_name']}, got {actual_filename} in 'options.csv'"
             )
 
         def validate_batches(path_batches, expected_values_al, csv_name_robert, csv_name_b1, batch_number):
@@ -282,44 +288,44 @@ def test_AL(test_job):
 
         # Define validations for batch_1 and the proper cmd command
         cmd_almos = [
-            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --train [80]',
+            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --repeat_kfolds 1 ',
             '--ignore', 'index', '--y', 'target',
             '--csv_name', f'{path_tests}/AL_example.csv',
             '--name', 'name', '--n_points', '3:2'
         ]
 
         expected_values_plot = {
-            "no_PFI": {
-                "file": "results_plot_no_PFI.csv",
-                "data": {
-                    "batch": [1],
-                    "rmse_no_PFI": [23],
-                    "SD_no_PFI": [30.8],
-                    "score_no_PFI": [3],
-                    "validation_points_no_PFI": [11],
-                    "test_points_no_PFI": [6],
-                    "rmse_converged": [0],
-                    "SD_converged": [0],
-                    "score_converged": [0],
-                    "convergence": ["no"]
-                }
-            },
-            "PFI": {
-                "file": "results_plot_PFI.csv",
-                "data": {
-                    "batch": [1],
-                    "rmse_PFI": [23],
-                    "SD_PFI": [30.75],
-                    "score_PFI": [4],
-                    "validation_points_PFI": [11],
-                    "test_points_PFI": [6],
-                    "rmse_converged": [0],
-                    "SD_converged": [0],
-                    "score_converged": [0],
-                    "convergence": ["no"]
+            'no_PFI': {
+                'file': 'results_plot_no_PFI.csv',
+                    'data': {
+                        'batch': [1],
+                        'rmse_no_PFI': [0.28],
+                        'SD_no_PFI': [0.15],
+                        'score_no_PFI': [1],
+                        'validation_points_no_PFI': [0],
+                        'test_points_no_PFI': [4],
+                        'rmse_converged': [0],
+                        'SD_converged': [0],
+                        'score_converged': [0],
+                        'convergence': ['no']
+                    }
+                },
+            'PFI': {
+                'file': 'results_plot_PFI.csv',
+                    'data': {
+                        'batch': [1],
+                        'rmse_PFI': [0.39],
+                        'SD_PFI': [0.125],
+                        'score_PFI': [0],
+                        'validation_points_PFI': [0],
+                        'test_points_PFI': [4],
+                        'rmse_converged': [0],
+                        'SD_converged': [0],
+                        'score_converged': [0],
+                        'convergence': ['no']
+                    }
                 }
             }
-        }
 
         validation_functions_batch_1 = [
             lambda: validate_csv_options({
@@ -329,19 +335,17 @@ def test_AL(test_job):
                 'csv_name': 'AL_example.csv'
             }),
             lambda: validate_batches(
-                "batch_1", 
-                {
-                    'num_points': 60,
-                    'rows': {
-                    'name': ["Molecule_262", "Molecule_1929", "Molecule_enant_5879", "Molecule_36", "Molecule_74"],
-                     'index': [262, 1929, 5879, 36, 74],
-                    'batch': [1] * 5
-                    }
-                },
-                "ROBERT_b1/AL_example_ROBERT_b1.csv",
-                "AL_example_b1.csv",
-                1
-            ),
+                'batch_1',
+                    {'num_points': 22,
+                    'rows': {'name': [19, 20, 22, 23, 27],
+                    'index': [119, 120, 122, 123, 127],
+                    'batch': [1, 1, 1, 1, 1]}
+                    },
+                    "ROBERT_b1/AL_example_ROBERT_b1.csv",
+                    "AL_example_b1.csv",
+                    1
+                ),
+
             lambda: validate_plots(
                 "batch_plots", 
                 {
@@ -350,63 +354,55 @@ def test_AL(test_job):
                 }, 
                 expected_values_plot
             ),
-            lambda: validate_dat_file(
-                "batch_1/AL_data.dat", 
-                {
-                    'initial_sizes': {"q1": 16, "q2": 14, "q3": 15, "q4": 15},
-                    'order': ['q2', 'q2', 'q3'],
-                    'convergence_reports': {
-                        'no_PFI': "o Not enough batches to check for convergence for Model no_PFI!",
-                        'PFI': "o Not enough batches to check for convergence for Model PFI!"
-                    },
-                    'subplot_message': 'o Subplot figures have been generated and saved successfully!'
-                }
-            )
+            lambda: validate_dat_file('batch_1/AL_data.dat',
+                {'initial_sizes': {'q1': 6, 'q2': 8, 'q3': 0, 'q4': 8},
+                'order': ['q3', 'q3', 'q3'],
+                'convergence_reports': {'no_PFI': 'o Not enough batches to check for convergence for Model no_PFI!',
+                                        'PFI': 'o Not enough batches to check for convergence for Model PFI!'},
+                'subplot_message': 'o Subplot figures have been generated and saved successfully!'})
         ]
-
+        
         # Run validations for batch_1
         run_subprocess_and_validate(cmd_almos, validation_functions_batch_1)
 
         # Define validations and cmd for batch_2. Checking if the the program is reading correctly 'options.csv'.
         cmd_almos = [
-            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --train [80]',
+            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --repeat_kfolds 1 ',
             '--csv_name', f'{path_tests}/AL_example_b1.csv',
             '--n_points', '3:2'
         ]
 
         # Define expected values for CSV from plots and validation for batch 2
         expected_values_plot = {
-            "no_PFI": {
-                "file": "results_plot_no_PFI.csv",
-                "data": {
-                    "batch": [1, 2],
-                    "rmse_no_PFI": [23, 19],
-                    "SD_no_PFI": [30.8, 30.075],
-                    "score_no_PFI": [3, 3],
-                    "validation_points_no_PFI": [11, 12],
-                    "test_points_no_PFI": [6, 6],
-                    "rmse_converged": [0, 0],
-                    "SD_converged": [0, 1],
-                    "score_converged": [0, 1],
-                    "convergence": ["no", "no"]
-                }
-            },
-            "PFI": {
-                "file": "results_plot_PFI.csv",
-                "data": {
-                    "batch": [1, 2],
-                    "rmse_PFI": [23, 18],
-                    "SD_PFI": [30.75, 29.95],
-                    "score_PFI": [4, 4],
-                    "validation_points_PFI": [11, 12],
-                    "test_points_PFI": [6, 6],
-                    "rmse_converged": [0, 0],
-                    "SD_converged": [0, 1],
-                    "score_converged": [0, 1],
-                    "convergence": ["no", "no"]
+            'no_PFI': {
+                'file': 'results_plot_no_PFI.csv',
+                    'data': {'batch': [1, 2],
+                    'rmse_no_PFI': [0.28, 0.24],
+                    'SD_no_PFI': [0.15, 0.075],
+                    'score_no_PFI': [1, 4],
+                    'validation_points_no_PFI': [0, 0],
+                    'test_points_no_PFI': [4, 5],
+                    'rmse_converged': [0, 0],
+                    'SD_converged': [0, 0],
+                    'score_converged': [0, 1],
+                    'convergence': ['no', 'no']
+                    }
+                },
+            'PFI': {
+                'file': 'results_plot_PFI.csv',
+                    'data': {'batch': [1, 2],
+                    'rmse_PFI': [0.39, 0.31],
+                    'SD_PFI': [0.125, 0.075],
+                    'score_PFI': [0, 4],
+                    'validation_points_PFI': [0, 0],
+                    'test_points_PFI': [4, 5],
+                    'rmse_converged': [0, 0],
+                    'SD_converged': [0, 0],
+                    'score_converged': [0, 1],
+                    'convergence': ['no', 'no']
+                    }
                 }
             }
-        }
 
         # Define validation functions for Batch 2
         validation_functions_batch_2 = [
@@ -421,19 +417,17 @@ def test_AL(test_job):
 
             # Validate batch files
             lambda: validate_batches(
-                "batch_2", 
-                {
-                    'num_points': 65,
-                    'rows': {
-                    'name': ["Molecule_206", "Molecule_2466", "Molecule_2559", "Molecule_2869", "Molecule_28"],
-                    'index': [206, 2466, 2559, 2869, 28],
-                    "batch": [2] * 5
-                    }
+                'batch_2',
+                    {
+                        'num_points': 27,
+                    'rows': {'name': [21, 24, 25, 26, 34],
+                    'index': [121, 124, 125, 126, 134],
+                    'batch': [2, 2, 2, 2, 2]}
                 },
-                "ROBERT_b2/AL_example_ROBERT_b2.csv",
-                "AL_example_b2.csv",
-                2
-            ),
+                    'ROBERT_b2/AL_example_ROBERT_b2.csv',
+                    'AL_example_b2.csv',
+                    2),
+                    
             # Validate plots
             lambda: validate_plots(
                 "batch_plots", 
@@ -448,17 +442,17 @@ def test_AL(test_job):
             lambda: validate_dat_file(
             "batch_2/AL_data.dat", 
             {
-                'initial_sizes': {"q1": 17, "q2": 15, "q3": 16, "q4": 17},
-                'order': ['q2', 'q2', 'q3'],
+                'initial_sizes': {'q1': 6, 'q2': 9, 'q3': 2, 'q4': 10},
+                'order': ['q3', 'q3', 'q3'],
                 'convergence_reports': {
                     'no_PFI': {
                         'rmse': "X rmse for no_PFI model has not converged.",
-                        'SD': "o SD for no_PFI model has converged.",
+                        'SD': "X SD for no_PFI model has not converged.",
                         'score': "o score for no_PFI model has converged."
                     },
                     'PFI': {
                         'rmse': "X rmse for PFI model has not converged.",
-                        'SD': "o SD for PFI model has converged.",
+                        'SD': "X SD for PFI model has not converged.",
                         'score': "o score for PFI model has converged."
                     }
                 },
@@ -473,41 +467,42 @@ def test_AL(test_job):
 
         # Define validations and cmd for batch_2. Checking if the the program is reading correctly 'options.csv'.
         cmd_almos = [
-            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --train [80]',
+            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --repeat_kfolds 1 ',
             '--csv_name', f'{path_tests}/AL_example_b2.csv',
             '--n_points', '3:2'
         ]
 
         # Define expected values for CSV from plots and validation for batch 3
+        
         expected_values_plot = {
-            "no_PFI": {
-                "file": "results_plot_no_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3],
-                    "rmse_no_PFI": [23, 19, 20],
-                    "SD_no_PFI": [30.8, 30.075, 31.15],
-                    "score_no_PFI": [3, 3, 3],
-                    "validation_points_no_PFI": [11, 12, 13],
-                    "test_points_no_PFI": [6, 6, 7],
-                    "rmse_converged": [0, 0, 0],
-                    "SD_converged": [0, 1, 0],
-                    "score_converged": [0, 1, 1],
-                    "convergence": ["no", "no", "no"]
-                }
-            },
-            "PFI": {
-                "file": "results_plot_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3],
-                    "rmse_PFI": [23, 18, 20],
-                    "SD_PFI": [30.75, 29.95, 30.7],
-                    "score_PFI": [4, 4, 4],
-                    "validation_points_PFI": [11, 12, 13],
-                    "test_points_PFI": [6, 6, 7],
-                    "rmse_converged": [0, 0, 0],
-                    "SD_converged": [0, 1, 0],
-                    "score_converged": [0, 1, 1],
-                    "convergence": ["no", "no", "no"]
+            'no_PFI': {
+                'file': 'results_plot_no_PFI.csv',
+                    'data': {
+                        'batch': [1, 2, 3],
+                        'rmse_no_PFI': [0.28, 0.24, 0.2],
+                        'SD_no_PFI': [0.15, 0.075, 0.05],
+                        'score_no_PFI': [1, 4, 5],
+                        'validation_points_no_PFI': [0, 0, 0],
+                        'test_points_no_PFI': [4, 5, 6],
+                        'rmse_converged': [0, 0, 0],
+                        'SD_converged': [0, 0, 0],
+                        'score_converged': [0, 1, 1],
+                        'convergence': ['no', 'no', 'no']
+                        }
+                    },
+            'PFI': {
+                'file': 'results_plot_PFI.csv',
+                'data': {
+                    'batch': [1, 2, 3],
+                    'rmse_PFI': [0.39, 0.31, 0.25],
+                    'SD_PFI': [0.125, 0.075, 0.05],
+                    'score_PFI': [0, 4, 5],
+                    'validation_points_PFI': [0, 0, 0],
+                    'test_points_PFI': [4, 5, 6],
+                    'rmse_converged': [0, 0, 0],
+                    'SD_converged': [0, 0, 0],
+                    'score_converged': [0, 1, 1],
+                    'convergence': ['no', 'no', 'no']
                 }
             }
         }
@@ -525,36 +520,36 @@ def test_AL(test_job):
 
             # Validation for batch 3
             lambda: validate_batches(
-                "batch_3", 
+                'batch_3',
                 {
-                    'num_points': 70,
-                    'rows': {
-                    'name': ["Molecule_6", "Molecule_34", "Molecule_55", "Molecule_69", "Molecule_71"],
-                    'index': [6, 34, 55, 69, 71],
-                    "batch": [3] * 5
-                                    }
-                                },
-                                "ROBERT_b3/AL_example_ROBERT_b3.csv",
-                                "AL_example_b3.csv",
-                                3
-            ),
+                'num_points': 32,
+                'rows': {
+                    'name': [7, 8, 9, 33, 35],
+                    'index': [107, 108, 109, 133, 135],
+                    'batch': [3, 3, 3, 3, 3]
+                    }
+            },
+            'ROBERT_b3/AL_example_ROBERT_b3.csv',
+            'AL_example_b3.csv',
+            3),
 
             # Validate plots
             lambda: validate_plots(
-                "batch_plots", 
+                "batch_plots",
                 {
                     "PFI_plots": ["results_plot_PFI.csv", "PFI_subplots_vertical.png"],
                     "no_PFI_plots": ["results_plot_no_PFI.csv", "no_PFI_subplots_vertical.png"]
-                }, 
-                expected_values_plot
+                },
+                expected_values_plot  
             ),
+
 
             # Validate .dat file
             lambda: validate_dat_file(
                 "batch_3/AL_data.dat", 
                 {
-                    'initial_sizes': {"q1": 18, "q2": 17, "q3": 18, "q4": 17},
-                    'order': ['q2', 'q1', 'q2'],
+                    'initial_sizes': {'q1': 9, 'q2': 10, 'q3': 9, 'q4': 4},
+                    'order': ['q1', 'q3', 'q1'],
                     'convergence_reports': {
                         'no_PFI': {
                             'batch_3': [
@@ -564,7 +559,7 @@ def test_AL(test_job):
                             ],
                             'batch_2': [
                                 "X rmse for no_PFI model has not converged.",
-                                "o SD for no_PFI model has converged.",
+                                "X SD for no_PFI model has not converged.",
                                 "o score for no_PFI model has converged."
                             ]
                         },
@@ -576,7 +571,7 @@ def test_AL(test_job):
                             ],
                             'batch_2': [
                                 "X rmse for PFI model has not converged.",
-                                "o SD for PFI model has converged.",
+                                "X SD for PFI model has not converged.",
                                 "o score for PFI model has converged."
                             ]
                         }
@@ -592,7 +587,7 @@ def test_AL(test_job):
         
         # ALMOS only check the last 2 batches for convergence, ensure the convergence of the first one are saved correctly.
         cmd_almos = [
-            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --train [80]',
+            'python', '-m', 'almos', '--al', '--robert_keywords', '--model RF --repeat_kfolds 1 ',
             '--csv_name', f'{path_tests}/AL_example_b3.csv',
             '--n_points', '3:2'
         ]
@@ -600,37 +595,38 @@ def test_AL(test_job):
     
         # Define expected values for CSV from plots and validation for batch 3
         expected_values_plot = {
-            "no_PFI": {
-                "file": "results_plot_no_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3, 4],
-                    "rmse_no_PFI": [23, 19, 20, 22],
-                    "SD_no_PFI": [30.8, 30.075, 31.15, 32.55],
-                    "score_no_PFI": [3, 3, 3, 3],
-                    "validation_points_no_PFI": [11, 12, 13, 14],
-                    "test_points_no_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 1, 0, 0],
-                    "score_converged": [0, 1, 1, 1],
-                    "convergence": ["no", "no", "no", "no"]
-                }
-            },
-            "PFI": {
-                "file": "results_plot_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3, 4],
-                    "rmse_PFI": [23, 18, 20, 24],
-                    "SD_PFI": [30.75, 29.95, 30.7, 30.7],
-                    "score_PFI": [4, 4, 4, 4],
-                    "validation_points_PFI": [11, 12, 13, 14],
-                    "test_points_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 1, 0, 1],
-                    "score_converged": [0, 1, 1, 1],
-                    "convergence": ["no", "no", "no", "no"]
+            'no_PFI': {
+                'file': 'results_plot_no_PFI.csv',
+                'data': {
+                    'batch': [1, 2, 3, 4],
+                    'rmse_no_PFI': [0.28, 0.24, 0.2, 0.18],
+                    'SD_no_PFI': [0.15, 0.075, 0.05, 0.075],
+                    'score_no_PFI': [1, 4, 5, 7],
+                    'validation_points_no_PFI': [0, 0, 0, 0],
+                    'test_points_no_PFI': [4, 5, 6, 7],
+                    'rmse_converged': [0, 0, 0, 0],
+                    'SD_converged': [0, 0, 0, 0],
+                    'score_converged': [0, 1, 1, 1],
+                    'convergence': ['no', 'no', 'no', 'no']
+                    }
+                },
+            'PFI': {
+                'file': 'results_plot_PFI.csv',
+                'data': {
+                    'batch': [1, 2, 3, 4],
+                    'rmse_PFI': [0.39, 0.31, 0.25, 0.2],
+                    'SD_PFI': [0.125, 0.075, 0.05, 0.025],
+                    'score_PFI': [0, 4, 5, 6],
+                    'validation_points_PFI': [0, 0, 0, 0],
+                    'test_points_PFI': [4, 5, 6, 7],
+                    'rmse_converged': [0, 0, 0, 0],
+                    'SD_converged': [0, 0, 0, 0],
+                    'score_converged': [0, 1, 1, 1],
+                    'convergence': ['no', 'no', 'no', 'no']
+                    }
                 }
             }
-        }
+        
         # Validate plots
         validate_plots(
             "batch_plots", 
@@ -686,7 +682,7 @@ def test_AL(test_job):
         
         # Check if we repeat the same last batch (after deleting it) with different information, the results are not the same.
         cmd_delete_batch = (
-            f"python -m almos --al --robert_keywords '--model RF --train [80]' "
+            f"python -m almos --al --robert_keywords '--model RF --repeat_kfolds 1 ' "
             f"--csv_name {path_tests}/AL_example_deleted_batch_b3.csv "
             f"--n_points 3:2 < tests/delete.txt"
         )
@@ -701,37 +697,38 @@ def test_AL(test_job):
 
         # Define expected values for CSV from plots and validation for batch 3
         expected_values_plot = {
-            "no_PFI": {
-                "file": "results_plot_no_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3, 4],
-                    "rmse_no_PFI": [23, 19, 20, 26],
-                    "SD_no_PFI": [30.8, 30.075, 31.15, 35],
-                    "score_no_PFI": [3, 3, 3, 2],
-                    "validation_points_no_PFI": [11, 12, 13, 14],
-                    "test_points_no_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 1, 0, 0],
-                    "score_converged": [0, 1, 1, 0],
-                    "convergence": ["no", "no", "no", "no"]
-                }
-            },
-            "PFI": {
-                "file": "results_plot_PFI.csv",
-                "data": {
-                    "batch": [1, 2, 3, 4],
-                    "rmse_PFI": [23, 18, 20, 26],
-                    "SD_PFI": [30.75, 29.95, 30.7, 35.45],
-                    "score_PFI": [4, 4, 4, 3],
-                    "validation_points_PFI": [11, 12, 13, 14],
-                    "test_points_PFI": [6, 6, 7, 7],
-                    "rmse_converged": [0, 0, 0, 0],
-                    "SD_converged": [0, 1, 0, 0],
-                    "score_converged": [0, 1, 1, 0],
-                    "convergence": ["no", "no", "no", "no"]
+            'no_PFI': {
+                'file': 'results_plot_no_PFI.csv',
+                'data': {
+                    'batch': [1, 2, 3, 4],
+                    'rmse_no_PFI': [0.28, 0.24, 0.2, 0.38],
+                    'SD_no_PFI': [0.15, 0.075, 0.05, 0.075],
+                    'score_no_PFI': [1, 4, 5, 3],
+                    'validation_points_no_PFI': [0, 0, 0, 0],
+                    'test_points_no_PFI': [4, 5, 6, 7],
+                    'rmse_converged': [0, 0, 0, 0],
+                    'SD_converged': [0, 0, 0, 0],
+                    'score_converged': [0, 1, 1, 0],
+                    'convergence': ['no', 'no', 'no', 'no']
+                    }
+                },
+            'PFI': {
+                'file': 'results_plot_PFI.csv',
+                'data': {
+                    'batch': [1, 2, 3, 4],
+                    'rmse_PFI': [0.39, 0.31, 0.25, 0.41],
+                    'SD_PFI': [0.125, 0.075, 0.05, 0.075],
+                    'score_PFI': [0, 4, 5, 2],
+                    'validation_points_PFI': [0, 0, 0, 0],
+                    'test_points_PFI': [4, 5, 6, 7],
+                    'rmse_converged': [0, 0, 0, 0],
+                    'SD_converged': [0, 0, 0, 0],
+                    'score_converged': [0, 1, 1, 0],
+                    'convergence': ['no', 'no', 'no', 'no']
+                    }
                 }
             }
-        }
+        
             # Validate plots
         validate_plots(
             "batch_plots", 
@@ -812,7 +809,7 @@ def test_AL(test_job):
 
         # Check if reverse works with negative values.
         cmd = (
-            f"python -m almos --al --robert_keywords '--model RF --train [80]' "
+            f"python -m almos --al --robert_keywords '--model RF --repeat_kfolds 1 ' "
             f"--csv_name {path_tests}/AL_example_reverse.csv "
             f"--n_points 3:2 --ignore index --y target --name name --reverse"
         )
@@ -834,10 +831,11 @@ def test_AL(test_job):
             text = file.read()
 
         q1_found, q2_found, q3_found, q4_found, al_valid = False, False, False, False, False
+
         # Check the input is found in the .dat file
-        q1_found = "Points assigned to q1: [-75.25, -70.05]" in text
-        q2_found = "Points assigned to q2: [-59.75]" in text
-        q3_found = "Points assigned to q3: [-37.95, -35.35]" in text
+        q1_found = "Points assigned to q1: [-65.97511773029014, -65.27263995263995]" in text
+        q2_found = "Points assigned to q2: [-60.85383901539075]" in text
+        q3_found = "Points assigned to q3: [-36.13940789733892, -36.03573505676954]" in text
         q4_found = "Points assigned to q4: []" in text
 
         # Check if subplot figures were successfully generated
