@@ -12,6 +12,8 @@ import subprocess
 from almos.argument_parser import set_options, var_dict
 from almos.al_utils import check_missing_outputs
 
+obabel_version = "3.1.1" # this MUST match the meta.yaml
+aqme_version = "1.7.0"
 almos_version = "0.0.0"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
@@ -38,14 +40,15 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
-        "aqme_workflow",
         "reverse",
         "intelex",
+        "aqme"
 
     ]
     int_args = [
         "n_clusters",
-        "seed_clustered"
+        "seed_clustered",
+        "nprocs"
     ]
     int_double_args = [
         "n_points"
@@ -251,6 +254,11 @@ def check_dependencies(self, module):
     """
     Checks if the required Python packages are installed for the specified module.
 
+    For module "cluster":
+     Only required for the aqme workflow.
+      - Requires 'obabel', version: "3.1.1"
+      - Requires 'aqme', version: "1.7.0"
+
     For module "al":
     - Requires 'robert' on all platforms.
     - Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).
@@ -260,6 +268,26 @@ def check_dependencies(self, module):
     module : str
         The name of the module for which dependencies are being checked.
     """
+    if module == "cluster_aqme":
+        # this is a dummy command just to warn the user if OpenBabel is not installed
+        try:
+            command_run_1 = ["obabel", "-H"]
+            subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except FileNotFoundError:
+            self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
+            self.args.log.finalize()
+            sys.exit()
+            
+        # this is a dummy command just to warn the user if AQME is not installed       
+        try:
+            command_run_2 = ["python","-m","aqme", "-h"]
+            result = subprocess.run(command_run_2,capture_output=True, text=True, check=True)
+            
+        except subprocess.CalledProcessError:
+            self.args.log.write(f"x  AQME is not installed! You can install the program with 'pip install aqme=={aqme_version}'")
+            self.args.log.finalize()
+            sys.exit()
+
     if module == "al":
 
         # Check for glib, gtk3, pango, and mscorefonts
@@ -292,7 +320,7 @@ def check_dependencies(self, module):
         # Check for 'scikit-learn-intelex'
         if not self.args.intelex:
             try:
-                import sklearnex  
+                import sklearnex 
             except ImportError:
                 self.args.log.write(
                     "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
