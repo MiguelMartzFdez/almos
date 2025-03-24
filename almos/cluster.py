@@ -602,5 +602,3 @@ class cluster:
         self.args.log.write(f"\no The 3D representation of the PCA has been save as batch_0/pca_3d.html")
 
 
-
-   
