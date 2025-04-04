@@ -9,6 +9,7 @@ var_dict = {
     "verbose": True,
     "command_line": False,
     "csv_name": None,
+    "input": None,
     "n_clusters": None,
     "seed_clustered": 0,
     "descp_level": "interpret",
