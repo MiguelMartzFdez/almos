@@ -5,8 +5,8 @@ import subprocess
 import pandas as pd
 from PIL import ImageTk, Image
 from pathlib import Path
-from pkg_resources import resource_filename
 import threading
+from importlib.resources import files, as_file
 
 class ALMOSApp(tk.Tk):
     def __init__(self):
@@ -33,14 +33,27 @@ class ALMOSApp(tk.Tk):
         self.scrollable_frame = tk.Frame(canvas)
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
 
-        # Add logo with size limitation
-        path_logo = Path(__file__).parent / "icons" / "almos_logo.png"
-        resized_image = Image.open(path_logo)
-        almos_logo = ImageTk.PhotoImage(resized_image)
+        # --- Add logo from inside the installed package ---
+        with as_file(files("almos") / "icons" / "almos_logo.png") as path_logo:
+            original_image = Image.open(path_logo)
 
-        my_logo = tk.Label(self.scrollable_frame, image=almos_logo)
-        my_logo.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
-        my_logo.image = almos_logo
+            # Resize image maintaining aspect ratio
+            target_width = 400
+            target_height = 150
+
+            # Calculate new size keeping aspect ratio
+            original_width, original_height = original_image.size
+            ratio = min(target_width / original_width, target_height / original_height)
+            new_size = (int(original_width * ratio), int(original_height * ratio))
+
+            resized_image = original_image.resize(new_size, Image.LANCZOS)  # LANCZOS = best quality
+
+            almos_logo = ImageTk.PhotoImage(resized_image)
+
+            my_logo = tk.Label(self.scrollable_frame, image=almos_logo)
+            my_logo.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+            my_logo.image = almos_logo  # Prevent garbage collection
+
 
         # Define Terminal Output FIRST
         self.terminal_output = tk.Text(self.scrollable_frame, height=15, width=80, bg="black", fg="white", font=("Courier", 10))
@@ -166,7 +179,7 @@ class ClusteringTab(tk.Frame):
         ignore_value = ",".join(ignore_columns)
 
         # Build the command as a string
-        command = f'python -m almos --cluster --csv_name "{csv_name}" --n_clusters "{n_clusters}"'
+        command = f'python -m almos --cluster --input "{csv_name}" --n_clusters "{n_clusters}"'
 
         # Add AQME workflow if enabled
         if aqme_workflow:

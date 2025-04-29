@@ -41,32 +41,31 @@ jobs:
           conda create -n cheminf python=3.10
           source activate base 
           conda activate cheminf
-          # install AQME, ROBERT and their dependencies
+
+          # Install ALMOS and its required dependencies
           python -m pip install --upgrade pip          
-          pip install rdkit==2024.3.1
-          conda install -y -c conda-forge openbabel
-          conda install -y -c conda-forge xtb=6.6.1
-          conda install -y -c conda-forge glib
-          pip install weasyprint
-          conda install -y -c conda-forge gtk3
-          conda install -y -c conda-forge pango
-          pip install aqme==1.7.0
+          conda install -y -c conda-forge openbabel=3.1.1
+          conda install -y -c conda-forge glib gtk3 pango mscorefonts
           pip install .
           pip install scikit-learn-intelex==2024.4.0
-          # uninstall robert to avoid codecov issues (only running from the robert folder)
+
+          # uninstall almos to avoid codecov issues (only running from the almos folder)
           pip uninstall -y almos
+
           # install and run pytest
           pip install pytest
           pip install pytest-cov
+
           # the format of the codecov report has to be scpecified or it doesn't create for some reason
-          python -m pytest -v --cov=robert --cov-report=xml
+          python -m pytest -v --cov=almos --cov-report=xml
           rm -r /tmp/*
           cp -r * /tmp
+          
       - persist_to_workspace:
           root: /tmp
           paths:
             - coverage.xml
-            - robert
+            - almos
 
   # the codecov orb doesn't work with the miniconda docker, so the coverage report
   # needs to be stored and loaded in a new job using a python docker
