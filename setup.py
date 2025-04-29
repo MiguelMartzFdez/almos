@@ -33,7 +33,7 @@ setup(
     
     install_requires=[
     "aqme==1.7.2",
-    "robert==2.0.1",
+    "robert==2.0.0",
     "plotly==5.24.1",
     "matplotlib==3.10.0",
     "numpy>=1.26.4,<3.0",
