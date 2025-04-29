@@ -12,7 +12,9 @@ import subprocess
 from almos.argument_parser import set_options, var_dict
 from almos.al_utils import check_missing_outputs
 
-almos_version = "0.0.0"
+obabel_version = "3.1.1" # this MUST match the meta.yaml
+aqme_version = "1.7.2"
+almos_version = "0.1.2"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
@@ -38,19 +40,22 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
-        "aqme_workflow",
-        "auto_fill"
+        "reverse",
+        "intelex",
+        "aqme"
+
     ]
     int_args = [
         "n_clusters",
-        "seed_clustered"
+        "seed_clustered",
+        "nprocs"
     ]
     int_double_args = [
-        "n_points",
+        "n_points"
     ]
     list_args = [
-        "ignore",
-        "qdescp_atoms",   
+        "ignore"
+ 
     ]
     float_args = [
     ]
@@ -127,10 +132,6 @@ def load_variables(kwargs, almos_module, create_dat=True):
 
     # first, load default values and options manually added to the function
     self = set_options(kwargs)
-
-    # check if outputs are missing and load, needed here for update "command line" with inputs.
-    if almos_module == "al":
-        self = check_missing_outputs(self)
     
     if almos_module != "command":
 
@@ -155,6 +156,10 @@ def load_variables(kwargs, almos_module, create_dat=True):
                     # prevents errors when using command lines and running to remote directories
                     path_command = Path(f"{os.getcwd()}")
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
+
+                # check if outputs are missing and load, needed here for update "command line" with inputs.
+                if almos_module == "al":
+                    self = check_missing_outputs(self)
 
                 self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
 
@@ -200,6 +205,10 @@ def format_lists(value):
         except (SyntaxError, ValueError):
             # this line fixes issues when using "[X]" or ["X"] instead of "['X']" when using lists
             value = value.replace('[',']').replace(',',']').replace("'",']').split(']')
+            # these lines fix issues when there are blank spaces, in front or behind
+            # value = [ele[1:] for ele in value if ele[0] == ' ']
+            # value = [ele[:-1] for ele in value if ele[-1] == ' ']
+            # this not work, because the problem is another thing
             while('' in value):
                 value.remove('')
     return value
@@ -241,12 +250,84 @@ class Logger:
         except AttributeError:
             pass
 
-def check_dependencies(self):
-    # this is a dummy command just to warn the user if OpenBabel is not installed
-    try:
-        command_run_1 = ["obabel", "-H"]
-        subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
-        self.args.log.finalize()
-        sys.exit()
+def check_dependencies(self, module):
+    """
+    Checks if the required Python packages are installed for the specified module.
+
+    For module "cluster":
+     Only required for the aqme workflow.
+      - Requires 'obabel', version: "3.1.1"
+      - Requires 'aqme', version: "1.7.2"
+
+    For module "al":
+    - Requires 'robert' on all platforms.
+    - Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).
+
+    Parameters:
+    -----------
+    module : str
+        The name of the module for which dependencies are being checked.
+    """
+    if module == "cluster_aqme":
+        # this is a dummy command just to warn the user if OpenBabel is not installed
+        try:
+            command_run_1 = ["obabel", "-H"]
+            subprocess.run(command_run_1, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except FileNotFoundError:
+            self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
+            self.args.log.finalize()
+            sys.exit()
+            
+        # this is a dummy command just to warn the user if AQME is not installed       
+        try:
+            command_run_2 = ["python","-m","aqme", "-h"]
+            result = subprocess.run(command_run_2,capture_output=True, text=True, check=True)
+            
+        except subprocess.CalledProcessError:
+            self.args.log.write(f"x  AQME is not installed! You can install the program with 'pip install aqme=={aqme_version}'")
+            self.args.log.finalize()
+            sys.exit()
+
+    if module == "al":
+
+        # Check for glib, gtk3, pango, and mscorefonts
+        required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
+        missing_packages = []
+
+        # Use conda list to verify package installation
+        result = subprocess.run(
+            ["conda", "list"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True
+        )
+        installed_packages = result.stdout
+
+        # Check for each required package
+        for package in required_packages:
+            if package not in installed_packages:
+                missing_packages.append(package)
+
+        # Log missing packages and exit if necessary
+        if missing_packages:
+            self.args.log.write(
+                f"\nx WARNING! The following required packages are missing: {', '.join(missing_packages)}"
+                "\nYou can install them with the command: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
+            )
+            self.args.log.finalize()
+            sys.exit()
+
+        # Check for 'scikit-learn-intelex'
+        if not self.args.intelex:
+            try:
+                import sklearnex 
+            except ImportError:
+                self.args.log.write(
+                    "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
+                    "\nNote that 'scikit-learn-intelex' is required unless '--intelex' is set in the command line. Exiting.")
+                self.args.log.finalize()
+                sys.exit()
+        else:
+            self.args.log.write(
+                "\no Running without 'scikit-learn-intelex' as requested.\n"
+            )

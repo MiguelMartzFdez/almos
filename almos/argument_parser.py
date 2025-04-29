@@ -9,14 +9,14 @@ var_dict = {
     "verbose": True,
     "command_line": False,
     "csv_name": None,
+    "input": None,
     "n_clusters": None,
     "seed_clustered": 0,
     "descp_level": "interpret",
     "ignore": [],
     "cluster": False,
-    "qdescp_atoms": [],
-    "qdescp_solvent": None,
-    "aqme_workflow": True,
+    "aqme_keywords": '',
+    "aqme": False,
     "name": '',
     "y": '',
     "auto_fill": True,
@@ -30,7 +30,11 @@ var_dict = {
         'tight': 0.01,
         'medium': 0.05,
         'wide': 0.10,
-    }, 
+    },
+    'nprocs': 8,
+    "robert_keywords" : '',
+    "reverse" : False,
+    "intelex" : False
 }
 
 # part for using the options in a script or jupyter notebook
