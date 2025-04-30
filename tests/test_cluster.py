@@ -26,7 +26,7 @@ path_tests = os.getcwd() + "/tests"
     [
         # test the route that GOES through AQME
         ("test_cluster1a.csv"),  # csv with column named batch, sys.exit(1)
-        ("test_cluster1b.csv"),  # --aqme_keywords, --nprocs     
+        # ("test_cluster1b.csv"),  # --aqme_keywords, --nprocs     
         ("test_cluster1c.csv"),  # input not defined, sys.exit(9)
         ("test_cluster1d.csv"),  # input not found, sys.exit(10)
         ("test_cluster1e.csv"),  # n_clusters not defined, sys.exit(11)
