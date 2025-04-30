@@ -1,12 +1,12 @@
-![](icons/almos_logo.png)
+![](almos/icons/almos_logo.png)
 #
 ## <p align="center"> ALMOS (Active Learning Molecular Selection)</p>
 
 [![CircleCI](https://img.shields.io/circleci/build/github/MiguelMartzFdez/almos?label=Circle%20CI&logo=circleci)](https://app.circleci.com/pipelines/github/MiguelMartzFdez/almos)
 [![Codecov](https://img.shields.io/codecov/c/github/MiguelMartzFdez/almos?label=Codecov&logo=codecov)](https://codecov.io/gh/MiguelMartzFdez/almos)
-[![Downloads](https://img.shields.io/pepy/dt/almos?label=Downloads&logo=pypi)](https://www.pepy.tech/projects/almos)
+[![Downloads](https://img.shields.io/pepy/dt/almos?label=Downloads&logo=pypi)](https://www.pepy.tech/projects/almos-kit)
 [![Read the Docs](https://img.shields.io/readthedocs/almos?label=Read%20the%20Docs&logo=readthedocs)](https://almos.readthedocs.io/)
-[![PyPI](https://img.shields.io/pypi/v/almos)](https://pypi.org/project/almos/)
+[![PyPI](https://img.shields.io/pypi/v/almos)](https://pypi.org/project/almos-kit/)
 
 ## Recommended installation
 1. (Only once) Create new conda environment: 'conda create -n almos python=3.10'  
