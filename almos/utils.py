@@ -13,8 +13,8 @@ from almos.argument_parser import set_options, var_dict
 from almos.al_utils import check_missing_outputs
 
 obabel_version = "3.1.1" # this MUST match the meta.yaml
-aqme_version = "1.7.0"
-almos_version = "0.0.0"
+aqme_version = "1.7.2"
+almos_version = "0.1.3"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
@@ -257,7 +257,7 @@ def check_dependencies(self, module):
     For module "cluster":
      Only required for the aqme workflow.
       - Requires 'obabel', version: "3.1.1"
-      - Requires 'aqme', version: "1.7.0"
+      - Requires 'aqme', version: "1.7.2"
 
     For module "al":
     - Requires 'robert' on all platforms.

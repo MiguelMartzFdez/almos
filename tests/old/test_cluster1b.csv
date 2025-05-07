@@ -1,0 +1,4 @@
+code_name,SMILES
+2a,N#[C:2][C:1]1=CC=C(C#N)C=C1
+2b,N#[C:2][C:1](C=C1)=CC=C1S(=O)(C(F)(F)F)=O
+2c,O=S(C1=CC=[C:1]([C:2]#N)C=C1)(C)=O
