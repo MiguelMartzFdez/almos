@@ -23,7 +23,7 @@
 ## Developers and help desk  
 List of main developers and contact emails:
   - [ ] [Miguel Martinez Fernandez](https://orcid.org/0009-0002-8538-7250). Contact [miguel.martinez@csic.es](mailto:miguel.martinez@csic.es)
-  - [ ] [Susana P. García Abellán](https://orcid.org/0000-0002-3138-5527). Contact [susanag.abellan@gmail.com](mailto:susanag.abellan@gmail.com)
+  - [ ] [Susana P. García Abellán](https://orcid.org/0000-0002-3138-5527). Contact [sg.abellan@csic.es](mailto:sg.abellan@csic.es)
   - [ ] [David Dalmau Ginesta](https://orcid.org/0000-0002-2506-6546). Contact: [ddalmau@unizar.es](mailto:ddalmau@unizar.es)
   - [ ] [Juan V. Alegre-Requena](https://orcid.org/0000-0002-0769-7168). Contact: [jv.alegre@csic.es](mailto:jv.alegre@csic.es)  
 
