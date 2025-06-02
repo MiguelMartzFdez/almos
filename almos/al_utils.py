@@ -439,13 +439,13 @@ def extract_sd_from_column(page, bbox):
     
 def extract_points_from_csv(batch_number):
     """
-    Extract validation and test points from CSV files for both PFI and No_PFI models.
+    Extract Training and test points from CSV files for both PFI and No_PFI models.
     
     Args:
         batch_number (int): The batch number to process.
 
     Returns:
-        dict: A dictionary with the number of validation and test points for No_PFI and PFI models.
+        dict: A dictionary with the number of Training and test points for No_PFI and PFI models.
     """
     # Define the base path for the batch
     base_path = Path.cwd() / f'batch_{batch_number}' / f'ROBERT_b{batch_number}' / 'GENERATE' / 'Best_model'
@@ -459,14 +459,14 @@ def extract_points_from_csv(batch_number):
         # Search for CSV files matching the pattern '*_db.csv' in which points are stored
         csv_file = glob.glob(os.path.join(csv_path, '*_db.csv'))
         
-        # If a file is found, read it and count validation and test points
+        # If a file is found, read it and count Training and test points
         if csv_file:
             df = pd.read_csv(csv_file[0])
-            points[f'{model}_validation_points'] = len(df[df['Set'] == 'Validation'])
+            points[f'{model}_Training_points'] = len(df[df['Set'] == 'Training'])
             points[f'{model}_test_points'] = len(df[df['Set'] == 'Test'])
         else:
             # If no file is found, set point counts to 0
-            points[f'{model}_validation_points'] = 0
+            points[f'{model}_Training_points'] = 0
             points[f'{model}_test_points'] = 0
     
     return points
@@ -506,7 +506,7 @@ def process_batch(batch_number):
             sd_no_PFI = extract_sd_from_column(page_2, bbox_no_PFI)
             sd_PFI = extract_sd_from_column(page_2, bbox_PFI)
 
-            # Extract validation and test points from CSV files
+            # Extract Training and test points from CSV files
             points = extract_points_from_csv(batch_number)
 
             # Ensure both columns contain data
@@ -517,7 +517,7 @@ def process_batch(batch_number):
                     'rmse_no_PFI': rmse_no_PFI,
                     'SD_no_PFI': sd_no_PFI,
                     'score_no_PFI': score_no_PFI,
-                    'validation_points_no_PFI': points['No_PFI_validation_points'],
+                    'Training_points_no_PFI': points['No_PFI_Training_points'],
                     'test_points_no_PFI': points['No_PFI_test_points']
                 }
                 
@@ -526,7 +526,7 @@ def process_batch(batch_number):
                     'rmse_PFI': rmse_PFI,
                     'SD_PFI': sd_PFI,
                     'score_PFI': score_PFI,
-                    'validation_points_PFI': points['PFI_validation_points'],
+                    'Training_points_PFI': points['PFI_Training_points'],
                     'test_points_PFI': points['PFI_test_points']
                 }
                 
@@ -566,6 +566,33 @@ def get_metrics_from_batches():
                 results_plot_PFI.append(pfi_result)
 
     return   results_plot_no_PFI, results_plot_PFI 
+def get_scores_from_robert_report(pdf_path):
+    """
+    Extract score values from both left (No_PFI) and right (PFI) columns in the first page of the PDF.
+
+    Parameters:
+    -----------
+    pdf_path : Path
+        Path to the ROBERT_report.pdf.
+
+    Returns:
+    --------
+    tuple
+        A tuple (score_no_PFI, score_PFI), where either can be None if not found.
+    """
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            page = pdf.pages[0]
+            bbox_no_PFI = (0, 0, 300, page.height)
+            bbox_PFI = (300, 0, page.width, page.height)
+
+            _, score_no_PFI = extract_rmse_and_score_from_column(page, bbox_no_PFI)
+            _, score_PFI = extract_rmse_and_score_from_column(page, bbox_PFI)
+
+            return score_no_PFI, score_PFI
+    except Exception as e:
+        print(f"x ERROR: Failed to extract scores from PDF {pdf_path.name} → {e}")
+        return None, None
 
 class EarlyStopping:
     """
@@ -855,7 +882,7 @@ def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_coun
     score_values = data[f'score_{model_type}'].values
     rmse_values = data[f'rmse_{model_type}'].values
     sd_values = data[f'SD_{model_type}'].values
-    validation_values = data[f'validation_points_{model_type}'].values
+    Training_values = data[f'Training_points_{model_type}'].values
     test_values = data[f'test_points_{model_type}'].values
     rmse_converged = data['rmse_converged'].values
     sd_converged = data['SD_converged'].values
@@ -874,26 +901,26 @@ def plot_metrics_subplots(data, model_type, output_dir="batch_plots", batch_coun
     # Custom legend for converged metrics
     converged_patch = mpatches.Patch(edgecolor='black', facecolor='none', label='Metric Converged', linewidth=edge_linewidth)
 
-    # Plot 1 - Stacked Validation and Test Points
-    bars_val = axs[0].bar(batches, validation_values, width, color='#FFA500', label='Validation Points')
-    bars_test = axs[0].bar(batches, test_values, width, bottom=validation_values, color='#FF0000', label='Test Points')
+    # Plot 1 - Stacked Training and Test Points
+    bars_val = axs[0].bar(batches, Training_values, width, color='#FFA500', label='Training Points')
+    bars_test = axs[0].bar(batches, test_values, width, bottom=Training_values, color='#FF0000', label='Test Points')
     axs[0].set_title('Number of Points')
     axs[0].set_xlabel('Batch')
     axs[0].set_ylabel('Number of Points')
     axs[0].set_xticks(batches)
-    axs[0].set_ylim(0, (max(validation_values + test_values) * 1.3))
+    axs[0].set_ylim(0, (max(Training_values + test_values) * 1.3))
     axs[0].legend(loc='upper right', fancybox=True, shadow=True)
 
-    # Add individual values for validation and test points
-    for bar_val, bar_test, val, test in zip(bars_val, bars_test, validation_values, test_values):
-        # Text for validation points
+    # Add individual values for Training and test points
+    for bar_val, bar_test, val, test in zip(bars_val, bars_test, Training_values, test_values):
+        # Text for Training points
         axs[0].text(bar_val.get_x() + bar_val.get_width() / 2, bar_val.get_height() / 2,
-                    f'{val}', ha='center', va='center', color='black', fontsize=10)
+                    f'{int(val)}', ha='center', va='center', color='black', fontsize=10)
         
         # Text for test points only if it's not 0
         if test != 0:
             axs[0].text(bar_test.get_x() + bar_test.get_width() / 2, bar_val.get_height() + bar_test.get_height() / 2,
-                        f'{test}', ha='center', va='center', color='black', fontsize=10)
+                        f'{int(test)}', ha='center', va='center', color='black', fontsize=10)
 
 
     # Plot 2 - Standard Deviation (SD)

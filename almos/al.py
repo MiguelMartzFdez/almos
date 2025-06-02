@@ -56,7 +56,8 @@ from almos.al_utils import (
     assign_values,
     get_metrics_from_batches,
     EarlyStopping,
-    plot_metrics_subplots
+    plot_metrics_subplots,
+    get_scores_from_robert_report
 )
 
 
@@ -179,12 +180,13 @@ class al:
         os.environ["MPLBACKEND"] = "Agg"
 
         # Build and run the command for updating the ROBERT model
+    
         command = (
-            f'python -m robert --csv_name {filename_model_csv} '
+            f'python -m robert --csv_name "{filename_model_csv}" '
             f'--name {self.args.name} '
             f'--y {self.args.y} '
             f'--ignore "{self.args.ignore}" '
-            f'{self.args.robert_keywords}'  # Include keywords only if not empty works
+            f'{self.args.robert_keywords}'
         )
 
         self.args.log.write("\n")
@@ -218,9 +220,8 @@ class al:
         else:
             print(f"o File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
 
-
         # Build and run the command for generating predictions
-        command = f'python -m robert --name {self.args.name} --csv_test {self.args.csv_name} --ignore "{self.args.ignore}" --predict'
+        command = f'python -m robert --name "{self.args.name}" --csv_test "{self.args.csv_name}" --ignore "{self.args.ignore}" --predict'
         self.args.log.write("\n")
         self.args.log.write("==================================================\n")
         self.args.log.write("  Generating predictions with ROBERT model updated\n")
@@ -232,23 +233,29 @@ class al:
             self.args.log.write(f"x WARNING! Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
-        # Check if predictions were created correctly
-        # Define search path and pattern
+        # Get scores from PDF to decide which prediction to use
+        pdf_path = robert_path / "ROBERT_report.pdf"
+        score_no_PFI, score_PFI = get_scores_from_robert_report(pdf_path)
+        use_pfi = False
+        if score_PFI is not None and (score_no_PFI is None or score_PFI >= score_no_PFI):
+            use_pfi = True
+        self.args.log.write(f"Score No_PFI: {score_no_PFI}, Score PFI: {score_PFI}")
+
+        # Define search path
         search_path = robert_path / "PREDICT" / "csv_test"
 
-        # Get all matching files
-        matching_files = list(search_path.glob("*_PFI.csv"))
+        # Find the correct prediction file
+        if use_pfi:
+            matching_files = [f for f in search_path.glob("*.csv") if f.name.endswith("_PFI.csv") and "No_PFI" not in f.name]
+        else:
+            matching_files = [f for f in search_path.glob("*.csv") if f.name.endswith("_No_PFI.csv")]
 
-        # Ensure we exclude "_No_PFI.csv"
-        filtered_files = [f for f in matching_files if f.name.endswith("_No_PFI.csv")]
+        self.path_predictions = matching_files[0] if matching_files else None
 
-        # Take the first valid match
-        self.path_predictions = filtered_files[0] if filtered_files else None
-
-        if self.path_predictions.exists():
-            # Clean up, remove the test CSV file if it exists in main directory
-            os.remove(destination)
-            self.args.log.write("o New predictions generated successfully!")
+        if self.path_predictions and self.path_predictions.exists():
+            if os.path.exists(destination):
+                os.remove(destination)
+            self.args.log.write(f"o Using {'PFI' if use_pfi else 'No_PFI'} predictions: {self.path_predictions.name}")
         else:
             self.args.log.write(f"x WARNING! Predictions were not generated in {self.path_predictions}")
             sys.exit()
