@@ -26,11 +26,10 @@ path_tests = os.getcwd() + "/tests"
     [
         # test the route that GOES through AQME
         ("test_cluster1a.csv"),  # csv with column named batch, sys.exit(1)
-        # ("test_cluster1b.csv"),  # --aqme_keywords, --nprocs     
+        ("test_cluster1b.csv"),  # --aqme_keywords, --nprocs     
         ("test_cluster1c.csv"),  # input not defined, sys.exit(9)
         ("test_cluster1d.csv"),  # input not found, sys.exit(10)
-        ("test_cluster1e.csv"),  # n_clusters not defined, sys.exit(11)
-        ("test_cluster1f.csv"),  # --aqme_keywords misspelled, sys.exit(12),
+        ("test_cluster1f.csv"),  # --aqme_keywords misspelled or some problem in the execution of aqme, sys.exit(12)
         ("test_cluster2.csv"),   # duplicate row, invalid SMILE, duplicate SMILE, test fix_cols_names, columns with single data
         ("test_cluster2b.sdf"),  # input is an SDF file 
         ("test_cluster3a.csv"),  # csv without SMILES or code_name defined, sys.exit(2)
@@ -48,7 +47,9 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster8.csv"),   # less than three descriptors, sys.exit(7)
         ("test_cluster9.csv"),   # duplicate in the name column, sys.exit(8)
         ("test_cluster10.csv"),  # --name is NOT set, sys.exit(13)
-        ("test_cluster11.sdf")   # --input is a SDF file and not use aqme, sys.exit(14)
+        ("test_cluster11.sdf"),   # --input is a SDF file and not use aqme, sys.exit(14)
+        ("test_cluster12.csv"),  # elbow_method_nclusters   
+        ("test_cluster13.csv"),  # elbow_method_nclusters, optimal number of clusters not found, sys.exit(11)        
     ],
 )
 
@@ -89,7 +90,6 @@ def test_CLUSTER(test_job):
         "test_cluster1b.csv",  
         "test_cluster1c.csv", 
         "test_cluster1d.csv",
-        "test_cluster1e.csv",
         "test_cluster1f.csv", 
         "test_cluster2.csv",
         "test_cluster2b.sdf",
@@ -112,7 +112,9 @@ def test_CLUSTER(test_job):
         "test_cluster8.csv",
         "test_cluster9.csv",
         "test_cluster10.csv",
-        "test_cluster11.sdf"
+        "test_cluster11.sdf",
+        "test_cluster12.csv",
+        "test_cluster13.csv",        
         ]    
          
     if test_job in not_aqme:
@@ -143,15 +145,6 @@ def test_CLUSTER(test_job):
         "--n_clusters", "2",
         "--input", f'{path_tests}/csv_not_found.csv'
     ]
-     
-    if test_job == "test_cluster1e.csv": # change all the cmd_cluster
-        cmd_cluster = [
-        "python",
-        "-m", "almos",
-        "--aqme",
-        "--cluster",
-        "--input", f'{path_tests}/{test_job}'
-    ]
         
     if test_job == "test_cluster1f.csv":
         cmd_cluster += ["--aqme_keywords", "--qddescp_atoms [1,2]"]
@@ -178,8 +171,20 @@ def test_CLUSTER(test_job):
                         "--n_clusters", "2",
                         "--input", f'{path_tests}/{test_job}',
                         "--y","yield"]
-        
-        
+
+    if test_job == "test_cluster12.csv":
+        cmd_cluster = [ "python",
+                        "-m", "almos",
+                        "--cluster",
+                        "--input", f'{path_tests}/{test_job}',
+                        "--name","code_name"]
+                
+    if test_job == "test_cluster13.csv":
+        cmd_cluster = [ "python",
+                        "-m", "almos",
+                        "--cluster",
+                        "--input", f'{path_tests}/{test_job}',
+                        "--name","code_name"]        
     # CLUSTER
     
     # --input
@@ -244,7 +249,6 @@ def test_CLUSTER(test_job):
     test_sys_exit = ["test_cluster1a.csv",
                      "test_cluster1c.csv",
                      "test_cluster1d.csv",
-                     "test_cluster1e.csv",
                      "test_cluster1f.csv",
                      "test_cluster3a.csv",
                      "test_cluster3b.sdf",
@@ -256,7 +260,8 @@ def test_CLUSTER(test_job):
                      "test_cluster8.csv",
                      "test_cluster9.csv",
                      "test_cluster10.csv",
-                     "test_cluster11.sdf"
+                     "test_cluster11.sdf",
+                     "test_cluster13.csv"
     ]
     # First: all the tests that don't end, sys.exit()
     if test_job in test_sys_exit:
@@ -295,21 +300,11 @@ def test_CLUSTER(test_job):
         with pytest.raises(SystemExit) as excinfo:
             cluster(**dict_cluster)
         assert excinfo.value.code == 10, f"The program must display a WARNING because the name of the input is incorrect"
-        
-    if test_job == "test_cluster1e.csv":
-        assert exit_error.returncode == 11, "The n_clusters not defined and it has not exited the program"
-        error_11 = f"\nx WARNING. Please, specify the number of clusters required, e.g. --n_clusters 20"
-        assert error_11 in dat_file, f"The CSV file {test_job} must show a WARNING about n_clusters has not been defined"
-
-        # using CLUSTER, n_clusters not defined
-        with pytest.raises(SystemExit) as excinfo:
-            cluster(**dict_cluster)
-        assert excinfo.value.code == 11,  f"The CSV file {test_job} must show a WARNING about n_clusters has not been defined" 
 
     if test_job == "test_cluster1f.csv":
-        assert exit_error.returncode == 12, "It must show a WARNING about --aqme_keywords, because it has not been defined properly"
-        error_12 = f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" '''
-        assert error_12 in dat_file, f"The CSV file {test_job} must show a WARNING about --aqme_keywords, because it has not been defined properly"
+        assert exit_error.returncode == 12, "It must show a WARNING about --aqme_keywords, because it has not been defined properly or because aqme doesn't execute properly"
+        error_12 = f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.'''
+        assert error_12 in dat_file, f"The CSV file {test_job} must show a WARNING about --aqme_keywords, because it has not been defined properly or because aqme doesn't execute properly"
         
         # using CLUSTER, aqme_keywords not defined properly
         with pytest.raises(SystemExit) as excinfo:
@@ -380,8 +375,7 @@ def test_CLUSTER(test_job):
         assert exit_error.returncode == 6, "The CSV file has empty spaces in the descriptor columns, --auto_fill False has been defined and it has not exited the program" 
         error_6 = f"\nx WARNING. The input provided ({test_job}) has empty spaces in the descriptor columns. If you want them to be auto-completed, set --auto_fill True, and these will be filled with the auto_fill_knn function."
         assert error_6 in dat_file, f"The CSV file {test_job} must show a WARNING because has empty spaces and --auto_fill False has been defined"
-         
-        # print(cluster(**dict_cluster))        
+                 
         # using CLUSTER
         with pytest.raises(SystemExit) as excinfo:  
             cluster(**dict_cluster)
@@ -412,7 +406,7 @@ def test_CLUSTER(test_job):
         error_13 = f"\nx WARNING. Please, specify the name column of your CSV file, e.g. --name nitriles"
         assert error_13 in dat_file, f"The CSV file {test_job} must show a WARNING about name has not been defined"
         
-        # using CLUSTER, n_clusters not defined
+        # using CLUSTER
         with pytest.raises(SystemExit) as excinfo:
             cluster(**dict_cluster)
         assert excinfo.value.code == 13, f"The CSV file {test_job} must show a WARNING about name has not been defined" 
@@ -422,18 +416,28 @@ def test_CLUSTER(test_job):
         error_14 = f"\nx WARNING. Only is possible use a SDF file if using AQME (--aqme)"
         assert error_14 in dat_file, f"The SDF file {test_job} must show a WARNING about --aqme has not been defined"
         
-        # using CLUSTER, n_clusters not defined
+        # using CLUSTER
         with pytest.raises(SystemExit) as excinfo:
             cluster(**dict_cluster)
         assert excinfo.value.code == 14, f"The SDF file {test_job} must show a WARNING about --aqme has not been defined" 
 
+    if test_job == "test_cluster13.csv":
+        assert exit_error.returncode == 11, "Program runs elbow_method_nclusters, optimal number of clusters not found and it has not exited the program"
+        error_11 = f'''\nx WARNING. Optimal n_cluster could not be defined, because the curve doesn't have a clear "elbow" shape (the WCSS drops smoothly without inflection) or because the data is noisy or very linear'''
+        assert error_11 in dat_file, f"The CSV file {test_job} must show a WARNING about optimal number of clusters has not been defined"
+
+        # using CLUSTER
+        with pytest.raises(SystemExit) as excinfo:
+            cluster(**dict_cluster)
+        assert excinfo.value.code == 11,  f"The CSV file {test_job} must show a WARNING about optimal number of clusters has not been defined"
 
     # list of tests that finish      
     test_sys = ["test_cluster1b.csv",
                 "test_cluster2.csv",
                 "test_cluster2b.sdf",
                 "test_cluster7a.csv",
-                "test_cluster7c.csv"
+                "test_cluster7c.csv",
+                "test_cluster12.csv"
     ]
     # Second: all the tests that end    
     if test_job in test_sys:        
@@ -462,7 +466,7 @@ def test_CLUSTER(test_job):
             assert os.path.exists(destination), f'files of aqme not found in aqme folder'
 
         
-        aqme_keywords_cmd = f"o Command line used in AQME: python -m aqme --qdescp --input batch_0/test_cluster1b_b0.csv --nprocs 16 --qdescp_atoms [1,2]"    
+        aqme_keywords_cmd = f"o Command line used in AQME: python -m aqme --qdescp --input test_cluster1b_b0.csv --nprocs 16 --qdescp_atoms [1,2]"    
         assert any (aqme_keywords_cmd in line for line in dat_cluster), f'command line used in AQME is not the correct, for nprocs or aqme_keywords'
 
 
@@ -523,6 +527,7 @@ def test_CLUSTER(test_job):
         # check categorical variables (there are not)
         cat_var = f"   - No categorical variables were found"
         assert any (cat_var in line for line in dat_cluster), f'Information about categorical variables not found' 
+        
                
     if test_job == "test_cluster2b.sdf":       
 
@@ -537,6 +542,7 @@ def test_CLUSTER(test_job):
              
         # check the CSV file has been generated  
         assert os.path.exists('test_cluster2b.csv'), f'CSV file not found'
+        
                       
     if test_job == "test_cluster7a.csv":     
         
@@ -612,6 +618,26 @@ def test_CLUSTER(test_job):
         assert any (pca_poor in line for line in dat_cluster), f'information about PCA in the dat file text is not correct'
         assert any (pca7c in line for line in dat_cluster), f'information about PCA in the dat file text is not correct'     
         
+
+    if test_job == "test_cluster12.csv":  
+        
+        # check that it generate the plot of the relationship between the number of clusters (x) and the WCSS (y)
+        assert path.exists(f"{path_cluster}/batch_0/elbow_plot.png"), f'elbow_plot.png not found in batch_0 folder' 
+                  
+        # check that elbow_method_nclusters is applied
+        line1 = f'o Defining optimal n_clusters using the Elbow Method'          
+        line2 = f'o Evaluating 1 clusters'
+        line3 = f'o Evaluating 2 clusters'
+        line4 = f'o Evaluating 24 clusters'
+        line5 = f'o The file elbow_plot.png, which shows the relationship between the number of clusters (x) and the WCSS (y), has been generated in the folder batch_0'
+        line6 = f'o Optimal n_clusters has been defined as 8'
+        assert any (line1 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        assert any (line2 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        assert any (line3 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        assert any (line4 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        assert any (line5 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        assert any (line6 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
+        
         
     # leave the folders as they were initially before to run the tests
     folders_cluster = ["batch_0", "aqme"]
@@ -628,20 +654,11 @@ def test_CLUSTER(test_job):
     if test_job.split('.')[-1] == 'sdf':
         test_job_csv = test_job.replace('sdf','csv')           
         if os.path.exists(f'{test_job_csv}'):
-            os.remove(f'{test_job_csv}')     
+            os.remove(f'{test_job_csv}')
+    # remove CSV file of test_job_csv for the test of aqme error
+    test_job.split('.')
+    name_csv_b0 = test_job.split('.')[-2]    
+    if os.path.exists(f'{name_csv_b0}_b0.csv'):
+        os.remove(f'{name_csv_b0}_b0.csv')    
         
-# @pytest.mark.parametrize(
-# con aqme
-# )
 
-# def test_CLUSTER_2(test_job):
-#     XXX
-    
-
-# @pytest.mark.parametrize(
-# con aqme
-# )
-
-# def test_CLUSTER_3(test_job):
-#     XXX
-    
