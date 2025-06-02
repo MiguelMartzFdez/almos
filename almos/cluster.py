@@ -671,9 +671,12 @@ class cluster:
         self.args.log.write(f'\no The molecules selected for the batch 0 of the CLUSTER module are: {batch_0}')        
 
         # creating a CSV file with the options for the next module of Active Learning
+        # create an ignore list without name or target value (y)
+        ignore_al = [i for i in self.args.ignore if i != self.args.y and i != self.args.name]
+        
         options = {'y': self.args.y,
                        'csv_name': file_name,
-                       'ignore': [self.args.ignore],
+                       'ignore': [ignore_al],
                        'name': self.args.name
         } 
         options_csv = pd.DataFrame.from_dict(options)

@@ -596,7 +596,7 @@ def test_CLUSTER(test_job):
         options_csv = pd.read_csv('options.csv')
 
         options_col = ['y', 'csv_name', 'ignore', 'name'] 
-        options_values = ['yield', "test_cluster7a.csv","['yield', 'molecules', 'batch']", "molecules"]
+        options_values = ['yield', "test_cluster7a.csv","['batch']", "molecules"]
         
         for col in options_col:
             assert col in options_csv.columns, f'columns of options.csv are not correct'  
