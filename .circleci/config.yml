@@ -47,8 +47,7 @@ jobs:
           conda install -y -c conda-forge openbabel=3.1.1
           conda install -y -c conda-forge glib gtk3 pango mscorefonts
           conda install -y -c conda-forge xtb=6.7.1
-          pip install scikit-learn-intelex
-          pip install kneed
+          pip install scikit-learn-intelex  
           pip install .
 
           # uninstall almos to avoid codecov issues (only running from the almos folder)
