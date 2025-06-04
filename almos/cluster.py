@@ -603,8 +603,8 @@ class cluster:
         stop = int(rows_filled_array*coverage)
         
         # defining a limit value for the number of clusters
-        if stop > 300:
-            stop == 300
+        if stop > 1000:
+            stop == 1000
            
         # cluster execution for each n_clusters (k)
         self.args.log.write(f'\no Defining optimal n_clusters using the Elbow Method')  
