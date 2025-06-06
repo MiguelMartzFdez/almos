@@ -40,6 +40,7 @@ def command_line_args():
     bool_args = [
         "cluster",
         "al",
+        "bo",
         "reverse",
         "intelex",
         "aqme"
@@ -48,7 +49,9 @@ def command_line_args():
     int_args = [
         "n_clusters",
         "seed_clustered",
-        "nprocs"
+        "nprocs",
+        "batch_number",
+        "n_exps"
     ]
     int_double_args = [
         "n_points"
@@ -148,6 +151,9 @@ def load_variables(kwargs, almos_module, create_dat=True):
 
             elif almos_module == "cluster":
                 logger_1 = "CLUSTER"
+            
+            elif almos_module =="bo":
+                logger_1 = "BO"
 
             if not error_setup:
                 if not self.command_line:

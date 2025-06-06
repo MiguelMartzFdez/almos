@@ -33,7 +33,7 @@ setup(
     
     install_requires=[
     "aqme==1.7.2",
-    "robert==2.0.0",
+    "robert==2.0.1",
     "plotly==5.24.1",
     "matplotlib==3.10.0",
     "numpy>=1.26.4,<3.0",
@@ -41,7 +41,7 @@ setup(
     "pdfplumber==0.11.5",
     "rdkit==2024.3.3",
     "scikit_learn>=1.6,<1.7",
-    "pca==2.0.9",
+    "pca==2.0.9"
 ],
 
     python_requires=">=3.10",
