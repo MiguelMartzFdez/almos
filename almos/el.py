@@ -1,9 +1,9 @@
 """
 Parameters
 ----------
-    al : bool
-        Indicates whether active learning process is enabled and should be performed. Defaults to "False".
-        This parameter is activated in command line (i.e. --al)
+    el : bool
+        Indicates whether exploratory learning process is enabled and should be performed. Defaults to "False".
+        This parameter is activated in command line (i.e. --el)
     csv_name : str
         Name of the CSV file containing the database. (i.e. 'FILE.csv'). 
     y : str
@@ -14,10 +14,12 @@ Parameters
         List containing the columns of the input CSV file that will be ignored during the ROBERT process
         (i.e. --ignore "[name,SMILES]"). The descriptors will be included in the final CSV file. The y value, name column and batch column
         are automatically ignored by ROBERT.  
-    n_points : tuple of two int 
-        Specifies the number of new points for exploration and exploitation in the next batch. 
-        The first value is for exploration, and the second is for exploitation. (i.e. '--n_points 5:10')
-        If not provided or invalid, the program will request the values in the format 'explore:exploit'.
+    explore_rt : float, default= 1
+        Specifies the exploration ratio for the exploratory learning process, determining how many points to explore in relation to the total number of experiments. (i.e. '--explore_rt 0.5')
+        If not provided or invalid, the program will request the values in the proper format. 
+    n_exps : int,
+        Number of experiments to be selected in the exploratory learning process for the new batch. (i.e. '--n_exps 10')
+        If not provided or invalid, the program will request the values in the proper format.
     tolerance : str, default='medium'
         Indicates the tolerance level for the convergence process, defining the percentage change threshold required for convergence. Options:
         1. 'tight': Strictest level, convergence occurs if the metric improves by ≤1% (threshold = 0.01).
@@ -34,8 +36,8 @@ Parameters
 """
 
 #####################################################
-#           This file stores the AL class           #
-#        used in the active learning process        #
+#           This file stores the EL class           #
+#        used in the exploratory learning process        #
 #####################################################
 
 import pandas as pd
@@ -50,8 +52,9 @@ from almos.utils import (
     load_variables,
     check_dependencies
 )
-from almos.al_utils import (
+from almos.el_utils import (
     generate_quartile_medians_df,
+    get_quartile,
     get_size_counters,
     assign_values,
     get_metrics_from_batches,
@@ -61,7 +64,7 @@ from almos.al_utils import (
 )
 
 
-class al:
+class el:
     """
     Class containing all the functions from the active almos module
 
@@ -72,16 +75,16 @@ class al:
         start_time_overall = time.time()
         
         # load default and user-specified variables
-        self.args = load_variables(kwargs, "al")
+        self.args = load_variables(kwargs, "el")
 
         # Check dependencies such as scikit-learn-intelex
-        _ = check_dependencies(self, "al")
+        _ = check_dependencies(self, "el")
         
         # run robert model updated and generate predictions
         self.run_robert_process()
 
-        # run active learning process for select points for new batch
-        self.active_learning_process()
+        # run exploratory learning process for select points for new batch
+        self.exploratory_learning_process()
 
         # Check for convergence in the batches
         # Get metrics from batches
@@ -137,7 +140,7 @@ class al:
         # Initialize the logger
         self.args.log.write("\n")
         self.args.log.write("====================================\n")
-        self.args.log.write("  Starting Active Learning process\n")
+        self.args.log.write("  Starting Exploratory learning process\n")
         self.args.log.write("====================================\n")
 
         # Log parameters for the process
@@ -145,10 +148,13 @@ class al:
         self.args.log.write(f"CSV test file          : {self.args.csv_name}\n")
         self.args.log.write(f"Name column            : {self.args.name}\n")
         self.args.log.write(f"Y column               : {self.args.y}\n")
-        self.args.log.write(f"Points exploration     : {self.args.n_points[0]}\n")
-        self.args.log.write(f"Points explotation     : {self.args.n_points[1]}\n")
+        self.args.log.write(f"Number of experiments  : {self.args.n_exps}\n")
+        self.args.log.write(f"Exploration ratio      : {self.args.explore_rt} ({int(self.args.explore_rt * 100)}% of points for exploration)\n")
         self.args.log.write(f"Ignore columns         : {self.args.ignore}\n")
         self.args.log.write(f"Convergence tolerance  : {self.args.tolerance} ({self.args.levels_tolerance[self.args.tolerance] * 100:.2f}%)\n")
+        # Add this line for clarity about REVERSE
+        priority = "minimum (minimization)" if self.args.reverse else "maximum (maximization)"
+        self.args.log.write(f"Optimization priority  : {priority}\n")
         self.args.log.write("-------------------------------\n")
 
         # Main directory for the process
@@ -175,12 +181,7 @@ class al:
         # Change to the newly created ROBERT directory
         os.chdir(robert_path)
 
-        # Trying to avoid error in subprocess with tkinter
-        # Use "Agg" backend to prevent matplotlib from using tkinter, avoiding "main thread" errors in headless or multi-threaded environments.
-        os.environ["MPLBACKEND"] = "Agg"
-
         # Build and run the command for updating the ROBERT model
-    
         command = (
             f'python -m robert --csv_name "{filename_model_csv}" '
             f'--name {self.args.name} '
@@ -260,20 +261,20 @@ class al:
             self.args.log.write(f"x WARNING! Predictions were not generated in {self.path_predictions}")
             sys.exit()
 
-    def active_learning_process(self):
+    def exploratory_learning_process(self):
         """
-        Main function for the active learning process, including:
+        Main function for the exploratory learning process, including:
         - Reading and concatenating predictions with the raw data.
         - Splitting data into experimental and prediction sets.
         - Calculating quartiles and assigning points for exploration and exploitation.
         - Updating the dataset and saving results into organized batch folders.
         
-        This process manages both exploration and exploitation of data for an active learning cycle.
+        This process manages both exploration and exploitation of data for an exploratory learning cycle.
         """
         
         # Read predictions from ROBERT and concatenate with the raw data
         df_predictions = pd.read_csv(self.path_predictions)
-        
+
         # Move to the parent directory
         parent_directory = Path.cwd() / '..'
         os.chdir(parent_directory) 
@@ -282,6 +283,21 @@ class al:
         predictions_column = f'{self.args.y}_pred'
         sd_column = f'{predictions_column}_sd'
         self.args.df_raw[[predictions_column, sd_column]] = df_predictions[[predictions_column, sd_column]]
+
+        # Check if all predictions are equal (firewall)
+        if df_predictions[predictions_column].nunique() == 1:
+            self.args.log.write(
+                "\nx WARNING: All prediction values are identical. Active Learning process will stop.\n"
+                f"Predicted value: {df_predictions[predictions_column].iloc[0]}\n"
+                "This typically means that the machine learning model cannot find a pattern in the data.\n"
+                "Possible reasons:\n"
+                "- The molecular descriptors do not capture enough relevant information about the molecules.\n"
+                "- The problem is too complex for the current model.\n"
+                "- There are not enough data points to train a predictive model.\n"
+                "Please review your data and descriptor selection, or try adding more experiments.\n"
+            )
+            print("\n[ALMOS] Process stopped: all prediction values are identical.")
+            sys.exit(0)
         
         # Filter the DataFrame into experimental and predictions data
         df_raw_copy = self.args.df_raw.copy()
@@ -314,9 +330,14 @@ class al:
         self.args.log.write("--- Dataset Information ---\n")
         self.args.log.write(f"\nInitial sizes of dataset: {size_counters}\n")
 
-        # Create variables for exploration vs exploitation using n_points explore:exploit
-        explore_points = int(self.args.n_points[0])
-        exploit_points = int(self.args.n_points[1])
+        # Create variables for exploration vs exploitation using explore_rt
+        if self.args.n_exps == 1:
+            # One single point: decide based on ratio
+            explore_points = 1 if self.args.explore_rt >= 0.5 else 0
+            exploit_points = 1 - explore_points
+        else:
+            explore_points = round(self.args.n_exps * self.args.explore_rt)
+            exploit_points = self.args.n_exps - explore_points
         
         # Exploitation: Select top rows for q4 or q1 based on the predictions and if the process is reverse or not
         if self.args.reverse:
@@ -326,13 +347,18 @@ class al:
 
         predictions_copy_df.loc[top_df.index, self.args.batch_column] = self.args.current_number_batch
 
+        # Assign quartiles to the predictions DataFrame
+        predictions_copy_df['quartile'] = predictions_copy_df[predictions_column].apply(lambda x: get_quartile(x, boundaries))
+
         # Exploration: Assign values to the exploration quartiles based on proximity to quartile medians
         assigned_points, min_size_quartiles = assign_values(
             predictions_copy_df[predictions_copy_df[self.args.batch_column].isna()],
+            exploit_points,
             explore_points,
             quartile_medians, 
             size_counters, 
             predictions_column,
+            sd_column,
             self.args.reverse
         )
 
@@ -353,20 +379,26 @@ class al:
         self.args.log.write("\n--- Exploration ---\n")
         self.args.log.write(f"Ordered assigned points: {min_size_quartiles}\n\n")
         self.args.log.write(f"Number of points assigned for exploration: {explore_points}\n")
-        if self.args.reverse:
-            for q in ['q2', 'q3', 'q4']:
-                self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
+
+        # Dynamically select quartiles for logging
+        if exploit_points == 0:
+            quartiles = ['q1', 'q2', 'q3', 'q4']
+        elif self.args.reverse:
+            quartiles = ['q2', 'q3', 'q4']
         else:
-            for q in ['q1', 'q2', 'q3']:
-                self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
+            quartiles = ['q1', 'q2', 'q3']
+
+        for q in quartiles:
+            self.args.log.write(f"    Points assigned to {q}: {assigned_points[q]}\n")
 
         # Exploitation results
-        self.args.log.write("\n--- Exploitation ---\n")
-        self.args.log.write(f"Number of points assigned for exploitation: {exploit_points}\n")
-        if self.args.reverse:
-            self.args.log.write(f"    Points assigned to q1: {top_df[predictions_column].tolist()}\n")  
-        else:
-            self.args.log.write(f"    Points assigned to q4: {top_df[predictions_column].tolist()}\n")
+        if not exploit_points==0:
+            self.args.log.write("\n--- Exploitation ---\n")
+            self.args.log.write(f"Number of points assigned for exploitation: {exploit_points}\n")
+            if self.args.reverse:
+                self.args.log.write(f"    Points assigned to q1: {top_df[predictions_column].tolist()}\n")  
+            else:
+                self.args.log.write(f"    Points assigned to q4: {top_df[predictions_column].tolist()}\n")
 
         # Update batch column after exploration and exploitation
         df_raw_copy[self.args.batch_column] = df_raw_copy[self.args.batch_column].combine_first(predictions_copy_df[self.args.batch_column])

@@ -9,16 +9,16 @@
 [![PyPI](https://img.shields.io/pypi/v/almos-kit)](https://pypi.org/project/almos-kit/)
 
 ## Recommended installation
-1. (Only once) Create new conda environment: 'conda create -n almos python=3.10'  
-2. Activate conda environment: 'conda activate almos'  
-3. Install ALMOS using pip: 'pip install almos-kit'
-4. Install libraries necesaries for ROBERT 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'
-5. (Only for AQME workflow uses) Install libraries necesaries for AQME 'conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1'
-6. (Only for compatible devices) Install Intelex accelerator: 'pip install scikit-learn-intelex==2025.2.0' 
+1. (Only once) Create new conda environment: `conda create -n almos python=3.10` 
+2. Activate conda environment: `conda activate almos`  
+3. Install ALMOS using pip: `pip install almos-kit`
+4. Install libraries necesaries for ROBERT `conda install -y -c conda-forge glib gtk3 pango mscorefonts`
+5. (Only for AQME workflow uses) Install libraries necesaries for AQME `conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1`
+6. (Only for compatible devices) Install Intelex accelerator: `pip install scikit-learn-intelex==2025.2.0` 
 * Inexperienced users should visit the *Users with no Python experience* section in [Read the Docs](https://almos.readthedocs.io).
 
 ## Update the program
-1. Update to the latest version: 'pip install almos --upgrade'
+1. Update to the latest version: `pip install almos-kit --upgrade`
 
 ## Developers and help desk  
 List of main developers and contact emails:

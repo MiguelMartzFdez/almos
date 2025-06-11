@@ -1,5 +1,5 @@
 ######################################################.
-#     This file stores active learning functions     #
+#   This file stores exploratory learning functions  #
 ######################################################.
 
 import pandas as pd
@@ -8,6 +8,8 @@ import glob
 import re
 import pdfplumber
 from pathlib import Path
+# Set the matplotlib backend to Agg for non-interactive plotting
+os.environ["MPLBACKEND"] = "Agg"
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import ast
@@ -16,13 +18,14 @@ import shutil
 
 def check_missing_outputs(self):
         """
-        Validates input parameters for active learning.
+        Validates input parameters for exploratory learning.
 
         This method:
         - Loads default options and adds values for missing attributes ('target_column', 'name_column', 'ignore_list').
         - Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
         - Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
-        - Validates 'n_points' and 'tolerance' ensuring valid ranges.
+        - Validates 'explore_rt' and 'tolerance' ensuring valid ranges.
+        - Validates 'n_exps' ensuring it is a positive integer.
         - Manages the 'batch_column', adding or updating it as needed for data completeness.
         - Updates 'ignore_list' and saves final options to a file.
 
@@ -99,22 +102,33 @@ def check_missing_outputs(self):
             print(f"\nx WARNING! The target column '{self.y}' hasn't been found. Exiting.")
             sys.exit()
 
-       # Validate n_points
-        if self.n_points is None or not isinstance(self.n_points, tuple) or len(self.n_points) != 2:
-            self.n_points = input("\nx WARNING! The number of points to explore and exploit has not been specified correctly. Introduce the values as 'explore:exploit': ")
+        # Validate n_exps
+        if self.n_exps is None or not isinstance(self.n_exps, int) or self.n_exps <= 0:
+            user_input = input("\nx WARNING! The number of experiments has not been specified correctly. Enter a positive integer: ")
             try:
-                # Ensure the input is in the correct format and contains two positive integers
-                parts = self.n_points.split(":")
-                n_points = tuple(map(int, parts))  # Convert parts to integers
-                if len(parts) != 2 or n_points[0] <= 0 or n_points[1] <= 0:
+                value = int(user_input)
+                if value <= 0:
                     raise ValueError
-                self.n_points = n_points
+                self.n_exps = value
                 # Add to extra_cmd if the input is valid
-                self.extra_cmd += f' --n_points {self.n_points[0]}:{self.n_points[1]}'
+                self.extra_cmd += f' --n_exps {self.n_exps}'
             except ValueError:
-                print(f"\nx WARNING! Invalid input '{self.n_points}'. Expected format: 'explore:exploit' with two positive integers. Exiting.")
+                print(f"\nx WARNING! Invalid input '{user_input}'. Expected a positive integer. Exiting.")
                 sys.exit()
 
+        # Validate explore_rt
+        if not (0 <= self.explore_rt <= 1):
+            user_input = input("\nx WARNING! The exploration ratio has not been specified correctly. Enter a float value between 0 and 1: ")
+            try:
+                value = float(user_input)
+                if not (0 <= value <= 1):
+                    raise ValueError
+                self.explore_rt = value
+                # Add to extra_cmd if the input is valid
+                self.extra_cmd += f' --explore_rt {self.explore_rt}'
+            except ValueError:
+                print(f"\nx WARNING! Invalid input '{user_input}'. Expected a float value between 0 and 1. Exiting.")
+                sys.exit()
 
         # Validate tolerance level
         if self.tolerance not in self.levels_tolerance:
@@ -174,7 +188,7 @@ def check_missing_outputs(self):
                     log_file = Path.cwd() / "AL_data.dat"  
                     if log_file.exists():
                         log_file.unlink()  # Use .unlink() for a single file 
-                    print("\nx WARNING! Active learning process has been canceled. Exiting.")
+                    print("\nx WARNING! Exploratory learning process has been canceled. Exiting.")
                     exit()
             else:
                 print(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists and the last batch is 'batch_{max_existing_batch}'. Exiting.")
@@ -270,6 +284,31 @@ def generate_quartile_medians_df(df_total, df_exp, values_column):
 
     return df_exp, quartile_medians, boundaries
 
+def get_quartile(value, boundaries):
+    """
+    Determine the quartile a given value falls into based on specified boundaries.
+
+    Parameters:
+    -----------
+    value : float
+        The value to be classified into a quartile.
+    boundaries : list of float
+        A list of boundary values defining the quartile ranges.
+
+    Returns:
+    --------
+    str
+        The quartile ('q1', 'q2', 'q3', 'q4') the value falls into.
+    """
+
+    if value <= boundaries[1]:
+        return 'q1'
+    elif value <= boundaries[2]:
+        return 'q2'
+    elif value <= boundaries[3]:
+        return 'q3'
+    else:
+        return 'q4'
 
 def get_size_counters(df):
     """
@@ -309,58 +348,105 @@ def find_closest_value(df, target_median, target_column):
     return df.iloc[(df[target_column] - target_median).abs().argmin()]
 
 
-def assign_values(df, number_of_values, quartile_medians, size_counters, target_column, reverse):
-    """
-    Assign values to quartiles with the fewest points based on proximity to the quartile medians.
+# def assign_values(df, number_of_values, quartile_medians, size_counters, target_column, reverse):
+#     """
+#     Assign values to quartiles with the fewest points based on proximity to the quartile medians.
 
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        The DataFrame containing the dataset from which values will be selected.
-    number_of_values : int
-        The number of values to assign across the quartiles.
-    quartile_medians : dict
-        A dictionary containing the median values for each quartile.
-    size_counters : dict
-        A dictionary containing the number of points currently assigned to each quartile (q1, q2, q3, q4).
-    target_column : str
-        The name of the column in the DataFrame from which values will be assigned.
-    reverse : bool
-        If True, assigns values only to the last three quartiles ('q2', 'q3', 'q4').
-        If False, assigns values only to the first three quartiles ('q1', 'q2', 'q3').
+#     Parameters:
+#     -----------
+#     df : pd.DataFrame
+#         The DataFrame containing the dataset from which values will be selected.
+#     number_of_values : int
+#         The number of values to assign across the quartiles.
+#     quartile_medians : dict
+#         A dictionary containing the median values for each quartile.
+#     size_counters : dict
+#         A dictionary containing the number of points currently assigned to each quartile (q1, q2, q3, q4).
+#     target_column : str
+#         The name of the column in the DataFrame from which values will be assigned.
+#     reverse : bool
+#         If True, assigns values only to the last three quartiles ('q2', 'q3', 'q4').
+#         If False, assigns values only to the first three quartiles ('q1', 'q2', 'q3').
 
-    Returns:
-    --------
-    assigned_points : dict
-        A dictionary with quartiles ('q1', 'q2', 'q3', 'q4') as keys and the list of assigned values for each quartile.
-        If 'reverse' is True, only 'q2', 'q3', and 'q4' will be included. If False, only 'q1', 'q2', and 'q3' will.
-    min_size_quartiles : list
-        A list of the quartiles with the fewest points during each iteration.
-    """
-    if reverse:
-        assigned_points = {q: [] for q in ['q2', 'q3', 'q4']}
-        size_counters = {q: size_counters[q] for q in ['q2', 'q3', 'q4']}
-    else:
-        assigned_points = {q: [] for q in ['q1', 'q2', 'q3']}
-        size_counters = {q: size_counters[q] for q in ['q1', 'q2', 'q3']}
+#     Returns:
+#     --------
+#     assigned_points : dict
+#         A dictionary with quartiles ('q1', 'q2', 'q3', 'q4') as keys and the list of assigned values for each quartile.
+#         If 'reverse' is True, only 'q2', 'q3', and 'q4' will be included. If False, only 'q1', 'q2', and 'q3' will.
+#     min_size_quartiles : list
+#         A list of the quartiles with the fewest points during each iteration.
+#     """
+#     if reverse:
+#         assigned_points = {q: [] for q in ['q2', 'q3', 'q4']}
+#         size_counters = {q: size_counters[q] for q in ['q2', 'q3', 'q4']}
+#     else:
+#         assigned_points = {q: [] for q in ['q1', 'q2', 'q3']}
+#         size_counters = {q: size_counters[q] for q in ['q1', 'q2', 'q3']}
 
-    min_size_quartiles = []
+#     min_size_quartiles = []
     
-    for _ in range(number_of_values):
-        # Select the quartile with the fewest points
-        min_size_quartile = min(size_counters, key=size_counters.get)
-        target_median = quartile_medians[min_size_quartile]
-        min_size_quartiles.append(min_size_quartile)
+#     for _ in range(number_of_values):
+#         # Select the quartile with the fewest points
+#         min_size_quartile = min(size_counters, key=size_counters.get)
+#         target_median = quartile_medians[min_size_quartile]
+#         min_size_quartiles.append(min_size_quartile)
         
-        # Find the closest value to the quartile mean
-        closest_value_name = find_closest_value(df, target_median, target_column)
-        if closest_value_name is not None:
-            closest_value = closest_value_name[target_column]
-            assigned_points[min_size_quartile].append(closest_value)
-            size_counters[min_size_quartile] += 1
+#         # Find the closest value to the quartile mean
+#         closest_value_name = find_closest_value(df, target_median, target_column)
+#         if closest_value_name is not None:
+#             closest_value = closest_value_name[target_column]
+#             assigned_points[min_size_quartile].append(closest_value)
+#             size_counters[min_size_quartile] += 1
             
-            # Drop the assigned value from the DataFrame to avoid duplicates
-            df = df.drop(closest_value_name.name)
+#             # Drop the assigned value from the DataFrame to avoid duplicates
+#             df = df.drop(closest_value_name.name)
+
+#     return assigned_points, min_size_quartiles
+
+def assign_values(df,exploit_points, explore_points, quartile_medians, size_counters, predictions_column, sd_column, reverse):
+    """
+    Assigns points for exploration by quartile, prioritizing those with highest uncertainty (sd_column).
+    Uses size_counters to always select the quartile with the fewest assigned points.
+    If a quartile has no available points, selects the point closest to the quartile median.
+    If there are no exploitation points, distribute among all four quartiles.
+    """
+    assigned_points = {'q1': [], 'q2': [], 'q3': [], 'q4': []}
+    min_size_quartiles = []
+
+    if exploit_points == 0:
+        quartiles = ['q1', 'q2', 'q3', 'q4']
+    elif reverse:
+        quartiles = ['q2', 'q3', 'q4']
+    else:
+        quartiles = ['q1', 'q2', 'q3']
+
+    # Only consider size_counters for the relevant quartiles
+    working_counters = {q: size_counters[q] for q in quartiles}
+
+    df = df.copy()  # Avoid modifying the original DataFrame
+
+    for _ in range(explore_points):
+        # Select the quartile with the fewest assigned points
+        min_quartile = min(working_counters, key=working_counters.get)
+        min_size_quartiles.append(min_quartile)
+        q_points = df[df['quartile'] == min_quartile]
+        if not q_points.empty:
+            # Pick the point with the highest uncertainty
+            selected_row = q_points.sort_values(by=sd_column, ascending=False).iloc[0]
+            selected_value = selected_row[predictions_column]
+            assigned_points[min_quartile].append(selected_value)
+            # Remove the selected row from df
+            df = df.drop(selected_row.name)
+        else:
+            # Fallback:if no points available in the quartile, pick closest to median from all available
+            median = quartile_medians[min_quartile]
+            df['dist'] = (df[predictions_column] - median).abs()
+            selected_row = df.nsmallest(1, 'dist').iloc[0]
+            selected_value = selected_row[predictions_column]
+            assigned_points[min_quartile].append(selected_value)
+            df = df.drop(selected_row.name)
+            df.drop('dist', axis=1, inplace=True)
+        working_counters[min_quartile] += 1
 
     return assigned_points, min_size_quartiles
 
@@ -681,6 +767,12 @@ class EarlyStopping:
         """
         return (last_row[score_column] - previous_row[score_column]) >= score_tolerance
     
+    def check_score_no_improvement(self, previous_row, last_row, score_column):
+        """
+        Returns True if the score has not improved (i.e., stays the same or gets worse).
+        """
+        return last_row[score_column] <= previous_row[score_column]
+
     def show_summary(self, df, model_type):
         """
         Displays a final summary for either PFI or no_PFI metrics.
@@ -760,6 +852,7 @@ class EarlyStopping:
 
         # Initialize the no_improvement_streak variable
         no_improvement_streak = 0
+        score_no_improvement_streak = 0
 
         # Loop over the iterations, considering the patience
         for i in range(1, min(self.patience + 1, df.shape[0])):
@@ -779,26 +872,40 @@ class EarlyStopping:
                 column_name = f"{metric}_converged"
                 if not converged:
                     self.log.write(f" X {metric} for {model_type} model has not converged.")
-                    df.at[current_row.name, column_name] = 0  # Did not converge
+                    df.at[current_row.name, column_name] = 0  # Did not convergev
+                
                 else:
                     self.log.write(f" o {metric} for {model_type} model has converged.")
                     df.at[current_row.name, column_name] = 1  # Converged
+
+            # Check if score has NOT improved (i.e., same or worse)
+            if self.check_score_no_improvement(previous_row, current_row, score_column):
+                score_no_improvement_streak += 1
+                
+            else:
+                score_no_improvement_streak = 0  # reset if improved
 
             # Check if all metrics have converged; if so, increment the no improvement streak
             if all(patience_convergence.values()):
                 no_improvement_streak += 1
 
+        # WARNING if the score has not improved for patience + 1 consecutive batches
+        if score_no_improvement_streak >= self.patience:
+            self.log.write(
+                f"\nWARNING! For model {model_type}, the score has not improved for {score_no_improvement_streak} consecutive batches.\n"
+                "No further improvement in the model's score is expected under current conditions. Consider stopping the process. "
+            )  
+
         # If the patience limit is reached (no improvements), declare convergence
-        if no_improvement_streak >= self.patience:
+        elif no_improvement_streak >= self.patience:
             # Mark the last rows (based on patience) with "yes" for convergence
             df.loc[df.index[-self.patience:], 'convergence'] = 'yes'
             self.show_summary(df, model_type)  # Show final summary after convergence
         else:
-            self.log.write('\no Not converged yet, keep working with active learning process!')
+            self.log.write('\no Not converged yet, keep working with exploratory learning process!')
 
         return df  # Return the DataFrame with convergence results
  
-    
     def check_convergence(self, results_plot_no_PFI, results_plot_PFI):
         """
         Check for convergence for both PFI and no_PFI models independently.
