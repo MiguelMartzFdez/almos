@@ -39,6 +39,7 @@ def command_line_args():
     available_args = ["help"]
     bool_args = [
         "cluster",
+        "el",
         "al",
         "bo",
         "reverse",
@@ -50,8 +51,8 @@ def command_line_args():
         "n_clusters",
         "seed_clustered",
         "nprocs",
+        "n_exps",
         "batch_number",
-        "n_exps"
     ]
     int_double_args = [
         "n_points"

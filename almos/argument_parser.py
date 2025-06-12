@@ -23,6 +23,8 @@ var_dict = {
     "y": '',
     "auto_fill": True,
     "categorical": "onehot",
+    "el": False,
+    "explore_rt": 1,
     "al": False,
     "bo": False,          
     'n_points': None,                  
