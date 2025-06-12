@@ -8,12 +8,13 @@ import ast
 import getopt
 from pathlib import Path
 import time
+import shutil
 import subprocess
 from almos.argument_parser import set_options, var_dict
-from almos.al_utils import check_missing_outputs
+from almos.el_utils import check_missing_outputs
 
 obabel_version = "3.1.1" # this MUST match the meta.yaml
-aqme_version = "1.7.2"
+aqme_version = "1.7.3" # this MUST match the meta.yaml
 almos_version = "0.1.3"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
@@ -55,13 +56,14 @@ def command_line_args():
         "batch_number",
     ]
     int_double_args = [
-        "n_points"
+
     ]
     list_args = [
         "ignore"
  
     ]
     float_args = [
+        "explore_rt",
     ]
 
     for arg in var_dict:
@@ -147,8 +149,8 @@ def load_variables(kwargs, almos_module, create_dat=True):
         if create_dat:
             logger_1, logger_2 = "ALMOS", "data"
 
-            if almos_module == "al":
-                logger_1 = "AL"
+            if almos_module == "el":
+                logger_1 = "EL"
 
             elif almos_module == "cluster":
                 logger_1 = "CLUSTER"
@@ -165,7 +167,7 @@ def load_variables(kwargs, almos_module, create_dat=True):
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
 
                 # check if outputs are missing and load, needed here for update "command line" with inputs.
-                if almos_module == "al":
+                if almos_module == "el":
                     self = check_missing_outputs(self)
 
                 self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
@@ -266,7 +268,7 @@ def check_dependencies(self, module):
       - Requires 'obabel', version: "3.1.1"
       - Requires 'aqme', version: "1.7.2"
 
-    For module "al":
+    For module "el":
     - Requires 'robert' on all platforms.
     - Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).
 
@@ -295,46 +297,81 @@ def check_dependencies(self, module):
             self.args.log.finalize()
             sys.exit()
 
-    if module == "al":
+        if module == "el":
 
-        # Check for glib, gtk3, pango, and mscorefonts
-        required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
-        missing_packages = []
+            # Check for glib, gtk3, pango, and mscorefonts
+            required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
+            missing_packages = []
 
-        # Use conda list to verify package installation
-        result = subprocess.run(
-            ["conda", "list"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True
-        )
-        installed_packages = result.stdout
+            # Determine package manager
+            installed_packages = ""
+            using_conda = False
 
-        # Check for each required package
-        for package in required_packages:
-            if package not in installed_packages:
-                missing_packages.append(package)
+            if shutil.which("conda"):
+                result = subprocess.run(
+                    ["conda", "list"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                )
+                installed_packages = result.stdout
+                using_conda = True
 
-        # Log missing packages and exit if necessary
-        if missing_packages:
-            self.args.log.write(
-                f"\nx WARNING! The following required packages are missing: {', '.join(missing_packages)}"
-                "\nYou can install them with the command: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
-            )
-            self.args.log.finalize()
-            sys.exit()
+            elif shutil.which("pip"):
+                result = subprocess.run(
+                    ["pip", "list"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                )
+                # Extract package names from pip output
+                lines = result.stdout.strip().splitlines()[2:]  # Skip header
+                installed_packages = [line.split()[0].lower() for line in lines]
 
-        # Check for 'scikit-learn-intelex'
-        if not self.args.intelex:
-            try:
-                import sklearnex 
-            except ImportError:
+            else:
                 self.args.log.write(
-                    "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
-                    "\nNote that 'scikit-learn-intelex' is required unless '--intelex' is set in the command line. Exiting.")
+                    "\nERROR! Neither 'conda' nor 'pip' found in PATH. Cannot verify package installation."
+                )
                 self.args.log.finalize()
                 sys.exit()
-        else:
-            self.args.log.write(
-                "\no Running without 'scikit-learn-intelex' as requested.\n"
-            )
+
+            # Check for each required package
+            for package in required_packages:
+                if using_conda:
+                    if package.lower() not in installed_packages.lower():
+                        missing_packages.append(package)
+                else:
+                    if package.lower() not in installed_packages:
+                        missing_packages.append(package)
+
+            # Log missing packages and exit if necessary
+            if missing_packages:
+                self.args.log.write(
+                    f"\nx WARNING! The following required packages are missing: {', '.join(missing_packages)}"
+                )
+                if using_conda:
+                    self.args.log.write(
+                        "\nYou can install them with: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
+                    )
+                else:
+                    self.args.log.write(
+                        "\nYou can try installing equivalents via: 'pip install package_name' or use conda for better compatibility."
+                    )
+                self.args.log.finalize()
+                sys.exit()
+
+            # Check for 'scikit-learn-intelex'
+            if not self.args.intelex:
+                try:
+                    import sklearnex
+                except ImportError:
+                    self.args.log.write(
+                        "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
+                        "\nNote that 'scikit-learn-intelex' is required unless '--intelex' is set in the command line. Exiting."
+                    )
+                    self.args.log.finalize()
+                    sys.exit()
+            else:
+                self.args.log.write(
+                    "\no Running without 'scikit-learn-intelex' as requested.\n"
+                )

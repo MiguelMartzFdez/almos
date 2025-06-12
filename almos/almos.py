@@ -5,9 +5,9 @@
 ###                                                                                     ###
 ###  ALMOS is a tool automates the process of:                                          ###
 ###  (CLUSTER)                                                                          ###
-###  (AL)                                                                               ###                                                                                 
+###  (EL)                                                                               ###                                                                                 
 ###  - Updating a machine learning model                                                ###                                                     
-###  - Checking and validating input data for active learning                           ###
+###  - Checking and validating input data for exploratory learning                      ###
 ###  - Running model updates and generating predictions                                 ###
 ###  - Processing and selecting data points for new batches                             ###
 ###  - Checking for convergence and generating convergence plots                        ###
@@ -27,7 +27,7 @@
 
 
 from almos.cluster import cluster
-from almos.el import el
+from almos.el import el    
 from almos.al import al
 from almos.al_bayes import bo 
 from almos.utils import command_line_args
@@ -49,8 +49,8 @@ def main():
         cluster(**vars(args))
 
     # Active Learning process
-    if args.al:
-        al(**vars(args))
+    if args.el:
+        el(**vars(args))
 
     # Bayesian Optimization process
     if args.bo:
