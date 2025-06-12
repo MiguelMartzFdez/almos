@@ -25,8 +25,6 @@ var_dict = {
     "categorical": "onehot",
     "el": False,          
     'explore_rt': 1,
-    "el": False,
-    "explore_rt": 1,
     "al": False,
     "bo": False,          
     'n_points': None,                  
