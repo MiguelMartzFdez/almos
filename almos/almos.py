@@ -28,6 +28,8 @@
 
 from almos.cluster import cluster
 from almos.el import el    
+from almos.al import al
+from almos.al_bayes import bo 
 from almos.utils import command_line_args
 
 def main():
@@ -39,7 +41,7 @@ def main():
     args = command_line_args()
     args.command_line = True
     
-    if not args.cluster and not args.el:
+    if not args.cluster and not args.el and not args.al and not args.bo:
         print('x  No module was specified in the command line! (i.e. --cluster for Clustering Execution). If you did specify a module, check that you are using quotation marks when using options (i.e. --csv_name "*.csv").\n')
 
     # Cluster
@@ -49,6 +51,10 @@ def main():
     # Active Learning process
     if args.el:
         el(**vars(args))
+
+    # Bayesian Optimization process
+    if args.bo:
+        bo(**vars(args))
 
 if __name__ == "__main__":
     main()

@@ -42,7 +42,7 @@ setup(
     "rdkit==2024.3.3",
     "scikit_learn>=1.6,<1.7",
     "pca==2.0.9",
-    "kneed==0.8.5"
+    "kneed=0.8.5",
 ],
 
     python_requires=">=3.10",
