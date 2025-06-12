@@ -23,7 +23,7 @@ var_dict = {
     "categorical": "onehot",
     "el": False,          
     'explore_rt': 1,
-    'n_exps': None,                 
+    'n_exps': 1,                 
     'options_file': 'options.csv',
     'batch_column': 'batch',
     'tolerance': 'medium',
