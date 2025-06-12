@@ -351,8 +351,11 @@ class cluster:
         # if aqme = True, check the CSV has to contain the columns 'SMILES' and 'code_name'
         # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name' 
         if self.args.aqme:
-            if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
-                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme")
+            # Check if there is any column containing 'smiles' (case-insensitive) and any containing 'code_name' (case-insensitive)
+            smiles_cols = [col for col in df_csv_name.columns if col.lower().startswith('smiles')]
+            code_name_cols = [col for col in df_csv_name.columns if col.lower().startswith('code_name')]
+            if not smiles_cols or not code_name_cols:
+                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain at least one column starting with 'SMILES' and another starting with 'code_name' (case-insensitive) to generate the descriptors with aqme")
                 self.args.log.finalize()
                 sys.exit(2)
             # create the folder aqme, if there are not
