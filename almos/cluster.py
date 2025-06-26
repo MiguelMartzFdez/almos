@@ -12,9 +12,9 @@ General
       If the CSV already contains descriptors, it must contain at least 3, and the variable --name must be defined.
       For both cases, there cannot be any column named 'batch' in the CSV file.
    n_clusters : int, default = None 
-      Number of clusters for the clustered.
+      Number of clusters for the clustered. If not defined by the user, it is calculated using the Elbow Method.  
    seed_clustered : int, default = 0
-      Random seed used during KMeans (in k_neigh function).
+      Random seed used during KMeans (in k_means function).
    descp_level : str, default = 'interpret'
       Type of descriptor to be used in the ALMOS workflow. Options are 'interpret', 'denovo' or 'full'. 
    ignore : list, default = []
@@ -66,6 +66,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import KNNImputer
 import time
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sb
+# os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error
+from kneed import KneeLocator
 
 
 
@@ -105,6 +109,10 @@ class cluster:
         # prepare the CSV for the clustered
         self, filled_array, descp_file = self.clean_up_cluster(descp_file, csv, file_name)
         
+        # define n_clusters, if the user do not define it, with the Elbow Method  
+        if self.args.n_clusters == None:
+            _ = self.elbow_method_nclusters(filled_array)
+        
         # cluster execution    
         self, pc_total_val, pc1_var, pc2_var, pc3_var, df_pca = self.cluster_workflow(filled_array, descp_file, csv, file_name)
         
@@ -117,7 +125,6 @@ class cluster:
         
         shutil.move('CLUSTER_data.dat', 'batch_0/CLUSTER_data.dat') # move the DAT file to the subfolder of batch_0
     
-
     def checking_cluster(self):
         '''
         Detects errors and updates variables before the CLUSTER run
@@ -139,9 +146,9 @@ class cluster:
 
         # check that the number of clusters has been defined
         if self.args.n_clusters == None:
-            self.args.log.write(f"\nx WARNING. Please, specify the number of clusters required, e.g. --n_clusters 20")
-            self.args.log.finalize()
-            sys.exit(11)
+            self.args.log.write(f"\nx WARNING. The number of clusters is not specified (e.g. --n_clusters 20), it will be automatically calculated using the Elbow Method")
+            # self.args.log.finalize()
+            # sys.exit(11)
             
         # if 'name' is not defined and program is not going through AQME workflow, notify and exit the program 
         if self.args.name == '' and self.args.aqme == False:
@@ -344,8 +351,11 @@ class cluster:
         # if aqme = True, check the CSV has to contain the columns 'SMILES' and 'code_name'
         # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name' 
         if self.args.aqme:
-            if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
-                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme")
+            # Check if there is any column containing 'smiles' (case-insensitive) and any containing 'code_name' (case-insensitive)
+            smiles_cols = [col for col in df_csv_name.columns if col.lower().startswith('smiles')]
+            code_name_cols = [col for col in df_csv_name.columns if col.lower().startswith('code_name')]
+            if not smiles_cols or not code_name_cols:
+                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain at least one column starting with 'SMILES' and another starting with 'code_name' (case-insensitive) to generate the descriptors with aqme")
                 self.args.log.finalize()
                 sys.exit(2)
             # create the folder aqme, if there are not
@@ -391,9 +401,11 @@ class cluster:
 
         # create a new CSV file with the modifications in the subfolder 'batch_0', if the file exists, replaces it
         csv = file_name.rsplit('.', 1) # because the name of the file could have more dots
-        df_csv_name.to_csv(f'batch_0/{csv[0]}_b0.csv', index=False, header=True)
-           
-        descp_file = f'batch_0/{csv[0]}_b0.csv'  
+        df_csv_name.to_csv(f'{csv[0]}_b0.csv', index=False, header=True)
+
+        # first, CSV file is generated in the same folder. After aqme run (if it's the case) the CSV file will be moved to folder batch_0
+        # this is to solve the use of aqme with Windows          
+        descp_file = f'{csv[0]}_b0.csv'  
                       
         return self, descp_file, df_csv_name, csv   
        
@@ -436,7 +448,7 @@ class cluster:
         
         # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
         if not os.path.exists(f'AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
-            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2] --qdescp_solvent acetonitrile" ''')
+            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.''')
             self.args.log.finalize()
             sys.exit(12)          
         
@@ -461,7 +473,13 @@ class cluster:
         '''
         Prepare the CSV (descp_file) of both paths for the clustered
         '''
-                
+        # move CSV file with batch_0 column to batch_0 subfolder
+        shutil.move(f'{csv[0]}_b0.csv',f'batch_0/{csv[0]}_b0.csv')
+        
+        # putting the new correct location of the variable 
+        if self.args.aqme == False:
+            descp_file = f'batch_0/{csv[0]}_b0.csv'      
+                            
         # read created csv with information, diferent for each aqme workflow
         descp_df = pd.read_csv(descp_file)  
                 
@@ -508,10 +526,10 @@ class cluster:
         
         return self, filled_array, descp_file
       
-    def k_neigh(self, X_scaled,seed_clustered,n_clusters):
+    def k_means(self, X_scaled,seed_clustered,n_clusters):
 
         '''
-        Returns the data points that will be used as molecules in lab in order to generate experimental data (k-neighbour clustering)
+        Returns the data points that will be used as molecules to test to generate experimental data (k-means clustering)
 
         '''
         # n clusters with all the cores, of those clusters you keep 1 point (1 core) closest to each cluster, 
@@ -532,7 +550,7 @@ class cluster:
                 if k not in closest_points_cluster:
                     # calculate the Euclidean distance in n-dimensions
                     points_sum = 0
-                    for l in range(len(X_scaled_array[0])): # if the Euclidean distance is less that the actual number , it gets replaced
+                    for l in range(len(X_scaled_array[0])): # if the Euclidean distance is less that the actual number, it gets replaced
                         points_sum += (X_scaled_array[:, l][k]-centers[:, l][i])**2 # with that loop we obtained the closest point for that cluster
                     if np.sqrt(points_sum) < results_cluster:                       # and we repeat with each cluster
                         results_cluster = np.sqrt(points_sum)
@@ -543,6 +561,97 @@ class cluster:
 
         return closest_points_cluster,kmeans,X_scaled_array
       
+    def elbow_method_nclusters(self, filled_array):
+        ''' 
+        define optimal n_clusters, if the user do not define it, with the Elbow Method   
+        ''' 
+                       
+        # prepare array for kmeans
+        # standardize the data before k-means-based data splitting
+        scaler = StandardScaler()
+
+        X_scaled= scaler.fit_transform(filled_array)
+        
+        # knowing the number of rows of filled_array, determinate the interval between the values of n_clusters
+        rows_filled_array = len(filled_array)
+      
+        if rows_filled_array < 50:
+            interval = 1
+            coverage = 0.5
+            
+        elif 50 <= rows_filled_array < 100:
+            interval = 2
+            coverage = 0.4
+            
+        elif 100 <= rows_filled_array < 250:
+            interval = 5
+            coverage = 0.3
+            
+        elif 250 <= rows_filled_array < 1000:
+            interval = 10
+            coverage = 0.2
+            
+        elif 1000 <= rows_filled_array < 5000:
+            interval = 10
+            coverage = 0.1
+            
+        elif 5000 <= rows_filled_array < 10000:
+            interval = 10
+            coverage = 0.02
+            
+        elif 10000 <= rows_filled_array:
+            interval = 10
+            coverage = 0.01
+
+        stop = int(rows_filled_array*coverage)
+        
+        # defining a limit value for the number of clusters
+        if stop > 300:
+            stop = 300
+           
+        # cluster execution for each n_clusters (k)
+        self.args.log.write(f'\no Defining optimal n_clusters using the Elbow Method')  
+                  
+        k_list, wcss_list = [], [] # creating empty list for the number of clusters and the WCSS (within-cluster sum of squares)
+        
+        for i in range(interval, stop + 1, interval):  # i starts in 1/2/5/10 and covers up to the number of rows * chosen coverage (stop), step = interval
+            k = i
+            self.args.log.write(f'\no Evaluating {k} clusters')
+            points,kmeans,X_scaled_array = self.k_means(X_scaled,self.args.seed_clustered,k)           
+            k_list.append(k)
+            # Within-Cluster Sum of Squares, the total of the squared distances between data points and their cluster center 
+            wcss_list.append(kmeans.inertia_)
+            
+        # generate a plot of the relationship between the number of clusters (x) and the WCSS (y)
+        plt.plot(k_list,wcss_list, marker='o', linestyle='-', color='#1f77b4')
+        #sb.scatterplot(s = 20, marker='o', linestyle='-', color = 'b',  alpha = 1, edgecolor = 'black')
+        sb.scatterplot(x = k_list, y = wcss_list, s = 20, marker='o', color = 'b',  alpha = 1, edgecolor = 'black')
+        plt.title('Elbow Method for Optimal n_clusters (k)', fontsize=11)      # Chart title
+        plt.xlabel('Number of Clusters (k)', fontsize=9)                       # X-axis label
+        plt.ylabel('WCSS', fontsize=9)                                         # Y-axis label
+        
+        # set x-axis ticks every interval units, until rows_filled_array (number of rows)
+        plt.xticks(np.arange(0, stop + 1, interval), fontsize=8)
+        plt.yticks(fontsize=8)
+        
+        # save the plot as a PNG file in the 'batch_0' folder
+        plt.savefig('batch_0/elbow_plot.png', dpi=300, bbox_inches='tight')
+        self.args.log.write(f'\no The file elbow_plot.png, which shows the relationship between the number of clusters (x) and the WCSS (y), has been generated in the folder batch_0')
+        
+        # evaluate the optimal number of n_clusters using kneew
+        k_optimal = KneeLocator(k_list, wcss_list, curve="convex", direction="decreasing")
+        self.args.n_clusters = k_optimal.elbow
+
+        if self.args.n_clusters == None:
+            self.args.log.write(f'''\nx WARNING. Optimal n_cluster could not be defined, because the curve doesn't have a clear "elbow" shape (the WCSS drops smoothly without inflection) or because the data is noisy or very linear''')
+            self.args.log.write(f'''\no SUGGESTION. You can open de graph generated in batch_0, select n_clusters manually, and run ALMOS again including n_cluster selected; or modify the descriptors of your dataset''')
+            
+            self.args.log.finalize()
+            sys.exit(11)    
+
+        self.args.log.write(f'\no Optimal n_clusters has been defined as {self.args.n_clusters}')
+
+          
     def cluster_workflow(self, filled_array, descp_file, csv, file_name):
         ''' 
         cluster execution   
@@ -555,7 +664,7 @@ class cluster:
         X_scaled= scaler.fit_transform(filled_array)
 
         # saved points = n cores for index code, we can find them in descp_df with iloc
-        points,kmeans,X_scaled_array = self.k_neigh(X_scaled,self.args.seed_clustered,self.args.n_clusters)
+        points,kmeans,X_scaled_array = self.k_means(X_scaled,self.args.seed_clustered,self.args.n_clusters)
 
         # creating a list (batch_0) with the name of the molecules for the batch 0
         descp_df = pd.read_csv(descp_file) # this is because in the previous descp_df the names of the molecules have been removed
@@ -565,9 +674,12 @@ class cluster:
         self.args.log.write(f'\no The molecules selected for the batch 0 of the CLUSTER module are: {batch_0}')        
 
         # creating a CSV file with the options for the next module of Active Learning
+        # create an ignore list without name or target value (y)
+        ignore_al = [i for i in self.args.ignore if i != self.args.y and i != self.args.name]
+        
         options = {'y': self.args.y,
                        'csv_name': file_name,
-                       'ignore': [self.args.ignore],
+                       'ignore': [ignore_al],
                        'name': self.args.name
         } 
         options_csv = pd.DataFrame.from_dict(options)
