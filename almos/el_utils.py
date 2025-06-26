@@ -8,8 +8,6 @@ import glob
 import re
 import pdfplumber
 from pathlib import Path
-# Set the matplotlib backend to Agg for non-interactive plotting
-os.environ["MPLBACKEND"] = "Agg"
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import ast
@@ -896,6 +894,27 @@ class EarlyStopping:
                 "No further improvement in the model's score is expected under current conditions. Consider stopping the process. "
             )  
 
+        # Check the last row for convergence status
+        # If the score is already very good (>= 8), suggest stopping the process for both PFI and no_PFI
+        last_row = df.iloc[-1]
+        score_value_pfi = last_row['score_PFI'] if 'score_PFI' in last_row else None
+        score_value_no_pfi = last_row['score_no_PFI'] if 'score_no_PFI' in last_row else None
+
+        if score_value_pfi is not None and score_value_pfi >= 8:
+            self.log.write(
+                f"\nModel PFI score in the last batch is {score_value_pfi:.2f}, which is already very good!"
+            )
+            self.log.write(
+                f"\nRecommendation: You may consider stopping the active learning process for PFI, as the model performance is already satisfactory."
+            )
+        if score_value_no_pfi is not None and score_value_no_pfi >= 8:
+            self.log.write(
+                f"\nModel no_PFI score in the last batch is {score_value_no_pfi:.2f}, which is already very good!"
+            )
+            self.log.write(
+                f"\nRecommendation: You may consider stopping the active learning process for no_PFI, as the model performance is already satisfactory."
+            )
+            
         # If the patience limit is reached (no improvements), declare convergence
         elif no_improvement_streak >= self.patience:
             # Mark the last rows (based on patience) with "yes" for convergence
