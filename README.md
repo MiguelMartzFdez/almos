@@ -5,7 +5,7 @@
 [![CircleCI](https://img.shields.io/circleci/build/github/MiguelMartzFdez/almos?label=Circle%20CI&logo=circleci)](https://app.circleci.com/pipelines/github/MiguelMartzFdez/almos)
 [![Codecov](https://img.shields.io/codecov/c/github/MiguelMartzFdez/almos?label=Codecov&logo=codecov)](https://codecov.io/gh/MiguelMartzFdez/almos)
 [![Downloads](https://pepy.tech/badge/almos-kit)](https://pepy.tech/project/almos-kit)
-[![Read the Docs](https://img.shields.io/readthedocs/almos-kit?label=Read%20the%20Docs&logo=readthedocs)](https://almos-kit.readthedocs.io/)
+[![Read the Docs](https://img.shields.io/readthedocs/almos-kit?label=Read%20the%20Docs&logo=readthedocs)](https://almos.readthedocs.io/)
 [![PyPI](https://img.shields.io/pypi/v/almos-kit)](https://pypi.org/project/almos-kit/)
 
 ## Recommended installation
