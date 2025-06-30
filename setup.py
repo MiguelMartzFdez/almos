@@ -9,7 +9,7 @@ setup(
     description="Active Learning Molecular Selection",
     long_description="Documentation in Read The Docs: https://almos.readthedocs.io",
     long_description_content_type="text/markdown",
-    author="Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena",
+    author="Miguel Martínez Fernández, Susana García Abellán, David Dalmau Ginesta, Juan V. Alegre Requena",
     author_email="miguel.martinez@csic.es, susanag.abellan@gmail.com",
     keywords=[
         "workflows",
