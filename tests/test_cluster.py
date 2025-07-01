@@ -47,7 +47,7 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster8.csv"),   # less than three descriptors, sys.exit(7)
         ("test_cluster9.csv"),   # duplicate in the name column, sys.exit(8)
         ("test_cluster10.csv"),  # --name is NOT set, sys.exit(13)
-        ("test_cluster11.sdf"),   # --input is a SDF file and not use aqme, sys.exit(14)
+        ("test_cluster11.sdf"),  # --input is a SDF file and not use aqme, sys.exit(14)
         ("test_cluster12.csv"),  # elbow_method_nclusters   
         ("test_cluster13.csv"),  # elbow_method_nclusters, optimal number of clusters not found, sys.exit(11)        
     ],
@@ -550,7 +550,8 @@ def test_CLUSTER(test_job):
         files_of_batch_0 = [f'test_cluster7a_b0.csv', 
                             'batch_0.dat', 
                             'CLUSTER_data.dat',
-                            'pca_3d.html']
+                            'pca_3d.html',
+                            'clustering_results.csv']
         for file in files_of_batch_0:
             destination = f'{path_cluster}/batch_0/{file}'
             assert os.path.exists(destination), f'files of batch_0 folder not found' 
@@ -576,6 +577,10 @@ def test_CLUSTER(test_job):
         # check the PCA
         pca = f"o GOOD. 82.1 % explained variability. (PC1 34.1 %, PC2 25.6 %, PC3 22.4 %)"          
         assert any (pca in line for line in dat_cluster), f'Information about PCA not found in the dat file text' 
+        
+        # check if the file clustering_results.csv has been created
+        csv_results = f"o Complete clustering results (with cluster number, selected and unselected molecules, and PC coordinates) save as batch_0/clustering_results.csv"          
+        assert any (csv_results in line for line in dat_cluster), f'Information about the creation of clustering_results.csv not found in the dat file text' 
           
         # check that the origin CSV file has not been modified (with the auto_fill_knn), empty spaces in 'x1' and 'x2'
         #     'x1': [56,  None,   35,   5643,  6536,   6536,   657],

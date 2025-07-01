@@ -149,7 +149,9 @@ class cluster:
             self.args.log.write(f"\nx WARNING. The number of clusters is not specified (e.g. --n_clusters 20), it will be automatically calculated using the Elbow Method")
             # self.args.log.finalize()
             # sys.exit(11)
-            
+        else:
+            self.args.log.write(f"\nx WARNING. The cluster module is performing without using the Elbow Method. If you want to generate the optical number of clusters remove '--n_clusters n' of your script")
+           
         # if 'name' is not defined and program is not going through AQME workflow, notify and exit the program 
         if self.args.name == '' and self.args.aqme == False:
             self.args.log.write(f"\nx WARNING. Please, specify the name column of your CSV file, e.g. --name nitriles")
@@ -630,6 +632,8 @@ class cluster:
         # set x-axis ticks every interval units, until rows_filled_array (number of rows)
         plt.xticks(np.arange(0, stop + 1, interval), fontsize=8)
         plt.yticks(fontsize=8)
+        plt.ylim(bottom=0)
+        plt.xlim(left=0)
         
         # save the plot as a PNG file in the 'batch_0' folder
         plt.savefig('batch_0/elbow_plot.png', dpi=300, bbox_inches='tight')
@@ -641,12 +645,23 @@ class cluster:
 
         if self.args.n_clusters == None:
             self.args.log.write(f'''\nx WARNING. Optimal n_cluster could not be defined, because the curve doesn't have a clear "elbow" shape (the WCSS drops smoothly without inflection) or because the data is noisy or very linear''')
-            self.args.log.write(f'''\no SUGGESTION. You can open de graph generated in batch_0, select n_clusters manually, and run ALMOS again including n_cluster selected; or modify the descriptors of your dataset''')
+            self.args.log.write(f'''\no SUGGESTION. You can open de graph generated in batch_0, select n_clusters manually, and run ALMOS again including n_cluster selected (e.g. -n_clusters n)''')
             
             self.args.log.finalize()
             sys.exit(11)    
 
         self.args.log.write(f'\no Optimal n_clusters has been defined as {self.args.n_clusters}')
+
+        # add dashed vertical line in k_optimal
+        ymax = df_elbow.loc[df_elbow['n_clusters (k)'] == self.args.n_clusters, 'WCSS'].values[0]
+        plt.vlines(x=self.args.n_clusters, ymin = -5, ymax=ymax, colors='dimgray', linestyles='dashed', linewidth=1, zorder=1)
+        # plt.axvline(x=self.args.n_clusters, ymax=ymax, color='dimgray', linestyle='dashed', linewidth=1, zorder=1)
+        
+        # modify title to include optimal k value
+        plt.title(f'Elbow Method for Optimal n_clusters (k found at {self.args.n_clusters})', fontsize=11)
+
+        # overwrites the graph with some variation (vertical line and optimal number of clusters)
+        plt.savefig('batch_0/elbow_plot.png', dpi=300, bbox_inches='tight')
 
           
     def cluster_workflow(self, filled_array, descp_file, csv, file_name):
@@ -725,6 +740,18 @@ class cluster:
         # df prepared with PC and cluster labels for each molecule
         pcaModel.results['PC']
         df_pca = pcaModel.results['PC'].join([df_pca['Cluster'], df_pca['Point selected']]) 
+        
+        # build and save a results DataFrame with SMILES, code_name, Cluster and PCs
+        if self.args.aqme:
+            results_df = descp_df[['SMILES', 'code_name']].copy()
+        else:
+            results_df = descp_df[[self.args.name]].copy()
+        results_df['Cluster'] = kmeans.labels_.astype(int)
+        results_df['Point selected'] = 0
+        results_df.loc[points, 'Point selected'] = 1
+        results_df[['PC1','PC2','PC3']] = pcaModel.results['PC'][['PC1','PC2','PC3']]
+        results_df.to_csv('batch_0/clustering_results.csv', index=False)
+        self.args.log.write("\no Complete clustering results (with cluster number, selected and unselected molecules, and PC coordinates) save as batch_0/clustering_results.csv")
         
         return self, pc_total_val, pc1_var, pc2_var, pc3_var, df_pca
       
