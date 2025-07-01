@@ -68,7 +68,7 @@ import time
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sb
-os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error
+# os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error
 from kneed import KneeLocator
 
 
@@ -605,8 +605,8 @@ class cluster:
         stop = int(rows_filled_array*coverage)
         
         # defining a limit value for the number of clusters
-        if stop > 1000:
-            stop == 1000
+        if stop > 300:
+            stop = 300
            
         # cluster execution for each n_clusters (k)
         self.args.log.write(f'\no Defining optimal n_clusters using the Elbow Method')  
