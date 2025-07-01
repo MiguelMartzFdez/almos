@@ -1,0 +1,51 @@
+Metadata-Version: 2.1
+Name: almos-kit
+Version: 0.1.3
+Summary: Active Learning Molecular Selection
+Home-page: https://github.com/MiguelMartzFdez/almos
+Download-URL: https://github.com/MiguelMartzFdez/almos/archive/refs/tags/0.1.3.tar.gz
+Author: Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena
+Author-email: miguel.martinez@csic.es, susanag.abellan@gmail.com
+License: MIT
+Keywords: workflows,machine learning,cheminformatics,clustering,active learning,automated
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aqme==1.7.3
+Requires-Dist: robert==2.0.2
+Requires-Dist: plotly==5.24.1
+Requires-Dist: matplotlib==3.10.0
+Requires-Dist: numpy<3.0,>=1.26.4
+Requires-Dist: pandas<2.3,>=2.2.2
+Requires-Dist: pdfplumber==0.11.5
+Requires-Dist: rdkit==2024.3.3
+Requires-Dist: scikit_learn<1.7,>=1.6
+Requires-Dist: pca==2.0.9
+Requires-Dist: kneed==0.8.5
+Requires-Dist: botorch==0.7.2
+Requires-Dist: gpytorch==1.9.0
+Requires-Dist: idaes-pse==1.5.1
+Requires-Dist: ipykernel==6.5.1
+Requires-Dist: ipython==7.29.0
+Requires-Dist: ipywidgets==7.6.5
+Requires-Dist: Jinja2==3.0.3
+Requires-Dist: joypy==0.2.6
+Requires-Dist: lxml==4.6.4
+Requires-Dist: mordred==1.2.0
+Requires-Dist: ordered-set==4.0.2
+Requires-Dist: pareto==1.1.1.post3
+Requires-Dist: pymoo==0.5.0
+Requires-Dist: scipy==1.15.0
+Requires-Dist: seaborn
+Requires-Dist: sympy==1.13.3
+Requires-Dist: torch==2.7.0
+Requires-Dist: tqdm
+
+Documentation in Read The Docs: https://almos.readthedocs.io
