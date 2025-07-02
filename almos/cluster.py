@@ -420,7 +420,8 @@ class cluster:
         dest_qdescp  = workdir / "QDESCP" 
 
         cmd_csearch = ["python", "-m", "aqme", "--csearch", "--input", descp_file, "--destination", dest_csearch, "--program", "rdkit"]        
-        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file, "--destination", dest_qdescp]
+        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--files", "/CSEARCH/*.sdf", "--csv_name", descp_file, "--destination", dest_qdescp, "--charge", "None", "--mult", "None"]
+
         
         # cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file] # using this command gave an error in pytest with Circle CI. 
         # Despite running this single command, it split the command into:
