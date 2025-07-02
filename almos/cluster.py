@@ -419,7 +419,7 @@ class cluster:
         dest_csearch  = workdir / "CSEARCH" 
         dest_qdescp  = workdir / "QDESCP" 
 
-        cmd_csearch = ["python", "-m", "aqme", "--csearch", "--input", descp_file, "--destination", dest_csearch, "program", "rdkit"]        
+        cmd_csearch = ["python", "-m", "aqme", "--csearch", "--input", descp_file, "--destination", dest_csearch, "--program", "rdkit"]        
         cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file, "--destination", dest_qdescp]
         
         # cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file] # using this command gave an error in pytest with Circle CI. 
