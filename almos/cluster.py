@@ -68,7 +68,8 @@ import time
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sb
-# os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error
+os.environ.setdefault("MPLBACKEND", "Agg") # avoid unwanted information on the terminal, it tells Matplotlib to use a backend that does not depend on Qt
+# os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error, not compatible with Windows
 from kneed import KneeLocator
 
 
@@ -348,16 +349,13 @@ class cluster:
         self.args.ignore.append('batch') 
         # create the folders batch_0, if there is not
         os.makedirs('batch_0') if not os.path.exists('batch_0') else None
-        
+         
         
         # if aqme = True, check the CSV has to contain the columns 'SMILES' and 'code_name'
         # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name' 
         if self.args.aqme:
-            # Check if there is any column containing 'smiles' (case-insensitive) and any containing 'code_name' (case-insensitive)
-            smiles_cols = [col for col in df_csv_name.columns if col.lower().startswith('smiles')]
-            code_name_cols = [col for col in df_csv_name.columns if col.lower().startswith('code_name')]
-            if not smiles_cols or not code_name_cols:
-                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain at least one column starting with 'SMILES' and another starting with 'code_name' (case-insensitive) to generate the descriptors with aqme")
+            if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
+                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme")
                 self.args.log.finalize()
                 sys.exit(2)
             # create the folder aqme, if there are not
@@ -623,6 +621,13 @@ class cluster:
             k_list.append(k)
             # Within-Cluster Sum of Squares, the total of the squared distances between data points and their cluster center 
             wcss_list.append(kmeans.inertia_)
+            
+        # creating a df with the values of the plot and saving it in a csv ()
+        dict_elbow = {
+            "n_clusters (k)" : k_list,
+            "WCSS" : wcss_list
+        }
+        df_elbow = pd.DataFrame(dict_elbow)
             
         # generate a plot of the relationship between the number of clusters (x) and the WCSS (y)
         plt.plot(k_list,wcss_list, marker='o', linestyle='-', color='#1f77b4')
