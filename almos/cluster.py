@@ -53,8 +53,7 @@ General
 ######################################################.
 
 import sys
-import os, glob
-from pathlib import Path
+import os
 import subprocess
 import shutil
 import pandas as pd
@@ -415,23 +414,9 @@ class cluster:
         Generate the descriptors if the user needs it
         '''
 
-        workdir   = Path.cwd()                          
-        dest_csearch  = workdir / "CSEARCH" 
-        dest_qdescp  = workdir / "QDESCP" 
-
-        cmd_csearch = ["python", "-m", "aqme", "--csearch", "--input", descp_file, "--destination", dest_csearch, "--program", "rdkit"]        
-        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--files", "/CSEARCH/*.sdf", "--csv_name", descp_file, "--destination", dest_qdescp, "--charge", "None", "--mult", "None"]
-
-        
-        # cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file] # using this command gave an error in pytest with Circle CI. 
-        # Despite running this single command, it split the command into:
-        # i) Command line used in AQME: python -m aqme --csearch --program "rdkit" --input "test_cluster2_b0.csv" --sample "5" --destination "/root/project/CSEARCH" --nprocs "8" --auto_sample "low"
-        # ii) Command line used in AQME: python -m aqme --qdescp --input "test_cluster2_b0.csv"
-        # and the second one didn't complete (it couldn't find some JSON file).
-        # However, running the tests from the terminal (same version of aqme) did work.
+        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file]
         
         if self.args.nprocs != 8:  # it is 8 by default
-            cmd_csearch += ["--nprocs", f"{self.args.nprocs}"]
             cmd_qdescp += ["--nprocs", f"{self.args.nprocs}"]
         
         if self.args.aqme_keywords != '':
@@ -440,21 +425,15 @@ class cluster:
                 word = word.replace('"','').replace("'","")                
                 cmd_qdescp.append(word) 
                  
-        # running both modules of aqme       
-        exit_error = subprocess.run(cmd_csearch)        
+        # running both modules of aqme             
         exit_error = subprocess.run(cmd_qdescp)
     
-        # converts the commands to a string, for printing later          
-        string_cmd_csearch = ''
-        for cmd in cmd_csearch:
-            string_cmd_csearch += f'{cmd} ' # adding blank space between words
-            
+        # converts the commands to a string, for printing later                 
         string_cmd = ''
         for cmd in cmd_qdescp:
             string_cmd += f'{cmd} ' # adding blank space between words
         
         # to check in cluster.dat the command line that it sends to aqme, which sometimes does not match the one that aqme launches later  
-        self.args.log.write(f"\no Command line used in AQME: {string_cmd_csearch} ")        
         self.args.log.write(f"\no Command line used in AQME: {string_cmd} ")
         
         # if exit_error.returncode != 0:
@@ -471,6 +450,12 @@ class cluster:
                         'QDESCP']
         folders = ['CSEARCH', 'QDESCP']
         
+        # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
+        if not os.path.exists(f'AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
+            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.''')
+            self.args.log.finalize()
+            sys.exit(12) 
+        
         # move files to aqme subfolder
         for file in files_to_aqme:
             destination = f'aqme/{file}'
@@ -483,11 +468,6 @@ class cluster:
             if os.path.exists(file):                 # move the file
                 shutil.move(file, destination)
                 
-        # check subprocess.run(cmd_qdescp), if there is an error, it is probably due to --aqme_keywords
-        if not os.path.exists(f'aqme/AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
-            self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.''')
-            self.args.log.finalize()
-            sys.exit(12)  
             
         # after running the code, the variable descp_file is updated with the chosen file with the descriptors
         descp_file = f'aqme/AQME-ROBERT_{self.args.descp_level}_{csv[0]}_b0.csv' 
