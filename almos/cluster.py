@@ -423,13 +423,17 @@ class cluster:
             cmd_aqme = self.args.aqme_keywords.split()
             for word in cmd_aqme:
                 word = word.replace('"','').replace("'","")                
-                cmd_qdescp.append(word)  
-                
+                cmd_qdescp.append(word) 
+                 
+        # running both modules of aqme             
+        exit_error = subprocess.run(cmd_qdescp)
+    
+        # converts the commands to a string, for printing later                 
         string_cmd = ''
         for cmd in cmd_qdescp:
-            string_cmd += f'{cmd} ' # adding blank space between words   
+            string_cmd += f'{cmd} ' # adding blank space between words
         
-        exit_error = subprocess.run(cmd_qdescp)
+        # to check in cluster.dat the command line that it sends to aqme, which sometimes does not match the one that aqme launches later  
         self.args.log.write(f"\no Command line used in AQME: {string_cmd} ")
         
         # if exit_error.returncode != 0:
@@ -450,7 +454,7 @@ class cluster:
         if not os.path.exists(f'AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
             self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.''')
             self.args.log.finalize()
-            sys.exit(12)          
+            sys.exit(12) 
         
         # move files to aqme subfolder
         for file in files_to_aqme:
@@ -462,7 +466,8 @@ class cluster:
                     os.remove(destination)
         
             if os.path.exists(file):                 # move the file
-                shutil.move(file, destination) 
+                shutil.move(file, destination)
+                
             
         # after running the code, the variable descp_file is updated with the chosen file with the descriptors
         descp_file = f'aqme/AQME-ROBERT_{self.args.descp_level}_{csv[0]}_b0.csv' 
