@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 import shutil
 import os
+import re
 
 class bo:
     """
@@ -65,14 +66,24 @@ class bo:
         name = self.args.name
 
         if not csv_name:
+            self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --csv_name example.csv")
+            self.args.log.finalize()
             sys.exit("ERROR: --csv_name must be specified.")
         batch_folder = Path.cwd() / f"batch_{batch}"
         
         if not batch_folder.exists():
+            self.args.log.write(f"\nx WARNING. Folder {batch_folder} not found.")
+            self.args.log.finalize()
             sys.exit(f"ERROR: folder {batch_folder} not found.")
         file = batch_folder / (csv_name if csv_name.endswith('.csv') else f"{csv_name}.csv")
         if not file.exists():
+            self.args.log.write(f"\nx WARNING. CSV '{csv_name}' not found in {batch_folder}.")
+            self.args.log.finalize()
             sys.exit(f"ERROR: CSV '{csv_name}' not found in {batch_folder}.")
+
+        # Make a copy as csv_original in the same folder
+        original_copy = batch_folder / f"{csv_name}_original.csv"
+        shutil.copy(str(file), str(original_copy))
         
         # Parse y columns, handling cases like '[ee, yield]'
         y_arg = self.args.y
@@ -185,16 +196,20 @@ class bo:
             base_name = self.args.csv_name
             if base_name.lower().endswith('.csv'):
                 base_name = base_name[:-4]
-                new_name = f"{base_name}_{self.current_batch}.csv"
-                shutil.move(str(pred_file), str(out_folder / new_name))
+
+            # If base_name ends with _number, increment number
+            match = re.match(r"^(.*)_(\d+)$", base_name)
+            if match:
+                prefix, num = match.groups()
+                new_base = f"{prefix}_{int(num) + 1}"
+            else:
+                new_base = f"{base_name}_{self.current_batch}"
+
+            new_name = f"{new_base}.csv"
+            shutil.move(str(pred_file), str(out_folder / new_name))
             
             print(f"Moved {new_name} to {out_folder}")
         else:
             print("WARNING: pred_*.csv not found after waiting.")
-
-        # Move AL_data.dat if it exists
-        logf = self.csv_dir / "AL_data.dat"
-        if logf.exists():
-            shutil.move(str(logf), str(out_folder / logf.name))
 
         print(f"Process completed in {elapsed:.2f}s.")
