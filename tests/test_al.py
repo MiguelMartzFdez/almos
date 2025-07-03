@@ -335,15 +335,14 @@ def test_AL(test_job):
                 'csv_name': 'AL_example.csv'
             }),
 
-            lambda: validate_batches(
-                'batch_1',{
-                    'num_points': 22,
-                    'rows': {'name': [19, 20, 21, 22, 23],
-                    'index': [119, 120, 121, 122, 123],
-                    'batch': [1, 1, 1, 1, 1]}},
-                    'ROBERT_b1/AL_example_ROBERT_b1.csv',
-                    'AL_example_b1.csv',
-                    1),
+            lambda: validate_batches('batch_1',
+                {'num_points': 22,
+                'rows': {'name': [19, 23, 22, 21, 20],
+                'index': [119, 123, 122, 121, 120],
+                'batch': [1, 1, 1, 1, 1]}},
+                'ROBERT_b1/AL_example_ROBERT_b1.csv',
+                'AL_example_b1.csv',
+                1),    
 
             lambda: validate_plots(
                 "batch_plots", 
