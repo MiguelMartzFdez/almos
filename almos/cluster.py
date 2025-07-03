@@ -68,7 +68,8 @@ import time
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sb
-os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error
+os.environ.setdefault("MPLBACKEND", "Agg") # avoid unwanted information on the terminal, it tells Matplotlib to use a backend that does not depend on Qt
+# os.environ["QT_QPA_PLATFORM"] = "xcb"  # Force Qt to use X11 backend to avoid Wayland plugin error, not compatible with Windows
 from kneed import KneeLocator
 
 
@@ -149,7 +150,9 @@ class cluster:
             self.args.log.write(f"\nx WARNING. The number of clusters is not specified (e.g. --n_clusters 20), it will be automatically calculated using the Elbow Method")
             # self.args.log.finalize()
             # sys.exit(11)
-            
+        else:
+            self.args.log.write(f"\nx WARNING. The cluster module is performing without using the Elbow Method. If you want to generate the optical number of clusters remove '--n_clusters n' of your script")
+           
         # if 'name' is not defined and program is not going through AQME workflow, notify and exit the program 
         if self.args.name == '' and self.args.aqme == False:
             self.args.log.write(f"\nx WARNING. Please, specify the name column of your CSV file, e.g. --name nitriles")
@@ -346,16 +349,13 @@ class cluster:
         self.args.ignore.append('batch') 
         # create the folders batch_0, if there is not
         os.makedirs('batch_0') if not os.path.exists('batch_0') else None
-        
+         
         
         # if aqme = True, check the CSV has to contain the columns 'SMILES' and 'code_name'
         # with the funcition fix_cols_names unify the names of the columns to 'SMILES' and 'code_name' 
         if self.args.aqme:
-            # Check if there is any column containing 'smiles' (case-insensitive) and any containing 'code_name' (case-insensitive)
-            smiles_cols = [col for col in df_csv_name.columns if col.lower().startswith('smiles')]
-            code_name_cols = [col for col in df_csv_name.columns if col.lower().startswith('code_name')]
-            if not smiles_cols or not code_name_cols:
-                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain at least one column starting with 'SMILES' and another starting with 'code_name' (case-insensitive) to generate the descriptors with aqme")
+            if 'code_name' not in self.fix_cols_names(df_csv_name).columns or 'SMILES' not in self.fix_cols_names(df_csv_name).columns:
+                self.args.log.write(f"\nx WARNING. The input provided ({file_name}) must contain a column called 'SMILES' and another called 'code_name' to generate the descriptors with aqme")
                 self.args.log.finalize()
                 sys.exit(2)
             # create the folder aqme, if there are not
@@ -423,13 +423,17 @@ class cluster:
             cmd_aqme = self.args.aqme_keywords.split()
             for word in cmd_aqme:
                 word = word.replace('"','').replace("'","")                
-                cmd_qdescp.append(word)  
-                
+                cmd_qdescp.append(word) 
+                 
+        # running both modules of aqme             
+        exit_error = subprocess.run(cmd_qdescp)
+    
+        # converts the commands to a string, for printing later                 
         string_cmd = ''
         for cmd in cmd_qdescp:
-            string_cmd += f'{cmd} ' # adding blank space between words   
+            string_cmd += f'{cmd} ' # adding blank space between words
         
-        exit_error = subprocess.run(cmd_qdescp)
+        # to check in cluster.dat the command line that it sends to aqme, which sometimes does not match the one that aqme launches later  
         self.args.log.write(f"\no Command line used in AQME: {string_cmd} ")
         
         # if exit_error.returncode != 0:
@@ -450,7 +454,7 @@ class cluster:
         if not os.path.exists(f'AQME-ROBERT_denovo_{csv[0]}_b0.csv'):
             self.args.log.write(f'''\nx WARNING. --aqme_keywords not defined properly. Please, check if the quotation marks have been included, e.g. --aqme_keywords "--qdescp_atoms [1,2]". If that is not the problem, check the input of aqme.''')
             self.args.log.finalize()
-            sys.exit(12)          
+            sys.exit(12) 
         
         # move files to aqme subfolder
         for file in files_to_aqme:
@@ -462,7 +466,8 @@ class cluster:
                     os.remove(destination)
         
             if os.path.exists(file):                 # move the file
-                shutil.move(file, destination) 
+                shutil.move(file, destination)
+                
             
         # after running the code, the variable descp_file is updated with the chosen file with the descriptors
         descp_file = f'aqme/AQME-ROBERT_{self.args.descp_level}_{csv[0]}_b0.csv' 
@@ -607,7 +612,7 @@ class cluster:
         
         # defining a limit value for the number of clusters
         if stop > 300:
-            stop == 300
+            stop = 300
            
         # cluster execution for each n_clusters (k)
         self.args.log.write(f'\no Defining optimal n_clusters using the Elbow Method')  
@@ -622,6 +627,13 @@ class cluster:
             # Within-Cluster Sum of Squares, the total of the squared distances between data points and their cluster center 
             wcss_list.append(kmeans.inertia_)
             
+        # creating a df with the values of the plot and saving it in a csv ()
+        dict_elbow = {
+            "n_clusters (k)" : k_list,
+            "WCSS" : wcss_list
+        }
+        df_elbow = pd.DataFrame(dict_elbow)
+            
         # generate a plot of the relationship between the number of clusters (x) and the WCSS (y)
         plt.plot(k_list,wcss_list, marker='o', linestyle='-', color='#1f77b4')
         #sb.scatterplot(s = 20, marker='o', linestyle='-', color = 'b',  alpha = 1, edgecolor = 'black')
@@ -633,6 +645,8 @@ class cluster:
         # set x-axis ticks every interval units, until rows_filled_array (number of rows)
         plt.xticks(np.arange(0, stop + 1, interval), fontsize=8)
         plt.yticks(fontsize=8)
+        plt.ylim(bottom=0)
+        plt.xlim(left=0)
         
         # save the plot as a PNG file in the 'batch_0' folder
         plt.savefig('batch_0/elbow_plot.png', dpi=300, bbox_inches='tight')
@@ -644,12 +658,23 @@ class cluster:
 
         if self.args.n_clusters == None:
             self.args.log.write(f'''\nx WARNING. Optimal n_cluster could not be defined, because the curve doesn't have a clear "elbow" shape (the WCSS drops smoothly without inflection) or because the data is noisy or very linear''')
-            self.args.log.write(f'''\no SUGGESTION. You can open de graph generated in batch_0, select n_clusters manually, and run ALMOS again including n_cluster selected; or modify the descriptors of your dataset''')
+            self.args.log.write(f'''\no SUGGESTION. You can open de graph generated in batch_0, select n_clusters manually, and run ALMOS again including n_cluster selected (e.g. -n_clusters n)''')
             
             self.args.log.finalize()
             sys.exit(11)    
 
         self.args.log.write(f'\no Optimal n_clusters has been defined as {self.args.n_clusters}')
+
+        # add dashed vertical line in k_optimal
+        ymax = df_elbow.loc[df_elbow['n_clusters (k)'] == self.args.n_clusters, 'WCSS'].values[0]
+        plt.vlines(x=self.args.n_clusters, ymin = -5, ymax=ymax, colors='dimgray', linestyles='dashed', linewidth=1, zorder=1)
+        # plt.axvline(x=self.args.n_clusters, ymax=ymax, color='dimgray', linestyle='dashed', linewidth=1, zorder=1)
+        
+        # modify title to include optimal k value
+        plt.title(f'Elbow Method for Optimal n_clusters (k found at {self.args.n_clusters})', fontsize=11)
+
+        # overwrites the graph with some variation (vertical line and optimal number of clusters)
+        plt.savefig('batch_0/elbow_plot.png', dpi=300, bbox_inches='tight')
 
           
     def cluster_workflow(self, filled_array, descp_file, csv, file_name):
@@ -728,6 +753,18 @@ class cluster:
         # df prepared with PC and cluster labels for each molecule
         pcaModel.results['PC']
         df_pca = pcaModel.results['PC'].join([df_pca['Cluster'], df_pca['Point selected']]) 
+        
+        # build and save a results DataFrame with SMILES, code_name, Cluster and PCs
+        if self.args.aqme:
+            results_df = descp_df[['SMILES', 'code_name']].copy()
+        else:
+            results_df = descp_df[[self.args.name]].copy()
+        results_df['Cluster'] = kmeans.labels_.astype(int)
+        results_df['Point selected'] = 0
+        results_df.loc[points, 'Point selected'] = 1
+        results_df[['PC1','PC2','PC3']] = pcaModel.results['PC'][['PC1','PC2','PC3']]
+        results_df.to_csv('batch_0/clustering_results.csv', index=False)
+        self.args.log.write("\no Complete clustering results (with cluster number, selected and unselected molecules, and PC coordinates) save as batch_0/clustering_results.csv")
         
         return self, pc_total_val, pc1_var, pc2_var, pc3_var, df_pca
       

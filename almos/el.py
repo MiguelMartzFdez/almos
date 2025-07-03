@@ -37,7 +37,7 @@ Parameters
 
 #####################################################
 #           This file stores the EL class           #
-#        used in the exploratory learning process        #
+#        used in the exploratory learning process   #
 #####################################################
 
 import pandas as pd
@@ -47,7 +47,8 @@ from pathlib import Path
 import re
 import shutil
 from collections import Counter
-
+import matplotlib
+matplotlib.use('Agg')  # Use 'Agg' backend for non-interactive plotting
 from almos.utils import (
     load_variables,
     check_dependencies
@@ -100,7 +101,7 @@ class el:
         results_plot_no_pfi_df, results_plot_pfi_df = early_stopping.check_convergence(
             results_plot_no_PFI, results_plot_PFI
         )
-        
+    
         # Generate plots
         self.generate_plots(results_plot_no_pfi_df, results_plot_pfi_df)
 
@@ -452,6 +453,6 @@ class el:
         self.args.log.finalize()
 
         # Move the .dat file to the proper batch folder
-        log_file = Path.cwd() / "AL_data.dat"  # Path to the log file in the current directory
-        log_destination = os.path.join(self.data_path, "AL_data.dat")  # Define the destination path
+        log_file = Path.cwd() / "EL_data.dat"  # Path to the log file in the current directory
+        log_destination = os.path.join(self.data_path, "EL_data.dat")  # Define the destination path
         shutil.move(log_file, log_destination)  # Move the file

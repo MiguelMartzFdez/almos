@@ -24,7 +24,7 @@ Parameters
 #        used in the active learning process        #
 #####################################################
 
-from edbo.plus.optimizer_botorch import EDBOplus
+from edbo.optimizer_botorch import EDBOplus
 from almos.utils import load_variables
 import time
 import pandas as pd
