@@ -24,7 +24,7 @@ Parameters
 #        used in the active learning process        #
 #####################################################
 
-from edbo.plus.optimizer_botorch import EDBOplus
+from edbo.optimizer_botorch import EDBOplus
 from almos.utils import load_variables
 import time
 import pandas as pd
@@ -97,10 +97,11 @@ class bo:
         cols_to_drop = [c for c in df.columns if any(c.endswith(suf) for suf in prediction_suffixes)]
         if cols_to_drop:
             df = df.drop(columns=cols_to_drop)
+            
         # Encode categorical columns as integer codes (1, 2, 3, ...) instead of one-hot
         categorical_cols = [
             col for col in df.select_dtypes(include=['object']).columns
-            if col not in y_cols
+            if col not in y_cols and col != name and col not in self.args.ignore
         ]
         for col in categorical_cols:
             df[col] = df[col].astype('category').cat.codes + 1  # 1-based encoding
@@ -180,8 +181,12 @@ class bo:
             time.sleep(1)
 
         if pred_file:
-            new_name = f"{self.args.csv_name}_{self.current_batch}.csv"
-            shutil.move(str(pred_file), str(out_folder / new_name))
+            # Remove .csv extension if present in csv_name
+            base_name = self.args.csv_name
+            if base_name.lower().endswith('.csv'):
+                base_name = base_name[:-4]
+                new_name = f"{base_name}_{self.current_batch}.csv"
+                shutil.move(str(pred_file), str(out_folder / new_name))
             
             print(f"Moved {new_name} to {out_folder}")
         else:
