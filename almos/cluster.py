@@ -1,10 +1,6 @@
 """
 Parameters
 ----------
-
-General
-+++++++
-
    input : str, default = '' 
       Current file extension: .csv or .sdf (i.e. example.csv).
       Only is possible use a SDF file if using AQME (--aqme).
