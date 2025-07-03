@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-version = "0.1.3"
+version = "1.0.0"
 setup(
     name="almos_kit",
     packages=find_packages(include=["almos*", "edbo*"], exclude=["tests", "tests*"]),

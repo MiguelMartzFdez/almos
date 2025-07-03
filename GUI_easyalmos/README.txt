@@ -14,7 +14,7 @@ You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI sim
 
 4. Download 'easyalmos.py' (included in this repository or available in the 'GUI_easyalmos/' folder).
 
-5. Go to the folder with the easyrob.py file (using the "cd" command, i.e. 'cd C:/Users/test_almos').
+5. Go to the folder with the easyalmos.py file (using the "cd" command, i.e. 'cd C:/Users/test_almos').
 
 6. Run easyALMOS with the following command line ('python easyalmos.py').
 
