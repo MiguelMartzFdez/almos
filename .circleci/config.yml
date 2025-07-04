@@ -50,13 +50,14 @@ jobs:
           conda install conda-forge::libgfortran=14.2.0
           pip install scikit-learn-intelex  
           pip install .
+          pip uninstall -y almos-kit
 
           # install and run pytest
           pip install pytest
           pip install pytest-cov
 
           # the format of the codecov report has to be scpecified or it doesn't create for some reason
-          python -m pytest -v --cov --cov-report=xml
+          python -m pytest -v --cov=almos --cov-report=xml
           rm -r /tmp/*
           cp -r * /tmp
           
