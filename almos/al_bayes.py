@@ -15,7 +15,8 @@ Parameters
         (i.e. --ignore "[name,SMILES]"). The descriptors will be included in the final CSV file. The y value, name column and batch column
         are automatically ignored.
     batch_number : int, default=0
-        Number of the batch to be processed. The batch folder will be named 'batch_{batch_number}'.
+        Number of the batch to be processed. The CSV file is always taken from the specified batch folder, 
+        and a new folder named 'batch_{batch_number+1}' will be generated for the output.
     n_exps : int, default=1
         Specifies the number of new points for exploration and exploitation in the next batch. 
     reverse : bool, default=False
