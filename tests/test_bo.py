@@ -29,6 +29,7 @@ def test_bo(test_job):
         # Do not remove batch_0, only clean batch_1, batch_2, etc.
         if os.path.isdir(dir_path) and not dir_path.endswith('batch_0'):
             shutil.rmtree(dir_path)
+
     # Remove backup if exists
     backup_csv = os.path.join(path_batch0, 'BO_optimization_original.csv')
     if os.path.exists(backup_csv):
@@ -48,7 +49,10 @@ def test_bo(test_job):
             f'--n_exps "3" '
             f'--batch_number "0"'
         )
+        
+        os.chdir("tests")
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        os.chdir(w_dir_main)
         print(result.stdout)
         print(result.stderr)
 
