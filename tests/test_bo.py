@@ -12,10 +12,9 @@ import subprocess
 import pandas as pd
 
 # Define paths
-path_b0 = os.path.join(os.getcwd(), "b0")
-path_batch0 = os.path.join(os.getcwd(), "batch_0")
-path_batch1 = os.path.join(os.getcwd(), "batch_1")
-batch_pattern = os.path.join(os.getcwd(), "batch_*")
+path_batch0 = os.getcwd() + "/batch_0"
+path_batch1 = os.getcwd() + "/batch_1"
+batch_pattern = os.getcwd() + "/batch_*"
 
 @pytest.mark.parametrize(
     "test_job",
