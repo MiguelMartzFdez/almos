@@ -1,3 +1,7 @@
 sphinx
 sphinx-rtd-theme
 sphinx-autoapi
+numpy
+pandas
+rdkit
+scipy
