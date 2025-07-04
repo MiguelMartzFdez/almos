@@ -8,14 +8,14 @@ import ast
 import getopt
 from pathlib import Path
 import time
-import shutil
 import subprocess
+import shutil
 from almos.argument_parser import set_options, var_dict
 from almos.el_utils import check_missing_outputs
 
 obabel_version = "3.1.1" # this MUST match the meta.yaml
 aqme_version = "1.7.3" # this MUST match the meta.yaml
-almos_version = "0.1.3"
+almos_version = "1.0.0"
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
@@ -297,81 +297,77 @@ def check_dependencies(self, module):
             self.args.log.finalize()
             sys.exit()
 
-        if module == "el":
+    if module == "el":
+        required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
+        missing_packages = []
+        installed_package_names = []
+        using_conda = False
+        conda_cmd = "conda.bat" if os.name == "nt" else "conda"
 
-            # Check for glib, gtk3, pango, and mscorefonts
-            required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
-            missing_packages = []
-
-            # Determine package manager
-            installed_packages = ""
-            using_conda = False
-
-            if shutil.which("conda"):
+        # --- Check conda or pip ---
+        if shutil.which(conda_cmd):
+            try:
                 result = subprocess.run(
-                    ["conda", "list"],
+                    [conda_cmd, "list"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
-                    text=True
+                    text=True,
+                    shell=(os.name == "nt")
                 )
-                installed_packages = result.stdout
+                lines = result.stdout.strip().splitlines()
+                installed_package_names = [
+                    line.split()[0].lower()
+                    for line in lines
+                    if line and not line.startswith("#")
+                ]
                 using_conda = True
-
-            elif shutil.which("pip"):
-                result = subprocess.run(
-                    ["pip", "list"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    text=True
-                )
-                # Extract package names from pip output
-                lines = result.stdout.strip().splitlines()[2:]  # Skip header
-                installed_packages = [line.split()[0].lower() for line in lines]
-
-            else:
-                self.args.log.write(
-                    "\nERROR! Neither 'conda' nor 'pip' found in PATH. Cannot verify package installation."
-                )
+            except Exception as e:
+                self.args.log.write(f"\nERROR: Failed to run 'conda list': {str(e)}")
                 self.args.log.finalize()
                 sys.exit()
 
-            # Check for each required package
-            for package in required_packages:
-                if using_conda:
-                    if package.lower() not in installed_packages.lower():
-                        missing_packages.append(package)
-                else:
-                    if package.lower() not in installed_packages:
-                        missing_packages.append(package)
+        elif shutil.which("pip"):
+            result = subprocess.run(
+                ["pip", "list"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True
+            )
+            lines = result.stdout.strip().splitlines()[2:]  # Skip headers
+            installed_package_names = [line.split()[0].lower() for line in lines]
 
-            # Log missing packages and exit if necessary
-            if missing_packages:
+        else:
+            self.args.log.write("\nERROR! Neither 'conda' nor 'pip' found in PATH. Cannot verify package installation.")
+            self.args.log.finalize()
+            sys.exit()
+
+        # --- Check each required package ---
+        for package in required_packages:
+            found = any(package.lower() in name for name in installed_package_names)
+            if not found:
+                missing_packages.append(package)
+
+        # --- Warn and exit if any missing ---
+        if missing_packages:
+            self.args.log.write(f"\nWARNING! The following required packages are missing: {', '.join(missing_packages)}")
+            if using_conda:
+                self.args.log.write("\nYou can install them with: conda install -y -c conda-forge " + ' '.join(missing_packages))
+            else:
+                self.args.log.write("\nTry installing equivalents via pip or conda-forge.")
+            self.args.log.finalize()
+            sys.exit()
+
+        # --- Check scikit-learn-intelex ---
+        if not self.args.intelex:
+            try:
+                import sklearnex
+            except ImportError:
                 self.args.log.write(
-                    f"\nx WARNING! The following required packages are missing: {', '.join(missing_packages)}"
+                    "\n'scikit-learn-intelex' is not installed!"
+                    "\nInstall it with: pip install scikit-learn-intelex"
+                    "\nOr pass '--intelex' to disable accelerated mode."
                 )
-                if using_conda:
-                    self.args.log.write(
-                        "\nYou can install them with: 'conda install -y -c conda-forge glib gtk3 pango mscorefonts'."
-                    )
-                else:
-                    self.args.log.write(
-                        "\nYou can try installing equivalents via: 'pip install package_name' or use conda for better compatibility."
-                    )
                 self.args.log.finalize()
                 sys.exit()
-
-            # Check for 'scikit-learn-intelex'
-            if not self.args.intelex:
-                try:
-                    import sklearnex
-                except ImportError:
-                    self.args.log.write(
-                        "\nx WARNING! The required package 'scikit-learn-intelex' is not installed! Install it with 'pip install scikit-learn-intelex'."
-                        "\nNote that 'scikit-learn-intelex' is required unless '--intelex' is set in the command line. Exiting."
-                    )
-                    self.args.log.finalize()
-                    sys.exit()
-            else:
-                self.args.log.write(
-                    "\no Running without 'scikit-learn-intelex' as requested.\n"
-                )
+        else:
+            self.args.log.write("\nRunning without 'scikit-learn-intelex' as requested.\n")
