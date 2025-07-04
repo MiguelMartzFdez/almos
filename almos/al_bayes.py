@@ -68,18 +68,18 @@ class bo:
         if not csv_name:
             self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --csv_name example.csv")
             self.args.log.finalize()
-            sys.exit("ERROR: --csv_name must be specified.")
+            sys.exit()
         batch_folder = Path.cwd() / f"batch_{batch}"
         
         if not batch_folder.exists():
             self.args.log.write(f"\nx WARNING. Folder {batch_folder} not found.")
             self.args.log.finalize()
-            sys.exit(f"ERROR: folder {batch_folder} not found.")
+            sys.exit()
         file = batch_folder / (csv_name if csv_name.endswith('.csv') else f"{csv_name}.csv")
         if not file.exists():
             self.args.log.write(f"\nx WARNING. CSV '{csv_name}' not found in {batch_folder}.")
             self.args.log.finalize()
-            sys.exit(f"ERROR: CSV '{csv_name}' not found in {batch_folder}.")
+            sys.exit()
 
         # Make a copy as csv_original in the same folder
         original_copy = batch_folder / f"{csv_name}_original.csv"
