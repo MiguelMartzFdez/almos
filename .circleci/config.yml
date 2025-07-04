@@ -50,7 +50,6 @@ jobs:
           conda install conda-forge::libgfortran=14.2.0
           pip install scikit-learn-intelex  
           pip install .
-          pip uninstall -y almos-kit
 
           # install and run pytest
           pip install pytest
