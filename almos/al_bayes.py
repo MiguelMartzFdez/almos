@@ -4,7 +4,10 @@ Parameters
     csv_name : str
         Name of the CSV file containing the database. (i.e. 'FILE.csv'). 
     y : str
-        Name of the column containing the response variable in the input CSV file (i.e. 'solubility'). 
+        Name of the column(s) containing the response variable(s) in the input CSV file.
+        - For a single column, just provide the column name as a string (e.g., 'solubility').
+        - To optimize two columns simultaneously, provide a list in the format: [y1,y2]
+          where y1 and y2 are the names of the columns (e.g., '[yield,ee]').
     name : str
         Name of the column containing the molecule names in the input CSV file (i.e. 'names').
     ignore : list, default=[]
@@ -177,7 +180,7 @@ class bo:
     def _finalize(self, start_time):
         """
         Waits for the prediction file to appear, moves it to the next batch folder,
-        and moves the log file if present. Prints the elapsed time.
+        and prints the elapsed time.
         """
         elapsed = time.time() - start_time
         out_folder = self.csv_dir.parent / f"batch_{self.current_batch}"
