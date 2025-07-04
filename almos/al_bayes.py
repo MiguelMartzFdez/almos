@@ -4,7 +4,10 @@ Parameters
     csv_name : str
         Name of the CSV file containing the database. (i.e. 'FILE.csv'). 
     y : str
-        Name of the column containing the response variable in the input CSV file (i.e. 'solubility'). 
+        Name of the column(s) containing the response variable(s) in the input CSV file.
+        - For a single column, just provide the column name as a string (e.g., 'solubility').
+        - To optimize two columns simultaneously, provide a list in the format: [y1,y2]
+          where y1 and y2 are the names of the columns (e.g., '[yield,ee]').
     name : str
         Name of the column containing the molecule names in the input CSV file (i.e. 'names').
     ignore : list, default=[]
@@ -12,7 +15,8 @@ Parameters
         (i.e. --ignore "[name,SMILES]"). The descriptors will be included in the final CSV file. The y value, name column and batch column
         are automatically ignored.
     batch_number : int, default=0
-        Number of the batch to be processed. The batch folder will be named 'batch_{batch_number}'.
+        Number of the batch to be processed. The CSV file is always taken from the specified batch folder, 
+        and a new folder named 'batch_{batch_number+1}' will be generated for the output.
     n_exps : int, default=1
         Specifies the number of new points for exploration and exploitation in the next batch. 
     reverse : bool, default=False
@@ -32,6 +36,7 @@ import sys
 from pathlib import Path
 import shutil
 import os
+import re
 
 class bo:
     """
@@ -65,14 +70,24 @@ class bo:
         name = self.args.name
 
         if not csv_name:
-            sys.exit("ERROR: --csv_name must be specified.")
+            self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --csv_name example.csv")
+            self.args.log.finalize()
+            sys.exit()
         batch_folder = Path.cwd() / f"batch_{batch}"
         
         if not batch_folder.exists():
-            sys.exit(f"ERROR: folder {batch_folder} not found.")
+            self.args.log.write(f"\nx WARNING. Folder {batch_folder} not found.")
+            self.args.log.finalize()
+            sys.exit()
         file = batch_folder / (csv_name if csv_name.endswith('.csv') else f"{csv_name}.csv")
         if not file.exists():
-            sys.exit(f"ERROR: CSV '{csv_name}' not found in {batch_folder}.")
+            self.args.log.write(f"\nx WARNING. CSV '{csv_name}' not found in {batch_folder}.")
+            self.args.log.finalize()
+            sys.exit()
+
+        # Make a copy as csv_original in the same folder
+        original_copy = batch_folder / f"{csv_name}_original.csv"
+        shutil.copy(str(file), str(original_copy))
         
         # Parse y columns, handling cases like '[ee, yield]'
         y_arg = self.args.y
@@ -166,7 +181,7 @@ class bo:
     def _finalize(self, start_time):
         """
         Waits for the prediction file to appear, moves it to the next batch folder,
-        and moves the log file if present. Prints the elapsed time.
+        and prints the elapsed time.
         """
         elapsed = time.time() - start_time
         out_folder = self.csv_dir.parent / f"batch_{self.current_batch}"
@@ -185,16 +200,20 @@ class bo:
             base_name = self.args.csv_name
             if base_name.lower().endswith('.csv'):
                 base_name = base_name[:-4]
-                new_name = f"{base_name}_{self.current_batch}.csv"
-                shutil.move(str(pred_file), str(out_folder / new_name))
+
+            # If base_name ends with _number, increment number
+            match = re.match(r"^(.*)_(\d+)$", base_name)
+            if match:
+                prefix, num = match.groups()
+                new_base = f"{prefix}_{int(num) + 1}"
+            else:
+                new_base = f"{base_name}_{self.current_batch}"
+
+            new_name = f"{new_base}.csv"
+            shutil.move(str(pred_file), str(out_folder / new_name))
             
             print(f"Moved {new_name} to {out_folder}")
         else:
             print("WARNING: pred_*.csv not found after waiting.")
-
-        # Move AL_data.dat if it exists
-        logf = self.csv_dir / "AL_data.dat"
-        if logf.exists():
-            shutil.move(str(logf), str(out_folder / logf.name))
 
         print(f"Process completed in {elapsed:.2f}s.")
