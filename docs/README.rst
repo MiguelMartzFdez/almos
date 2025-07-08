@@ -60,7 +60,7 @@ Active Learning Molecular Selection (ALMOS)
    :local:
 
 What is ALMOS?
--------------
+--------------
 
 .. introduction-start
 
@@ -76,10 +76,10 @@ modern standards in data-driven chemistry, including:
       early-stage sampling. Input data can be user-provided or automatically generated 
       from SMILES using the AQME program. 
 
-   *  **Atomic and molecular descriptor generation from SMILES**, including an RDKit 
-      conformer sampling and the generation of 200+ steric, electronic and structural 
-      descriptors using RDKit, xTB and ᴍᴏʀғᴇᴜs. Requires the 
-      `AQME program <https://aqme.readthedocs.io>`__.  
+      *  **Atomic and molecular descriptor generation from SMILES**, including an RDKit 
+         conformer sampling and the generation of 200+ steric, electronic and structural 
+         descriptors using RDKit, xTB and MORFEUS. Requires the 
+         `AQME program <https://aqme.readthedocs.io>`__.  
 
    *  **Active learning module**, which supports two iterative exploration strategies:  
 
@@ -91,16 +91,24 @@ modern standards in data-driven chemistry, including:
 
 The code has been designed for:
 
-   * **Inexperienced researchers** in the field of ML. ALMOS provides intuitive workflows,
-      a graphical user interface, and detailed visual outputs to facilitate the adoption of 
-      clustering and active learning techniques in chemical research. Minimal coding is 
-      required, and complete tutorials are available to guide users through real-world case
-      studies.
+   *  **Inexperienced researchers** in the field of ML. ALMOS provides intuitive workflows,
+      a graphical user interface, and detailed visual outputs to facilitate the adoption
+      of clustering and active learning techniques in chemical research. Minimal coding 
+      is required, and complete tutorials are available to guide users through real-world 
+      case studies.
 
-   * **Researchers and developers** seeking reproducible and efficient ML workflows. ALMOS 
-      offers modular components that can be integrated into existing pipelines for candidate
-      selection, model building, or optimization, with full control over inputs and 
-      strategies.
+   *  **Researchers and developers** seeking reproducible and efficient ML workflows. 
+      ALMOS offers modular components that can be integrated into existing pipelines for 
+      candidate selection, model building, or optimization, with full control over inputs
+      and strategies.
+
+Overview of ALMOS
+------------------
+
+.. |overview_almos| image:: ../almos/icons/overview_almos.jpg
+
+.. centered:: |overview_almos|
+
 
 .. Don't miss out the latest hands-on tutorials from our 
 .. `YouTube channel <https://www.youtube.com/channel/UCHRqI8N61bYxWV9BjbUI4Xw>`_  
@@ -114,10 +122,10 @@ Installation
 
 In a nutshell, ALMOS and its dependencies are installed as follows:
 
-**1.** Create and activate the conda environment where you want to install the program. If you 
-are not sure of what this point means, check out the "Users with no Python experience" section. 
-This is an example for Python 3.10, but it also works for newer Python versions (i.e., 3.11 and 
-3.12):
+**1.** Create and activate the conda environment where you want to install the program.
+   If you are not sure of what this point means, check out the "Users with no Python 
+   experience" section. This is an example for Python 3.10, but it also works for newer
+   Python versions (i.e., 3.11 and 3.12):
 
 .. code-block:: shell 
    
@@ -146,8 +154,8 @@ This is an example for Python 3.10, but it also works for newer Python versions 
    pip install aqme
    conda install -y -c conda-forge openbabel=3.1.1
 
-**4b.** (Just if the installation with pip of step 2 is too slow) Users might install AQME using 
-conda and update it with pip:  
+**4b.** (Just if the installation with pip of step 2 is too slow) Users might instal
+   AQME using conda and update it with pip:  
 
 .. code-block:: shell
 
@@ -169,9 +177,9 @@ Extra requirements if xTB or CREST are used (compatible with MacOS and Linux onl
 
 .. warning::
 
-  Due to an update in the libgfortran library, **xTB** and **CREST** may encounter issues during 
-  optimizations. If you plan to use them, please make sure to run the following command **after** 
-  installing them:
+  Due to an update in the libgfortran library, **xTB** and **CREST** may encounter 
+  issues during optimizations. If you plan to use them, please make sure to run the 
+  following command **after** installing them:
 
 .. code-block:: shell 
 
@@ -188,15 +196,16 @@ Users with no Python experience
 Installation of ALMOS (only once)
 +++++++++++++++++++++++++++++++++++
 
-You need a Python environment to install and run ALMOS. These are some suggested first steps:  
+You need a Python environment to install and run ALMOS. These are some suggested 
+first steps:  
 
 .. |br| raw:: html
 
    <br />
 
-**1.** Install `Anaconda with Python 3 <https://docs.anaconda.com/free/anaconda/install>`__ for 
-your operating system (Windows, macOS or Linux). Alternatively, if you're familiar with conda 
-installers, you can install `Miniconda with Python 3 <https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html>`__ 
+**1.** Install `Anaconda with Python 3 <https://docs.anaconda.com/free/anaconda/install>`__ 
+for your operating system (Windows, macOS or Linux). Alternatively, if you're 
+familiar with conda installers, you can install `Miniconda with Python 3 <https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html>`__ 
 (requires less space than Anaconda).  
 
 
@@ -241,9 +250,9 @@ installers, you can install `Miniconda with Python 3 <https://docs.conda.io/proj
 Graphical User Interface (GUI): easyALMOS
 ++++++++++++++++++++++++++++++++++++++++++
 
-You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI simplifies the setup 
-of ALMOS workflows, enabling users to select files and configure options easily. To run easyALMOS follow
-these steps: 
+You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI 
+simplifies the setup of ALMOS workflows, enabling users to select files and 
+configure options easily. To run easyALMOS followthese steps: 
 
 **1.** Install ALMOS as defined in the "Installation" section.
 
@@ -376,7 +385,7 @@ List of main developers and contact emails:
    `Github <https://github.com/ddgunizar>`__ ,
    `email <ddalmau@unizar.es>`__ ] 
    developer of the AL_BAYES module.
-*  Juan V. Alegre-Requena [
+*  Juan V. Alegre Requena [
    `ORCID <https://orcid.org/0000-0002-0769-7168>`__ , 
    `Github <https://github.com/jvalegre>`__ , 
    `email <jv.alegre@csic.es>`__ ]
