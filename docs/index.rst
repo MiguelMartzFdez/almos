@@ -30,13 +30,13 @@ Welcome to ALMOS's documentation!
    Install/note
    Install/gui
 
-   .. toctree::
+.. toctree::
    :maxdepth: 1
    :caption: How does ALMOS work?
    
    Modules/cluster
    Modules/el
-   Modules/al_bayes
+   Modules/bo
 
 
 .. include:: README.rst

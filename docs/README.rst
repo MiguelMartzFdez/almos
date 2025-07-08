@@ -371,7 +371,7 @@ List of main developers and contact emails:
    `Github <https://github.com/sgabellan>`__ , 
    `email <sg.abellan@csic.es>`__]
    developer of the CLUSTER module. 
-*  Raúl Pérez-Soto [
+*  David Dalmau Ginesta [
    `ORCID <https://orcid.org/0000-0002-2506-6546>`__ ,
    `Github <https://github.com/ddgunizar>`__ ,
    `email <ddalmau@unizar.es>`__ ] 
@@ -400,6 +400,12 @@ Reference
 ---------
 
 .. reference-start
+
+If you use the AL module, please cite the following paper:
+  * Dalmau, D.; Alegre Requena, J. V. ROBERT: Bridging the Gap between Machine Learning and Chemistry. Wiley Interdiscip. Rev. Comput. Mol. Sci. **2024**, 14, e1733.
+
+If you use the BO module , please cite the following paper:
+  * Jose Antonio Garrido Torres, Sii Hong Lau, Pranay Anchuri, Jason M. Stevens, Jose E. Tabora, Jun Li, Alina Borovika, Ryan P. Adams, and Abigail G. Doyle. *Journal of the American Chemical Society* **2022** 144 (43), 19999-20007.
 
 If you use AQME, please include this citation:  
   * Alegre-Requena, J. V.; Sowndarya, S.; Pérez-Soto, R.; Alturaifi, T.; Paton, R. AQME: Automated Quantum Mechanical Environments for Researchers and Educators. *Wiley Interdiscip. Rev. Comput. Mol. Sci.* **2023**, *13*, e1663. (DOI: 10.1002/wcms.1663)  
