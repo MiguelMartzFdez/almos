@@ -360,11 +360,12 @@ def check_dependencies(self, module):
         # --- Check scikit-learn-intelex ---
         if not self.args.intelex:
             try:
-                import sklearnex
+                from sklearnex import patch_sklearn
+                
             except ImportError:
                 self.args.log.write(
                     "\n'scikit-learn-intelex' is not installed!"
-                    "\nInstall it with: pip install scikit-learn-intelex"
+                    "\nInstall it with: pip install scikit-learn-intelex==2025.2.0"
                     "\nOr pass '--intelex' to disable accelerated mode."
                 )
                 self.args.log.finalize()
