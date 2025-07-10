@@ -11,7 +11,7 @@ Main Modules
 
    almos.cluster
    almos.el
-   almos.al_bayes
+   almos.bo
 
 Other Modules
 =============

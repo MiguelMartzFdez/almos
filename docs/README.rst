@@ -384,7 +384,7 @@ List of main developers and contact emails:
    `ORCID <https://orcid.org/0000-0002-2506-6546>`__ ,
    `Github <https://github.com/ddgunizar>`__ ,
    `email <ddalmau@unizar.es>`__ ] 
-   developer of the AL_BAYES module.
+   developer of the BO module.
 *  Juan V. Alegre Requena [
    `ORCID <https://orcid.org/0000-0002-0769-7168>`__ , 
    `Github <https://github.com/jvalegre>`__ , 
