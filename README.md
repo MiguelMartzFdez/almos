@@ -25,6 +25,7 @@ You can install ALMOS and all required dependencies in one step using the provid
 curl -O https://raw.githubusercontent.com/MiguelMartzFdez/almos/miguel/install/almos.yaml
 conda env create -f almos.yaml
 conda activate almos
+```
 
 ## Update the program
 1. Update to the latest version: `pip install almos-kit --upgrade`
