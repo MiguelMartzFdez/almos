@@ -1,0 +1,17 @@
+name: almos
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - openbabel=3.1.1
+  - xtb=6.7.1
+  - glib
+  - gtk3
+  - pango
+  - mscorefonts
+  - libgfortran=14.2.0
+  - pip
+  - pip:
+      - almos-kit
+      - scikit-learn-intelex==2025.2.0

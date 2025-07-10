@@ -19,9 +19,9 @@ EL
 .. automodule:: almos.el
    :noindex:
 
-AL_BAYES
+BO
 --------
 
-.. automodule:: almos.al_bayes
+.. automodule:: almos.bo
    :noindex:
 
