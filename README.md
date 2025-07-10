@@ -21,11 +21,31 @@
 
 You can install ALMOS and all required dependencies in one step using the provided Conda environment file:
 
-```bash
-curl -O https://raw.githubusercontent.com/MiguelMartzFdez/almos/miguel/install/almos.yaml
-conda env create -f almos.yaml
-conda activate almos
-```
+1. Open a terminal (or Anaconda Prompt on Windows).
+
+2. Go to the folder where you saved the environment file. For example:
+
+    ```bash
+    cd path/to/download/folder
+    ```
+
+3. Download the Conda environment file (if you haven’t already):
+
+    ```bash
+    curl -O https://raw.githubusercontent.com/MiguelMartzFdez/almos/miguel/install/almos.yaml
+    ```
+
+4. Create the Conda environment from the downloaded file:
+
+    ```bash
+    conda env create -f almos.yaml
+    ```
+
+5. Activate the environment:
+
+    ```bash
+    conda activate almos
+    ```
 
 ## Update the program
 1. Update to the latest version: `pip install almos-kit --upgrade`
