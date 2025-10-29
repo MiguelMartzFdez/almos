@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bayesian Optimization (BO) &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Default parameters" href="../Technical/defaults.html" />
+    <link rel="prev" title="Exploratory Learning (EL)" href="el.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Bayesian Optimization (BO)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-bayesian-optimization-works">How Bayesian Optimization Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-in-almos">Implementation in ALMOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#required-input">Required Input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bo-protocol-in-almos">BO Protocol in ALMOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference">Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html#other-modules">Other Modules</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Bayesian Optimization (BO)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Modules/bo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bayesian-optimization-bo">
+<h1>Bayesian Optimization (BO)<a class="headerlink" href="#bayesian-optimization-bo" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>Bayesian Optimization (BO) is a powerful strategy for efficiently searching high-dimensional parameter spaces, commonly used to optimize experimental conditions in chemistry and related fields.</p>
+<p class="centered">
+<strong><a class="reference internal" href="../_images/BO_overview.jpg"><img alt="bo_fig" src="../_images/BO_overview.jpg" style="width: 600px;" /></a></strong></p></section>
+<section id="how-bayesian-optimization-works">
+<h2>How Bayesian Optimization Works<a class="headerlink" href="#how-bayesian-optimization-works" title="Link to this heading"></a></h2>
+<p>BO builds a probabilistic model—typically a Gaussian Process—using all available experimental data. This model predicts both the expected outcome and the uncertainty for each untested condition. An acquisition function, such as Expected Improvement (EI), then evaluates all candidate points, balancing:</p>
+<ul class="simple">
+<li><p><strong>Exploration</strong>: Sampling where the model is uncertain, to learn more about the space.</p></li>
+<li><p><strong>Exploitation</strong>: Sampling where the predicted outcome is promising, to improve results.</p></li>
+</ul>
+<p>At each iteration, BO selects the next experiment by maximizing the acquisition function. This iterative process quickly converges to optimal conditions while minimizing the number of experiments required.</p>
+</section>
+<section id="implementation-in-almos">
+<h2>Implementation in ALMOS<a class="headerlink" href="#implementation-in-almos" title="Link to this heading"></a></h2>
+<p>In ALMOS, BO is implemented using the EDBO+ framework, developed by Abby Doyle and collaborators. EDBO+ provides robust tools for experimental design and optimization. For more information, visit: <a class="reference external" href="https://github.com/doyle-lab-ucla/edboplus">https://github.com/doyle-lab-ucla/edboplus</a></p>
+</section>
+<section id="required-input">
+<h2>Required Input<a class="headerlink" href="#required-input" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>The user must provide a CSV file containing at least one target value (the variable to optimize).</p></li>
+<li><p>This file should be placed inside a folder named <code class="docutils literal notranslate"><span class="pre">batch_0</span></code> (note: the clustering module can also generate this folder and initial data).</p></li>
+</ul>
+</section>
+<section id="bo-protocol-in-almos">
+<h2>BO Protocol in ALMOS<a class="headerlink" href="#bo-protocol-in-almos" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>The user supplies a CSV file with at least one target value in the <code class="docutils literal notranslate"><span class="pre">batch_0</span></code> folder.</p></li>
+<li><p>The BO module uses EDBO+ to fit a surrogate model and select new experimental conditions that maximize the acquisition function.</p></li>
+<li><p>The process repeats, iteratively updating the model with new data, until optimal conditions are found or user-defined stopping criteria are met.</p></li>
+</ol>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>EDBO+: <a class="reference external" href="https://github.com/doyle-lab-ucla/edboplus">https://github.com/doyle-lab-ucla/edboplus</a> (<em>Journal of the American Chemical Society</em> <strong>2022</strong> 144 (43), 19999-20007.)</p></li>
+</ul>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
+<p>A practical example can be found in <strong>Examples/Use of individual modules</strong>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="el.html" class="btn btn-neutral float-left" title="Exploratory Learning (EL)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../Technical/defaults.html" class="btn btn-neutral float-right" title="Default parameters" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
