@@ -887,8 +887,12 @@ class EarlyStopping:
             if all(patience_convergence.values()):
                 no_improvement_streak += 1
 
+        # Flag to track whether any stopping recommendation was made
+        stop_recommended = False
+
         # WARNING if the score has not improved for patience + 1 consecutive batches
         if score_no_improvement_streak >= self.patience:
+            stop_recommended = True
             self.log.write(
                 f"\nWARNING! For model {model_type}, the score has not improved for {score_no_improvement_streak} consecutive batches.\n"
                 "No further improvement in the model's score is expected under current conditions. Consider stopping the process. "
@@ -901,13 +905,16 @@ class EarlyStopping:
         score_value_no_pfi = last_row['score_no_PFI'] if 'score_no_PFI' in last_row else None
 
         if score_value_pfi is not None and score_value_pfi >= 8:
+            stop_recommended = True
             self.log.write(
                 f"\nModel PFI score in the last batch is {score_value_pfi:.2f}, which is already very good!"
             )
             self.log.write(
                 f"\nRecommendation: You may consider stopping the active learning process for PFI, as the model performance is already satisfactory."
             )
+            
         if score_value_no_pfi is not None and score_value_no_pfi >= 8:
+            stop_recommended = True
             self.log.write(
                 f"\nModel no_PFI score in the last batch is {score_value_no_pfi:.2f}, which is already very good!"
             )
@@ -916,11 +923,14 @@ class EarlyStopping:
             )
             
         # If the patience limit is reached (no improvements), declare convergence
-        elif no_improvement_streak >= self.patience:
+        if no_improvement_streak >= self.patience:
             # Mark the last rows (based on patience) with "yes" for convergence
             df.loc[df.index[-self.patience:], 'convergence'] = 'yes'
             self.show_summary(df, model_type)  # Show final summary after convergence
-        else:
+            self.log.write('\no Converged, not expected improvement in exploratory learning process!')
+            stop_recommended = True
+
+        if not stop_recommended:
             self.log.write('\no Not converged yet, keep working with exploratory learning process!')
 
         return df  # Return the DataFrame with convergence results

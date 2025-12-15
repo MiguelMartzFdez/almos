@@ -1,0 +1,295 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Default parameters &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Requirements" href="requirements.html" />
+    <link rel="prev" title="Bayesian Optimization (BO)" href="../Modules/bo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Default parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cluster">CLUSTER</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#parameters">Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#el">EL</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#bo">BO</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Parameters</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html#other-modules">Other Modules</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Default parameters</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Technical/defaults.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="default-parameters">
+<h1>Default parameters<a class="headerlink" href="#default-parameters" title="Link to this heading"></a></h1>
+<p>This documents details the default parameters used in the ALMOS program.</p>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#cluster" id="id3">CLUSTER</a></p>
+<ul>
+<li><p><a class="reference internal" href="#parameters" id="id4">Parameters</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#el" id="id5">EL</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id1" id="id6">Parameters</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#bo" id="id7">BO</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id2" id="id8">Parameters</a></p></li>
+</ul>
+</li>
+</ul>
+</nav>
+<section id="cluster">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">CLUSTER</a><a class="headerlink" href="#cluster" title="Link to this heading"></a></h2>
+<section id="parameters">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Parameters</a><a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<blockquote>
+<div><dl>
+<dt>input<span class="classifier">str, default = '' </span></dt><dd><p>Current file extension: .csv or .sdf (i.e. example.csv).
+Only is possible use a SDF file if using AQME (--aqme).
+If the descriptors are to be obtained through AQME from a CSV file two columns are required: 'code_name' with the names and 'SMILES' for the SMILES string. 
+If the CSV already contains descriptors, it must contain at least 3, and the variable --name must be defined.
+For both cases, there cannot be any column named 'batch' in the CSV file.</p>
+</dd>
+<dt>n_clusters<span class="classifier">int, default = None </span></dt><dd><p>Number of clusters for the clustered. If not defined by the user, it is calculated using the Elbow Method.</p>
+</dd>
+<dt>seed_clustered<span class="classifier">int, default = 0</span></dt><dd><p>Random seed used during KMeans (in k_means function).</p>
+</dd>
+<dt>descp_level<span class="classifier">str, default = 'interpret'</span></dt><dd><p>Type of descriptor to be used in the ALMOS workflow. Options are 'interpret', 'denovo' or 'full'.</p>
+</dd>
+<dt>ignore<span class="classifier">list, default = []</span></dt><dd><p>List containing the columns of the input CSV file that will be ignored during the clustered process
+(i.e. ['code_name','SMILES']). The descriptors will be included in the clustered CSV file. The y value
+is automatically ignored.</p>
+</dd>
+<dt>aqme<span class="classifier">bool, default = False</span></dt><dd><p>Enables the aqme workflow to generate descriptors.</p>
+</dd>
+<dt>name<span class="classifier">str, default = ''</span></dt><dd><p>It is mandatory to define it if the clustering is to be done with the descriptors already defined by the user.
+If the descriptors are to be generated with the program (using AQME) 'name' is not defined.</p>
+</dd>
+<dt>y<span class="classifier">str, default = ''</span></dt><dd><p>Name of the column containing the response variable in the input CSV file (i.e. 'yield').</p>
+</dd>
+<dt>auto_fill: bool, default = True</dt><dd><p>If the CSV contains empty spaces (less than 30 % of NaN per column), KNNImputer is applied, using the K-nearest neighbors method 
+to estimate and fill missing values based on the closest values to each point in the dataset.
+If auto_fill is False, the KNNImputer is not applied (if there are still empty spaces the program finish).</p>
+</dd>
+<dt>categorical: str, default = 'onehot'</dt><dd><p>It can be used when the user provide their descriptors.
+Mode to convert data from columns with categorical variables. As an example, a variable containing 4 types of C atoms 
+(i.e. primary, secondary, tertiary, quaternary) will be converted into categorical variables. Options:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>'onehot' (for one-hot encoding, ROBERT will create a descriptor for each type of C atom using 0s and 1s to indicate whether the C type is present)</p></li>
+<li><p>'numbers' (to describe the C atoms with numbers: 1, 2, 3, 4).</p></li>
+</ol>
+</div></blockquote>
+</dd>
+<dt>aqme_keywords: str, default = ''</dt><dd><p>It can be used to use specific functions from aqme. The entire argument must be in quotation marks, as in the example.
+(i.e., --aqme_keywords &quot;--qdescp_atoms [1,2]&quot;)</p>
+</dd>
+<dt>varfile<span class="classifier">str, default=None</span></dt><dd><p>Option to parse the variables using a yaml file (specify the filename, i.e. varfile=FILE.yaml).</p>
+</dd>
+<dt>nprocs: int, default=8</dt><dd><p>Number of processors used in AQME for the clustered</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</section>
+<section id="el">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">EL</a><a class="headerlink" href="#el" title="Link to this heading"></a></h2>
+<section id="id1">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">Parameters</a><a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>el<span class="classifier">bool</span></dt><dd><p>Indicates whether exploratory learning process is enabled and should be performed. Defaults to &quot;False&quot;.
+This parameter is activated in command line (i.e. --el)</p>
+</dd>
+<dt>csv_name<span class="classifier">str</span></dt><dd><p>Name of the CSV file containing the database. (i.e. 'FILE.csv').</p>
+</dd>
+<dt>y<span class="classifier">str</span></dt><dd><p>Name of the column containing the response variable in the input CSV file (i.e. 'solubility').</p>
+</dd>
+<dt>name<span class="classifier">str</span></dt><dd><p>Name of the column containing the molecule names in the input CSV file (i.e. 'names').</p>
+</dd>
+<dt>ignore<span class="classifier">list, default=[]</span></dt><dd><p>List containing the columns of the input CSV file that will be ignored during the ROBERT process
+(i.e. --ignore &quot;[name,SMILES]&quot;). The descriptors will be included in the final CSV file. The y value, name column and batch column
+are automatically ignored by ROBERT.</p>
+</dd>
+<dt>explore_rt<span class="classifier">float, default= 1</span></dt><dd><p>Specifies the exploration ratio for the exploratory learning process, determining how many points to explore in relation to the total number of experiments. (i.e. '--explore_rt 0.5')
+If not provided or invalid, the program will request the values in the proper format.</p>
+</dd>
+<dt>n_exps<span class="classifier">int,</span></dt><dd><p>Number of experiments to be selected in the exploratory learning process for the new batch. (i.e. '--n_exps 10')
+If not provided or invalid, the program will request the values in the proper format.</p>
+</dd>
+<dt>tolerance<span class="classifier">str, default='medium'</span></dt><dd><p>Indicates the tolerance level for the convergence process, defining the percentage change threshold required for convergence. Options:
+1. 'tight': Strictest level, convergence occurs if the metric improves by ≤1% (threshold = 0.01).
+2. 'medium': Balanced level, convergence occurs if the metric improves by ≤5% (threshold = 0.05).
+3. 'wide': Least strict, convergence occurs if the metric improves by ≤10% (threshold = 0.10).
+(i.e. '--tolerance tight')</p>
+</dd>
+<dt>robert_keywords<span class="classifier">str, default=&quot;&quot;</span></dt><dd><p>Additional keywords to be passed to the ROBERT model generation (i.e. --robert_keywords &quot;--model RF --train [70] --seed [0]&quot;)</p>
+</dd>
+<dt>reverse<span class="classifier">bool, default=False</span></dt><dd><p>If set to True, the order of the points in the new batch is reversed, prioritizing in exploitation lower values (i.e. --reverse ).</p>
+</dd>
+<dt>intelex<span class="classifier">bool, default=False</span></dt><dd><p>If set to True, the program will not need module scikit-learn-intelex to speed up the model update process.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</section>
+<section id="bo">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">BO</a><a class="headerlink" href="#bo" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">Parameters</a><a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<blockquote>
+<div><dl>
+<dt>csv_name<span class="classifier">str</span></dt><dd><p>Name of the CSV file containing the database. (i.e. 'FILE.csv').</p>
+</dd>
+<dt>y<span class="classifier">str</span></dt><dd><p>Name of the column(s) containing the response variable(s) in the input CSV file.
+- For a single column, just provide the column name as a string (e.g., 'solubility').
+- To optimize two columns simultaneously, provide a list in the format: [y1,y2]</p>
+<blockquote>
+<div><p>where y1 and y2 are the names of the columns (e.g., '[yield,ee]').</p>
+</div></blockquote>
+</dd>
+<dt>name<span class="classifier">str</span></dt><dd><p>Name of the column containing the molecule names in the input CSV file (i.e. 'names').</p>
+</dd>
+<dt>ignore<span class="classifier">list, default=[]</span></dt><dd><p>List containing the columns of the input CSV file that will be ignored during the BO process
+(i.e. --ignore &quot;[name,SMILES]&quot;). The descriptors will be included in the final CSV file. The y value, name column and batch column
+are automatically ignored.</p>
+</dd>
+<dt>batch_number<span class="classifier">int, default=0</span></dt><dd><p>Number of the batch to be processed. The CSV file is always taken from the specified batch folder, 
+and a new folder named 'batch_{batch_number+1}' will be generated for the output.</p>
+</dd>
+<dt>n_exps<span class="classifier">int, default=1</span></dt><dd><p>Specifies the number of new points for exploration and exploitation in the next batch.</p>
+</dd>
+<dt>reverse<span class="classifier">bool, default=False</span></dt><dd><p>If False (default), the target value (y) is maximized. If True, the target value is minimized.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../Modules/bo.html" class="btn btn-neutral float-left" title="Bayesian Optimization (BO)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="requirements.html" class="btn btn-neutral float-right" title="Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,415 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Active Learning Molecular Selection (ALMOS) &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=34cd777e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Modules/cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modules/el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modules/bo.html">Bayesian Optimization (BO)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="API/API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API/API_Reference.html#other-modules">Other Modules</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Active Learning Molecular Selection (ALMOS)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p><img alt="almos_banner" src="_images/almos_logo.png" /></p>
+<p><a class="reference external" href="https://app.circleci.com/pipelines/github/MiguelMartzFdez/almos"><img alt="CircleCI" src="https://img.shields.io/circleci/build/github/MiguelMartzFdez/almos?label=Circle%20CI&amp;logo=circleci" /></a>
+<a class="reference external" href="https://codecov.io/gh/MiguelMartzFdez/almos"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/MiguelMartzFdez/almos?label=Codecov&amp;logo=codecov" /></a>
+<a class="reference external" href="https://pepy.tech/project/almos-kit"><img alt="Downloads" src="https://pepy.tech/badge/almos-kit" /></a>
+<a class="reference external" href="https://almos.readthedocs.io/"><img alt="Documentation Status" src="https://img.shields.io/readthedocs/almos?label=Read%20the%20Docs&amp;logo=readthedocs" /></a>
+<a class="reference external" href="https://pypi.org/project/almos-kit/"><img alt="PyPI" src="https://img.shields.io/pypi/v/almos-kit" /></a></p>
+<section id="active-learning-molecular-selection-almos">
+<h1>Active Learning Molecular Selection (ALMOS)<a class="headerlink" href="#active-learning-molecular-selection-almos" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#what-is-almos" id="id5">What is ALMOS?</a></p></li>
+<li><p><a class="reference internal" href="#overview-of-almos" id="id6">Overview of ALMOS</a></p></li>
+<li><p><a class="reference internal" href="#installation" id="id7">Installation</a></p>
+<ul>
+<li><p><a class="reference internal" href="#installation-of-extra-requirements" id="id8">Installation of extra requirements</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#users-with-no-python-experience" id="id9">Users with no Python experience</a></p>
+<ul>
+<li><p><a class="reference internal" href="#installation-of-almos-only-once" id="id10">Installation of ALMOS (only once)</a></p></li>
+<li><p><a class="reference internal" href="#graphical-user-interface-gui-easyalmos" id="id11">Graphical User Interface (GUI): easyALMOS</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#requirements" id="id12">Requirements</a></p>
+<ul>
+<li><p><a class="reference internal" href="#python-and-python-libraries" id="id13">Python and Python libraries</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#extended-documentation" id="id14">Extended documentation</a></p></li>
+<li><p><a class="reference internal" href="#developers-and-help-desk" id="id15">Developers and help desk</a></p></li>
+<li><p><a class="reference internal" href="#license" id="id16">License</a></p></li>
+<li><p><a class="reference internal" href="#reference" id="id17">Reference</a></p></li>
+</ul>
+</nav>
+<section id="what-is-almos">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">What is ALMOS?</a><a class="headerlink" href="#what-is-almos" title="Link to this heading"></a></h2>
+<p>ALMOS is an ensemble of automated machine learning workflows designed for chemical
+discovery, which can be run sequentially through a single command line or a graphical
+user interface. The program supports tasks such as candidate selection, optimization,
+and predictive model development. Comprehensive workflows have been designed to meet
+modern standards in data-driven chemistry, including:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Clustering module</strong>, which performs unsupervised clustering of the input dataset
+to select an initial, diverse, and representative subset of molecules or conditions.
+This step replaces intuition-driven candidate selection and helps reduce bias in
+early-stage sampling. Input data can be user-provided or automatically generated
+from SMILES using the AQME program.</p>
+<ul>
+<li><p><strong>Atomic and molecular descriptor generation from SMILES</strong>, including an RDKit
+conformer sampling and the generation of 200+ steric, electronic and structural
+descriptors using RDKit, xTB and MORFEUS. Requires the
+<a class="reference external" href="https://aqme.readthedocs.io">AQME program</a>.</p></li>
+</ul>
+</li>
+<li><p><strong>Active learning module</strong>, which supports two iterative exploration strategies:</p>
+<ul>
+<li><p><strong>Bayesian Optimization</strong> for identifying optimal candidates based on a target
+property, balancing exploitation and exploration.</p></li>
+<li><p><strong>Exploratory learning</strong> for building robust and interpretable ML models by
+maximizing diversity and minimizing prediction uncertainty across the dataset.</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<p>The code has been designed for:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Inexperienced researchers</strong> in the field of ML. ALMOS provides intuitive workflows,
+a graphical user interface, and detailed visual outputs to facilitate the adoption
+of clustering and active learning techniques in chemical research. Minimal coding
+is required, and complete tutorials are available to guide users through real-world
+case studies.</p></li>
+<li><p><strong>Researchers and developers</strong> seeking reproducible and efficient ML workflows.
+ALMOS offers modular components that can be integrated into existing pipelines for
+candidate selection, model building, or optimization, with full control over inputs
+and strategies.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="overview-of-almos">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Overview of ALMOS</a><a class="headerlink" href="#overview-of-almos" title="Link to this heading"></a></h2>
+<p class="centered">
+<strong><img alt="overview_almos" src="_images/overview_almos.jpg" /></strong></p></section>
+<section id="installation">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Installation</a><a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p>In a nutshell, ALMOS and its dependencies are installed as follows:</p>
+<dl class="simple">
+<dt><strong>1.</strong> Create and activate the conda environment where you want to install the program.</dt><dd><p>If you are not sure of what this point means, check out the &quot;Users with no Python
+experience&quot; section. This is an example for Python 3.10, but it also works for newer
+Python versions (i.e., 3.11 and 3.12):</p>
+</dd>
+</dl>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>almos<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
+conda<span class="w"> </span>activate<span class="w"> </span>almos
+</pre></div>
+</div>
+<p><strong>2.</strong> Install ALMOS using pip:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>almos-kit
+</pre></div>
+</div>
+<p><strong>3.</strong> Install libraries necesaries for ROBERT:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>robert
+pip<span class="w"> </span>install<span class="w"> </span>scikit-learn-intelex<span class="o">==</span><span class="m">2025</span>.2.0
+conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>glib<span class="w"> </span>gtk3<span class="w"> </span>pango<span class="w"> </span>mscorefonts
+</pre></div>
+</div>
+<p><strong>4a.</strong> Install libraries necesaries for AQME:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>aqme
+conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">openbabel</span><span class="o">=</span><span class="m">3</span>.1.1
+</pre></div>
+</div>
+<dl class="simple">
+<dt><strong>4b.</strong> (Just if the installation with pip of step 2 is too slow) Users might instal</dt><dd><p>AQME using conda and update it with pip:</p>
+</dd>
+</dl>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>aqme
+pip<span class="w"> </span>install<span class="w"> </span>aqme<span class="w"> </span>--upgrade
+</pre></div>
+</div>
+<section id="installation-of-extra-requirements">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">Installation of extra requirements</a><a class="headerlink" href="#installation-of-extra-requirements" title="Link to this heading"></a></h3>
+<p>Extra requirements if xTB or CREST are used (compatible with MacOS and Linux only):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">xtb</span><span class="o">=</span><span class="m">6</span>.7.1
+</pre></div>
+</div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">crest</span><span class="o">=</span><span class="m">2</span>.12
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Due to an update in the libgfortran library, <strong>xTB</strong> and <strong>CREST</strong> may encounter
+issues during optimizations. If you plan to use them, please make sure to run the
+following command <strong>after</strong> installing them:</p>
+</div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>conda-forge::libgfortran<span class="o">=</span><span class="m">14</span>.2.0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="users-with-no-python-experience">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Users with no Python experience</a><a class="headerlink" href="#users-with-no-python-experience" title="Link to this heading"></a></h2>
+<section id="installation-of-almos-only-once">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Installation of ALMOS (only once)</a><a class="headerlink" href="#installation-of-almos-only-once" title="Link to this heading"></a></h3>
+<p>You need a Python environment to install and run ALMOS. These are some suggested
+first steps:</p>
+<p><strong>1.</strong> Install <a class="reference external" href="https://docs.anaconda.com/free/anaconda/install">Anaconda with Python 3</a>
+for your operating system (Windows, macOS or Linux). Alternatively, if you're
+familiar with conda installers, you can install <a class="reference external" href="https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html">Miniconda with Python 3</a>
+(requires less space than Anaconda).</p>
+<p><strong>2.</strong> Open an Anaconda prompt (Windows users) or a terminal (macOS and Linux).</p>
+<p><strong>3.</strong> Create a conda environment called &quot;almos&quot; with Python (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">create</span> <span class="pre">-n</span> <span class="pre">almos</span> <span class="pre">python=3.10</span></code>).
+<br />
+<em>This is an example for Python 3.10, but it also works for newer Python versions (i.e., 3.11 and 3.12).</em></p>
+<p><strong>4.</strong> Activate the conda environment called &quot;almos&quot; (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">almos</span></code>).</p>
+<p><strong>5.</strong> Install ALMOS as defined in the &quot;Installation&quot; section (<code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">almos-kit</span></code>).</p>
+<p><strong>6.</strong> Install ROBERT as defined in the &quot;Installation&quot; section (<code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">robert</span></code>).</p>
+<p><strong>7.</strong> Install the intelex code accelerator (only if your system is compatible with intelex) (<code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">scikit-learn-intelex==2025.2.0</span></code>).</p>
+<p><strong>8.</strong> Install GLib, GTK3, pango and mscorefonts to avoid errors when creating the PDF report (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-y</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">glib</span> <span class="pre">gtk3</span> <span class="pre">pango</span> <span class="pre">mscorefonts</span></code>).</p>
+<p><strong>9.</strong> Install AQME as defined in the &quot;Installation&quot; section (<code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">aqme</span></code>).</p>
+<p><strong>10.</strong> Install OpenBabel as defined in the &quot;Installation&quot; section (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-y</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">openbabel=3.1.1</span></code>).</p>
+<p><strong>11.</strong> Go to the folder where you want to run the program and have the input files, if any (using the &quot;cd&quot; command, i.e. <code class="code docutils literal notranslate"><span class="pre">cd</span> <span class="pre">C:/Users/test_almos</span></code>).</p>
+<p><strong>12.</strong> Run ALMOS as explained in the Examples Command Line section.</p>
+</section>
+<section id="graphical-user-interface-gui-easyalmos">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Graphical User Interface (GUI): easyALMOS</a><a class="headerlink" href="#graphical-user-interface-gui-easyalmos" title="Link to this heading"></a></h3>
+<p>You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI
+simplifies the setup of ALMOS workflows, enabling users to select files and
+configure options easily. To run easyALMOS followthese steps:</p>
+<p><strong>1.</strong> Install ALMOS as defined in the &quot;Installation&quot; section.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The GUI only works with ALMOS version 0.1.0 or later (check your version!).</p>
+</div>
+<p><strong>2.</strong> Open an Anaconda prompt (Windows users) or a terminal (macOS and Linux).</p>
+<p><strong>3.</strong> Activate the conda environment where ALMOS is installed (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">almos</span></code>).</p>
+<p><strong>4.</strong> Download <a class="reference external" href="https://github.com/MiguelMartzFdez/almos/blob/master/GUI_easyalmos/easyalmos.py">easyalmos.py:</a> <a href="#id1"><span class="problematic" id="id2">|easyalmos|</span></a>, tapping on this button on GitHub <a href="#id3"><span class="problematic" id="id4">|download|</span></a></p>
+<p><strong>5.</strong> Go to the folder with the easyalmos.py file (using the &quot;cd&quot; command, i.e. <code class="code docutils literal notranslate"><span class="pre">cd</span> <span class="pre">C:/Users/test_almos</span></code>).</p>
+<p><strong>7.</strong> Run easyALMOS with the following command line (<code class="code docutils literal notranslate"><span class="pre">python</span> <span class="pre">easyalmos.py</span></code>).</p>
+</section>
+</section>
+<section id="requirements">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Requirements</a><a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
+<section id="python-and-python-libraries">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Python and Python libraries</a><a class="headerlink" href="#python-and-python-libraries" title="Link to this heading"></a></h3>
+<p><em>Core almos_kit dependencies</em></p>
+<ul class="simple">
+<li><p>Python &gt;= 3.10</p></li>
+<li><p>PyYAML</p></li>
+<li><p>plotly</p></li>
+<li><p>matplotlib</p></li>
+<li><p>numpy</p></li>
+<li><p>pandas</p></li>
+<li><p>pdfplumber</p></li>
+<li><p>rdkit</p></li>
+<li><p>scikit_learn</p></li>
+<li><p>pca</p></li>
+<li><p>kneed</p></li>
+</ul>
+<p><em>Bayesian Optimization (EDBO) dependencies</em></p>
+<ul class="simple">
+<li><p>botorch</p></li>
+<li><p>gpytorch</p></li>
+<li><p>idaes-pse</p></li>
+<li><p>ipykernel</p></li>
+<li><p>ipython</p></li>
+<li><p>ipywidgets</p></li>
+<li><p>Jinja2</p></li>
+<li><p>joypy</p></li>
+<li><p>lxml</p></li>
+<li><p>mordred</p></li>
+<li><p>ordered-set</p></li>
+<li><p>pareto</p></li>
+<li><p>pymoo</p></li>
+<li><p>scipy</p></li>
+<li><p>seaborn</p></li>
+<li><p>sympy</p></li>
+<li><p>torch</p></li>
+<li><p>tqdm</p></li>
+</ul>
+</section>
+</section>
+<section id="extended-documentation">
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">Extended documentation</a><a class="headerlink" href="#extended-documentation" title="Link to this heading"></a></h2>
+<p>More detailed examples, an API reference and the extended list of currently
+avaliable parameters can be found at
+<a class="reference external" href="https://almos.readthedocs.io">https://almos.readthedocs.io</a></p>
+</section>
+<section id="developers-and-help-desk">
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">Developers and help desk</a><a class="headerlink" href="#developers-and-help-desk" title="Link to this heading"></a></h2>
+<p>List of main developers and contact emails:</p>
+<ul class="simple">
+<li><p>Miguel Martinez Fernandez [
+<a class="reference external" href="https://orcid.org/0009-0002-8538-7250">ORCID</a> ,
+<a class="reference external" href="https://github.com/MiguelMartzFdez">Github</a> ,
+<a class="reference external" href="mailto:miguel&#46;martinez&#37;&#52;&#48;csic&#46;es">email</a> ]
+developer of the EL module.</p></li>
+<li><p>Susana P. García Abellán [
+<a class="reference external" href="https://orcid.org/0000-0002-3138-5527">ORCID</a> ,
+<a class="reference external" href="https://github.com/sgabellan">Github</a> ,
+<a class="reference external" href="mailto:sg&#46;abellan&#37;&#52;&#48;csic&#46;es">email</a>]
+developer of the CLUSTER module.</p></li>
+<li><p>David Dalmau Ginesta [
+<a class="reference external" href="https://orcid.org/0000-0002-2506-6546">ORCID</a> ,
+<a class="reference external" href="https://github.com/ddgunizar">Github</a> ,
+<a class="reference external" href="mailto:ddalmau&#37;&#52;&#48;unizar&#46;es">email</a> ]
+developer of the BO module.</p></li>
+<li><p>Juan V. Alegre Requena [
+<a class="reference external" href="https://orcid.org/0000-0002-0769-7168">ORCID</a> ,
+<a class="reference external" href="https://github.com/jvalegre">Github</a> ,
+<a class="reference external" href="mailto:jv&#46;alegre&#37;&#52;&#48;csic&#46;es">email</a> ]
+research group supervisor and code advisor.</p></li>
+</ul>
+<p>For suggestions and improvements of the code (greatly appreciated!), please
+reach out through the issues and pull requests options of Github.</p>
+</section>
+<section id="license">
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">License</a><a class="headerlink" href="#license" title="Link to this heading"></a></h2>
+<p>AQME is freely available under an <a class="reference external" href="https://opensource.org/licenses/MIT">MIT License</a></p>
+</section>
+<section id="reference">
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Reference</a><a class="headerlink" href="#reference" title="Link to this heading"></a></h2>
+<dl>
+<dt>If you use the AL module, please cite the following paper:</dt><dd><ul class="simple">
+<li><p>Dalmau, D.; Alegre Requena, J. V. ROBERT: Bridging the Gap between Machine Learning and Chemistry. Wiley Interdiscip. Rev. Comput. Mol. Sci. <strong>2024</strong>, 14, e1733.</p></li>
+</ul>
+</dd>
+<dt>If you use the BO module , please cite the following paper:</dt><dd><ul class="simple">
+<li><p>Jose Antonio Garrido Torres, Sii Hong Lau, Pranay Anchuri, Jason M. Stevens, Jose E. Tabora, Jun Li, Alina Borovika, Ryan P. Adams, and Abigail G. Doyle. <em>Journal of the American Chemical Society</em> <strong>2022</strong> 144 (43), 19999-20007.</p></li>
+</ul>
+</dd>
+<dt>If you use AQME, please include this citation:</dt><dd><ul class="simple">
+<li><p>Alegre-Requena, J. V.; Sowndarya, S.; Pérez-Soto, R.; Alturaifi, T.; Paton, R. AQME: Automated Quantum Mechanical Environments for Researchers and Educators. <em>Wiley Interdiscip. Rev. Comput. Mol. Sci.</em> <strong>2023</strong>, <em>13</em>, e1663. (DOI: 10.1002/wcms.1663)</p></li>
+</ul>
+<blockquote>
+<div><p>Additionally, please include the corresponding references for the following programs:</p>
+<ul class="simple">
+<li><p>If you used AQME.CSEARCH with RDKit methods: <a class="reference external" href="https://www.rdkit.org/">RDKit</a></p></li>
+<li><p>If you used AQME.CSEARCH with CREST methods: <a class="reference external" href="https://crest-lab.github.io/crest-docs/">CREST</a></p></li>
+<li><p>If you used AQME.CMIN with xTB: <a class="reference external" href="https://xtb-docs.readthedocs.io/en/latest/contents.html">xTB</a></p></li>
+<li><p>If you used AQME.CMIN with ANI: <a class="reference external" href="https://github.com/isayev/ASE_ANI">ANI</a></p></li>
+<li><p>If you used AQME.QCORR: <a class="reference external" href="https://cclib.github.io/">cclib</a></p></li>
+<li><p>If you used AQME.QDESCP with xTB: <a class="reference external" href="https://xtb-docs.readthedocs.io/en/latest/contents.html">xTB</a></p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Versions" href="../Misc/versions.html" />
+    <link rel="prev" title="el_utils" href="almos.el_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="API_Reference.html#other-modules">Other Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="almos.el_utils.html">el_utils</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">utils</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.Logger"><code class="docutils literal notranslate"><span class="pre">Logger</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#almos.utils.Logger.finalize"><code class="docutils literal notranslate"><span class="pre">Logger.finalize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.utils.Logger.write"><code class="docutils literal notranslate"><span class="pre">Logger.write()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.check_dependencies"><code class="docutils literal notranslate"><span class="pre">check_dependencies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.command_line_args"><code class="docutils literal notranslate"><span class="pre">command_line_args()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.format_lists"><code class="docutils literal notranslate"><span class="pre">format_lists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.load_variables"><code class="docutils literal notranslate"><span class="pre">load_variables()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="API_Reference.html">Main Modules</a></li>
+      <li class="breadcrumb-item active">utils</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/API/almos.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-almos.utils">
+<span id="utils"></span><h1>utils<a class="headerlink" href="#module-almos.utils" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="almos.utils.Logger">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">Logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filein</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">append</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.Logger" title="Link to this definition"></a></dt>
+<dd><p>Class that wraps a file object to abstract the logging.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.utils.Logger.finalize">
+<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.Logger.finalize" title="Link to this definition"></a></dt>
+<dd><p>Closes the file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.utils.Logger.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.Logger.write" title="Link to this definition"></a></dt>
+<dd><p>Appends a newline character to the message and writes it into the file.</p>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>Text to be written in the log file.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.utils.check_dependencies">
+<span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">check_dependencies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.check_dependencies" title="Link to this definition"></a></dt>
+<dd><p>Checks if the required Python packages are installed for the specified module.</p>
+<dl class="simple">
+<dt>For module &quot;cluster&quot;:</dt><dd><dl class="simple">
+<dt>Only required for the aqme workflow.</dt><dd><ul class="simple">
+<li><p>Requires 'obabel', version: &quot;3.1.1&quot;</p></li>
+<li><p>Requires 'aqme', version: &quot;1.7.2&quot;</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>For module &quot;el&quot;:
+- Requires 'robert' on all platforms.
+- Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).</p>
+<section id="id1">
+<h2>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>module<span class="classifier">str</span></dt><dd><p>The name of the module for which dependencies are being checked.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.utils.command_line_args">
+<span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">command_line_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.command_line_args" title="Link to this definition"></a></dt>
+<dd><p>Parse and process command-line arguments.</p>
+<p>This function reads and processes arguments provided via the command line. 
+It validates the arguments against a predefined set of valid options, converts 
+them to their expected data types, and combines them with default values. 
+The final configuration is returned as an object in args using the set_options function.</p>
+<section id="returns">
+<h2>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>args<span class="classifier">object</span></dt><dd><p>An object containing all configuration options, including default values 
+and user-provided overrides.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.utils.format_lists">
+<span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">format_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.format_lists" title="Link to this definition"></a></dt>
+<dd><p>Transforms strings into a list</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.utils.load_variables">
+<span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">load_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">almos_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create_dat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.load_variables" title="Link to this definition"></a></dt>
+<dd><p>Combine user-defined arguments with default variables and set up the environment.</p>
+<p>This function merges default values from 'var_dict' with user-provided arguments 
+using 'set_options'. It also initializes additional variables, such as the 
+working directory, sets up the logger and print command line used for depending on the module.</p>
+<section id="id2">
+<h2>Parameters:<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>kwargs<span class="classifier">dict</span></dt><dd><p>Dictionary of user-provided arguments to override default values.</p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h2>Returns:<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>self<span class="classifier">object</span></dt><dd><p>An object containing all configuration options and additional setup attributes.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="almos.el_utils.html" class="btn btn-neutral float-left" title="el_utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../Misc/versions.html" class="btn btn-neutral float-right" title="Versions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

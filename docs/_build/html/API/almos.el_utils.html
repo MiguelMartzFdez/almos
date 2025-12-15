@@ -1,0 +1,530 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>el_utils &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="utils" href="almos.utils.html" />
+    <link rel="prev" title="BO" href="almos.bo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="API_Reference.html#other-modules">Other Modules</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">el_utils</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.EarlyStopping"><code class="docutils literal notranslate"><span class="pre">EarlyStopping</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.check_convergence"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.check_convergence()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.check_convergence_model"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.check_convergence_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.check_metric_convergence"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.check_metric_convergence()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.check_score_convergence"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.check_score_convergence()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.check_score_no_improvement"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.check_score_no_improvement()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.el_utils.EarlyStopping.show_summary"><code class="docutils literal notranslate"><span class="pre">EarlyStopping.show_summary()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.assign_values"><code class="docutils literal notranslate"><span class="pre">assign_values()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.check_missing_outputs"><code class="docutils literal notranslate"><span class="pre">check_missing_outputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.extract_points_from_csv"><code class="docutils literal notranslate"><span class="pre">extract_points_from_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.extract_rmse_and_score_from_column"><code class="docutils literal notranslate"><span class="pre">extract_rmse_and_score_from_column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.extract_sd_from_column"><code class="docutils literal notranslate"><span class="pre">extract_sd_from_column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.find_closest_value"><code class="docutils literal notranslate"><span class="pre">find_closest_value()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.generate_quartile_medians_df"><code class="docutils literal notranslate"><span class="pre">generate_quartile_medians_df()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.get_metrics_from_batches"><code class="docutils literal notranslate"><span class="pre">get_metrics_from_batches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.get_quartile"><code class="docutils literal notranslate"><span class="pre">get_quartile()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.get_scores_from_robert_report"><code class="docutils literal notranslate"><span class="pre">get_scores_from_robert_report()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.get_size_counters"><code class="docutils literal notranslate"><span class="pre">get_size_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.load_options_from_csv"><code class="docutils literal notranslate"><span class="pre">load_options_from_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.plot_metrics_subplots"><code class="docutils literal notranslate"><span class="pre">plot_metrics_subplots()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.el_utils.process_batch"><code class="docutils literal notranslate"><span class="pre">process_batch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="almos.utils.html">utils</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="API_Reference.html">Main Modules</a></li>
+      <li class="breadcrumb-item active">el_utils</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/API/almos.el_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-almos.el_utils">
+<span id="el-utils"></span><h1>el_utils<a class="headerlink" href="#module-almos.el_utils" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">EarlyStopping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmse_min_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sd_min_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping" title="Link to this definition"></a></dt>
+<dd><p>Monitors model performance to determine convergence based on specified tolerances for different metrics.</p>
+<p>This class tracks metrics (e.g., RMSE, SD, and score) over iterations, marking convergence if improvements
+fall below specified thresholds for a set number of iterations (patience). Results are logged and saved 
+for analysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.check_convergence">
+<span class="sig-name descname"><span class="pre">check_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results_plot_no_PFI</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_plot_PFI</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.check_convergence" title="Link to this definition"></a></dt>
+<dd><p>Check for convergence for both PFI and no_PFI models independently.
+This function processes batch metrics, updates CSV files, and ensures
+only new or updated batches are added.</p>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>results_plot_no_PFI<span class="classifier">list of dicts</span></dt><dd><p>Batch metrics for the no_PFI model.</p>
+</dd>
+<dt>results_plot_PFI<span class="classifier">list of dicts</span></dt><dd><p>Batch metrics for the PFI model.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.check_convergence_model">
+<span class="sig-name descname"><span class="pre">check_convergence_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.check_convergence_model" title="Link to this definition"></a></dt>
+<dd><p>Check for convergence for either the PFI or no_PFI model separately.</p>
+<section id="id1">
+<h2>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df<span class="classifier">pd.DataFrame</span></dt><dd><p>The DataFrame containing the batch results.</p>
+</dd>
+<dt>model_type<span class="classifier">str</span></dt><dd><p>Either 'PFI' or 'no_PFI' to determine which set of metrics to check.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h2>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>pd.DataFrame</dt><dd><p>The updated DataFrame with convergence columns and status.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.check_metric_convergence">
+<span class="sig-name descname"><span class="pre">check_metric_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">previous_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.check_metric_convergence" title="Link to this definition"></a></dt>
+<dd><p>Checks if a specific metric has converged.
+The metric is considered converged if:
+- It has not worsened (i.e., no negative changes).
+- It has improved, but by less than the specified tolerance.</p>
+<section id="id2">
+<h2>Parameters:<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>previous_row<span class="classifier">pd.Series</span></dt><dd><p>The metrics from the previous iteration.</p>
+</dd>
+<dt>last_row<span class="classifier">pd.Series</span></dt><dd><p>The metrics from the current iteration.</p>
+</dd>
+<dt>metric_name<span class="classifier">str</span></dt><dd><p>The name of the metric being checked.</p>
+</dd>
+<dt>tolerance<span class="classifier">float</span></dt><dd><p>The minimum percentage change required for improvement.</p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h2>Returns:<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>bool</dt><dd><p>True if the metric has converged (no worsening or minimal improvement),
+False if the metric has worsened or improved significantly.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.check_score_convergence">
+<span class="sig-name descname"><span class="pre">check_score_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">previous_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_tolerance</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.check_score_convergence" title="Link to this definition"></a></dt>
+<dd><p>Checks if the score has improved beyond the score tolerance.
+If the score has not worsened, it has converged. Return True.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.check_score_no_improvement">
+<span class="sig-name descname"><span class="pre">check_score_no_improvement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">previous_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.check_score_no_improvement" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the score has not improved (i.e., stays the same or gets worse).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.el_utils.EarlyStopping.show_summary">
+<span class="sig-name descname"><span class="pre">show_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.EarlyStopping.show_summary" title="Link to this definition"></a></dt>
+<dd><p>Displays a final summary for either PFI or no_PFI metrics.</p>
+<section id="id4">
+<h2>Parameters:<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df<span class="classifier">pd.DataFrame</span></dt><dd><p>The DataFrame containing the batch results.</p>
+</dd>
+<dt>model_type<span class="classifier">str</span></dt><dd><p>Either 'PFI' or 'no_PFI' to determine which set of metrics to display.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.assign_values">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">assign_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exploit_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">explore_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quartile_medians</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_counters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predictions_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sd_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.assign_values" title="Link to this definition"></a></dt>
+<dd><p>Assigns points for exploration by quartile, prioritizing those with highest uncertainty (sd_column).
+Uses size_counters to always select the quartile with the fewest assigned points.
+If a quartile has no available points, selects the point closest to the quartile median.
+If there are no exploitation points, distribute among all four quartiles.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.check_missing_outputs">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">check_missing_outputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.check_missing_outputs" title="Link to this definition"></a></dt>
+<dd><p>Validates input parameters for exploratory learning.</p>
+<p>This method:
+- Loads default options and adds values for missing attributes ('target_column', 'name_column', 'ignore_list').
+- Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
+- Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
+- Validates 'explore_rt' and 'tolerance' ensuring valid ranges.
+- Validates 'n_exps' ensuring it is a positive integer.
+- Manages the 'batch_column', adding or updating it as needed for data completeness.
+- Updates 'ignore_list' and saves final options to a file.</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>SystemExit: If any required input is missing, invalid, or the file is not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.extract_points_from_csv">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">extract_points_from_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_number</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.extract_points_from_csv" title="Link to this definition"></a></dt>
+<dd><p>Extract Training and test points from CSV files for both PFI and No_PFI models.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>batch_number (int): The batch number to process.</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: A dictionary with the number of Training and test points for No_PFI and PFI models.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.extract_rmse_and_score_from_column">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">extract_rmse_and_score_from_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">page</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.extract_rmse_and_score_from_column" title="Link to this definition"></a></dt>
+<dd><p>Extract RMSE and SCORE value from a specific column on a given page of a PDF.
+First tries to match 'Test' results, if not found, tries 'Valid' results.</p>
+<section id="id5">
+<h2>Parameters:<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>page<span class="classifier">pdfplumber Page object</span></dt><dd><p>The page from which to extract the data.(PDF report)</p>
+</dd>
+<dt>bbox<span class="classifier">tuple</span></dt><dd><p>The bounding box (coordinates) to specify the column area in the PDF (PFI model or non PFI model).</p>
+</dd>
+</dl>
+</section>
+<section id="id6">
+<h2>Returns:<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>tuple</dt><dd><p>A tuple containing the extracted RMSE value and SCORE value, or (None, None) if no patterns match.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.extract_sd_from_column">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">extract_sd_from_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">page</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.extract_sd_from_column" title="Link to this definition"></a></dt>
+<dd><p>Extract SD value from a specific column on a given page of a PDF.</p>
+<section id="id7">
+<h2>Parameters:<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>page<span class="classifier">pdfplumber Page object</span></dt><dd><p>The page from which to extract the data.(PDF report)</p>
+</dd>
+<dt>bbox<span class="classifier">tuple</span></dt><dd><p>The bounding box (coordinates) to specify the column area in the PDF. (PFI model or non PFI model).</p>
+</dd>
+</dl>
+</section>
+<section id="id8">
+<h2>Returns:<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>float or None</dt><dd><p>The extracted SD value, or None if no pattern matches.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.find_closest_value">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">find_closest_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_median</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.find_closest_value" title="Link to this definition"></a></dt>
+<dd><p>Find the value in a specified column of a DataFrame that is closest to a target mean value.</p>
+<section id="id9">
+<h2>Parameters:<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df<span class="classifier">pd.DataFrame</span></dt><dd><p>The DataFrame containing the data to search through.</p>
+</dd>
+<dt>target_median<span class="classifier">float</span></dt><dd><p>The target median value to compare against.</p>
+</dd>
+<dt>target_column<span class="classifier">str</span></dt><dd><p>The name of the column in which to find the value closest to the target mean.</p>
+</dd>
+</dl>
+</section>
+<section id="id10">
+<h2>Returns:<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>pd.Series</dt><dd><p>The row in the DataFrame where the value in the target_column is closest to the target_mean.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.generate_quartile_medians_df">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">generate_quartile_medians_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df_total</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df_exp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values_column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.generate_quartile_medians_df" title="Link to this definition"></a></dt>
+<dd><p>Assign quartiles (q1, q2, q3, q4) to values in a DataFrame column based on their range.
+Also, calculate the median value for each quartile.</p>
+<section id="id11">
+<h2>Parameters:<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df_total<span class="classifier">pd.DataFrame</span></dt><dd><p>Experimental values and predictions are used to calculate the range of values for determining quartiles.</p>
+</dd>
+<dt>df_exp<span class="classifier">pd.DataFrame</span></dt><dd><p>The experimental dataset where quartiles will be assigned.</p>
+</dd>
+<dt>values_column<span class="classifier">str</span></dt><dd><p>The name of the column in df_total and df_exp that contains the target values.</p>
+</dd>
+</dl>
+</section>
+<section id="id12">
+<h2>Returns:<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df_exp<span class="classifier">pd.DataFrame</span></dt><dd><p>The experimental dataset with a new 'quartile' column, assigning each value to q1, q2, q3, or q4.</p>
+</dd>
+<dt>quartile_medians<span class="classifier">dict</span></dt><dd><p>A dictionary containing the median values for the first three quartiles (q1, q2, q3, q4).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.get_metrics_from_batches">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">get_metrics_from_batches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.get_metrics_from_batches" title="Link to this definition"></a></dt>
+<dd><p>Generates metrics for plotting by processing each batch directory.</p>
+<p>Iterates over directories named 'batch_*' (excluding 'batch_plots' and 'batch_0') 
+and collects metrics with and without PFI for each batch by calling 'process_batch'.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>tuple: (results_plot_no_PFI, results_plot_PFI), lists of metrics without </dt><dd><p>and with PFI for each batch.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.get_quartile">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">get_quartile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaries</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.get_quartile" title="Link to this definition"></a></dt>
+<dd><p>Determine the quartile a given value falls into based on specified boundaries.</p>
+<section id="id13">
+<h2>Parameters:<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>value<span class="classifier">float</span></dt><dd><p>The value to be classified into a quartile.</p>
+</dd>
+<dt>boundaries<span class="classifier">list of float</span></dt><dd><p>A list of boundary values defining the quartile ranges.</p>
+</dd>
+</dl>
+</section>
+<section id="id14">
+<h2>Returns:<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>str</dt><dd><p>The quartile ('q1', 'q2', 'q3', 'q4') the value falls into.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.get_scores_from_robert_report">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">get_scores_from_robert_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdf_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.get_scores_from_robert_report" title="Link to this definition"></a></dt>
+<dd><p>Extract score values from both left (No_PFI) and right (PFI) columns in the first page of the PDF.</p>
+<section id="id15">
+<h2>Parameters:<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>pdf_path<span class="classifier">Path</span></dt><dd><p>Path to the ROBERT_report.pdf.</p>
+</dd>
+</dl>
+</section>
+<section id="id16">
+<h2>Returns:<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>tuple</dt><dd><p>A tuple (score_no_PFI, score_PFI), where either can be None if not found.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.get_size_counters">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">get_size_counters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.get_size_counters" title="Link to this definition"></a></dt>
+<dd><p>Count the number of points in each quartile (q1, q2, q3, q4).</p>
+<section id="id17">
+<h2>Parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>df<span class="classifier">pd.DataFrame</span></dt><dd><p>The DataFrame that contains a 'quartile' column, which categorizes values into quartiles (q1, q2, q3, 4).</p>
+</dd>
+</dl>
+</section>
+<section id="id18">
+<h2>Returns:<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>dict</dt><dd><p>A dictionary with keys 'q1', 'q2', 'q3' and 'q4' where each key represents the number of points in that quartile.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.load_options_from_csv">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">load_options_from_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.load_options_from_csv" title="Link to this definition"></a></dt>
+<dd><p>Load default options from a CSV file if user inputs are not provided.</p>
+<section id="id19">
+<h2>Parameters:<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>options_file<span class="classifier">str</span></dt><dd><p>The path to the CSV file containing default options.</p>
+</dd>
+</dl>
+</section>
+<section id="id20">
+<h2>Returns:<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>dict or None</dt><dd><p>A dictionary containing the default values for 'y', 'ignore', and 'name' 
+if the file is successfully read. Returns None if the file is not found.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.plot_metrics_subplots">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">plot_metrics_subplots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'batch_plots'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.plot_metrics_subplots" title="Link to this definition"></a></dt>
+<dd><p>Function to plot different metrics in a 4x1 subplot layout and save as a single image.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.el_utils.process_batch">
+<span class="sig-prename descclassname"><span class="pre">almos.el_utils.</span></span><span class="sig-name descname"><span class="pre">process_batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_number</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.el_utils.process_batch" title="Link to this definition"></a></dt>
+<dd><p>Extract RMSE, SD, score data from both left and right columns of the PDF report for a specific batch. (PFI model and non PFI model).
+Extract number or points from CSV files for both PFI and No_PFI models.</p>
+<section id="id21">
+<h2>Parameters:<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>batch_number<span class="classifier">int</span></dt><dd><p>The batch number to process (e.g., 1, 2, 3).</p>
+</dd>
+</dl>
+</section>
+<section id="id22">
+<h2>Returns:<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>dict </dt><dd><p>A dictionary containing the batch number, RMSE, and SD values for both columns (no_PFI and PFI).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="almos.bo.html" class="btn btn-neutral float-left" title="BO" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="almos.utils.html" class="btn btn-neutral float-right" title="utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

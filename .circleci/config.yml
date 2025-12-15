@@ -51,9 +51,6 @@ jobs:
           pip install scikit-learn-intelex  
           pip install .
 
-          # uninstall almos to avoid codecov issues (only running from the almos folder)
-          pip uninstall -y almos
-
           # install and run pytest
           pip install pytest
           pip install pytest-cov

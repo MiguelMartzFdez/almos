@@ -28,7 +28,7 @@
 
 from almos.cluster import cluster
 from almos.el import el    
-from almos.al_bayes import bo 
+from almos.bo import bo 
 from almos.utils import command_line_args
 
 def main():

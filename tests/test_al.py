@@ -196,7 +196,6 @@ def test_AL(test_job):
             assert expected_values['csv_name'] == actual_filename, (
                 f"'csv_name' mismatch! Expected {expected_values['csv_name']}, got {actual_filename} in 'options.csv'"
             )
-
         def validate_batches(path_batches, expected_values_al, csv_name_robert, csv_name_b1, batch_number):
             """
             Validate the points and batch results in the specified batch files.
@@ -215,10 +214,13 @@ def test_AL(test_job):
             db_save_b1['batch'] = db_save_b1['batch'].astype('int64')
 
             expected_df = pd.DataFrame(expected_values_al['rows'])
-            
-            assert db_save_b1.reset_index(drop=True).equals(expected_df), "Selected rows in batch do not match!"
+
+            # Sort both DataFrames to ensure row equality regardless of order
+            db_save_b1_sorted = db_save_b1.sort_values(by=["name", "index", "batch"]).reset_index(drop=True)
+            expected_df_sorted = expected_df.sort_values(by=["name", "index", "batch"]).reset_index(drop=True)
+
+            assert db_save_b1_sorted.equals(expected_df_sorted), "Selected rows in batch do not match!"
             assert len(db_save_b1) == len(expected_df), "Number of selected rows mismatch!"
-            
 
         def validate_plots(path_plots, expected_structure, expected_values_plot):
             """
@@ -335,15 +337,14 @@ def test_AL(test_job):
                 'csv_name': 'AL_example.csv'
             }),
 
-            lambda: validate_batches(
-                'batch_1',{
-                    'num_points': 22,
-                    'rows': {'name': [19, 20, 21, 22, 23],
-                    'index': [119, 120, 121, 122, 123],
-                    'batch': [1, 1, 1, 1, 1]}},
-                    'ROBERT_b1/AL_example_ROBERT_b1.csv',
-                    'AL_example_b1.csv',
-                    1),
+            lambda: validate_batches('batch_1',
+                {'num_points': 22,
+                'rows': {'name': [19, 23, 22, 21, 20],
+                'index': [119, 123, 122, 121, 120],
+                'batch': [1, 1, 1, 1, 1]}},
+                'ROBERT_b1/AL_example_ROBERT_b1.csv',
+                'AL_example_b1.csv',
+                1),    
 
             lambda: validate_plots(
                 "batch_plots", 

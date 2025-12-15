@@ -184,7 +184,7 @@ class el:
 
         # Build and run the command for updating the ROBERT model
         command = (
-            f'python -m robert --csv_name "{filename_model_csv}" '
+            f'python -u -m robert --csv_name "{filename_model_csv}" '
             f'--name {self.args.name} '
             f'--y {self.args.y} '
             f'--ignore "{self.args.ignore}" '
@@ -407,6 +407,8 @@ class el:
         df_raw_copy.drop([predictions_column, sd_column], axis=1, inplace=True)
 
         # Build the filename for the updated dataset and save it
+        # Sort entire DataFrame by batch descending, keeping NaNs at the end
+        df_raw_copy = df_raw_copy.sort_values(by=self.args.batch_column, ascending=False, na_position='last')
         output_file = f"{self.args.base_name}_b{self.args.current_number_batch}.csv"
         df_raw_copy.to_csv(output_file, index=False)
 
