@@ -1,0 +1,180 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BO &mdash; almos v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="el_utils" href="almos.el_utils.html" />
+    <link rel="prev" title="EL" href="almos.el.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="API_Reference.html">Main Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="almos.cluster.html">CLUSTER</a></li>
+<li class="toctree-l2"><a class="reference internal" href="almos.el.html">EL</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">BO</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#almos.bo.bo"><code class="docutils literal notranslate"><span class="pre">bo</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameters">Parameters</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API_Reference.html#other-modules">Other Modules</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="API_Reference.html">Main Modules</a></li>
+      <li class="breadcrumb-item active">BO</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/API/almos.bo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bo">
+<h1>BO<a class="headerlink" href="#bo" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="almos.bo.bo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">almos.bo.</span></span><span class="sig-name descname"><span class="pre">bo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.bo.bo" title="Link to this definition"></a></dt>
+<dd><p>Active Learning class using
+Bayesian Optimization with EDBOplus.</p>
+</dd></dl>
+
+<section id="parameters">
+<span id="module-almos.bo"></span><h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<blockquote>
+<div><dl>
+<dt>csv_name<span class="classifier">str</span></dt><dd><p>Name of the CSV file containing the database. (i.e. 'FILE.csv').</p>
+</dd>
+<dt>y<span class="classifier">str</span></dt><dd><p>Name of the column(s) containing the response variable(s) in the input CSV file.
+- For a single column, just provide the column name as a string (e.g., 'solubility').
+- To optimize two columns simultaneously, provide a list in the format: [y1,y2]</p>
+<blockquote>
+<div><p>where y1 and y2 are the names of the columns (e.g., '[yield,ee]').</p>
+</div></blockquote>
+</dd>
+<dt>name<span class="classifier">str</span></dt><dd><p>Name of the column containing the molecule names in the input CSV file (i.e. 'names').</p>
+</dd>
+<dt>ignore<span class="classifier">list, default=[]</span></dt><dd><p>List containing the columns of the input CSV file that will be ignored during the BO process
+(i.e. --ignore &quot;[name,SMILES]&quot;). The descriptors will be included in the final CSV file. The y value, name column and batch column
+are automatically ignored.</p>
+</dd>
+<dt>batch_number<span class="classifier">int, default=0</span></dt><dd><p>Number of the batch to be processed. The CSV file is always taken from the specified batch folder, 
+and a new folder named 'batch_{batch_number+1}' will be generated for the output.</p>
+</dd>
+<dt>n_exps<span class="classifier">int, default=1</span></dt><dd><p>Specifies the number of new points for exploration and exploitation in the next batch.</p>
+</dd>
+<dt>reverse<span class="classifier">bool, default=False</span></dt><dd><p>If False (default), the target value (y) is maximized. If True, the target value is minimized.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="almos.el.html" class="btn btn-neutral float-left" title="EL" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="almos.el_utils.html" class="btn btn-neutral float-right" title="el_utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

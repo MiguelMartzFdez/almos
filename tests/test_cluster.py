@@ -49,7 +49,10 @@ path_tests = os.getcwd() + "/tests"
         ("test_cluster10.csv"),  # --name is NOT set, sys.exit(13)
         ("test_cluster11.sdf"),  # --input is a SDF file and not use aqme, sys.exit(14)
         ("test_cluster12.csv"),  # elbow_method_nclusters   
-        ("test_cluster13.csv"),  # elbow_method_nclusters, optimal number of clusters not found, sys.exit(11)        
+        ("test_cluster13.csv"),  # elbow_method_nclusters, optimal number of clusters not found, sys.exit(11)
+        ("test_cluster14.csv")  # --name Code_Name without error, code_name with numbers without error
+              
+             
     ],
 )
 
@@ -114,7 +117,7 @@ def test_CLUSTER(test_job):
         "test_cluster10.csv",
         "test_cluster11.sdf",
         "test_cluster12.csv",
-        "test_cluster13.csv",        
+        "test_cluster13.csv"       
         ]    
          
     if test_job in not_aqme:
@@ -184,7 +187,10 @@ def test_CLUSTER(test_job):
                         "-m", "almos",
                         "--cluster",
                         "--input", f'{path_tests}/{test_job}',
-                        "--name","code_name"]        
+                        "--name","code_name"]   
+        
+    if test_job == "test_cluster14.csv":
+        cmd_cluster += ["--name","Code_Name"]     
     # CLUSTER
     
     # --input
@@ -437,7 +443,8 @@ def test_CLUSTER(test_job):
                 "test_cluster2b.sdf",
                 "test_cluster7a.csv",
                 "test_cluster7c.csv",
-                "test_cluster12.csv"
+                "test_cluster12.csv",
+                "test_cluster14.csv"
     ]
     # Second: all the tests that end    
     if test_job in test_sys:        
@@ -626,9 +633,9 @@ def test_CLUSTER(test_job):
 
     if test_job == "test_cluster12.csv":  
         
-        # check that it generate the plot of the relationship between the number of clusters (x) and the WCSS (y)
+        # Check if the cluster script has finished without error, and has moved the data file to the batch_0 folder.
         assert path.exists(f"{path_cluster}/batch_0/elbow_plot.png"), f'elbow_plot.png not found in batch_0 folder' 
-                  
+            
         # check that elbow_method_nclusters is applied
         line1 = f'o Defining optimal n_clusters using the Elbow Method'          
         line2 = f'o Evaluating 1 clusters'
@@ -642,7 +649,10 @@ def test_CLUSTER(test_job):
         assert any (line4 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
         assert any (line5 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
         assert any (line6 in line for line in dat_cluster), f'Information about elbow_method_nclusters not found in the dat file text'
-        
+
+    if test_job == "test_cluster14.csv":
+        # check that it generate the plot of the relationship between the number of clusters (x) and the WCSS (y)
+        assert path.exists(f"{path_cluster}/batch_0/CLUSTER_data.dat"), f'two possible problems with the code_name column: a) with the column name when it does not go through aqme, b) with the column elements not being a string'               
         
     # leave the folders as they were initially before to run the tests
     folders_cluster = ["batch_0", "aqme"]
