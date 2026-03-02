@@ -130,10 +130,12 @@ class cluster:
         if self.args.input == None:
             self.args.log.write(f"\nx WARNING. Please, specify your CSV file required, e.g. --input example.csv (or SDF file if using AQME workflow)")
             self.args.log.finalize()
-            sys.exit(9)  
-        
-        file_name = self.args.input.split("/")
-        file_name = file_name[-1]
+            sys.exit(9)
+              
+        # more robust, for Windows for example
+        file_name = os.path.basename(self.args.input)        
+        # file_name = self.args.input.split("/")
+        # file_name = file_name[-1]
                       
         # check for existence of input file
         if os.path.exists(self.args.input) == False: 
@@ -359,7 +361,8 @@ class cluster:
         
         # FOR BOTH WORKFLOWS                
         # modify the df with the correct names ('SMILES' and 'code_name') if they are
-        df_csv_name = self.fix_cols_names(df_csv_name)
+        if self.args.aqme == True:
+            df_csv_name = self.fix_cols_names(df_csv_name)
         # add the columns 'SMILES' and 'code_name' to ignore list if they are
         for col in df_csv_name.columns:
             if col == 'SMILES':
@@ -711,7 +714,7 @@ class cluster:
         # creating a .dat document with the name of the molecules for the batch 0 in the subfolder 'batch_0'    
         path_batch_0 = os.path.join('batch_0', 'batch_0.dat')
         with open (path_batch_0, 'w') as doc_batch_0:
-            doc_batch_0.writelines(line + '\n' for line in batch_0) # to write each element of the list (code_names) in a new line
+            doc_batch_0.writelines(str(line) + '\n' for line in batch_0) # to write each element of the list (code_names) in a new line
             
         # on the df created for the batch_0 subfolder, add 0 to the molecules obtained from the initial clustering, for the aqme = False it's the unique csv generated, for the aqme = True the descriptors are not included
         descp_df.loc[points, 'batch'] = 0
