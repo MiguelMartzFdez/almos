@@ -8,8 +8,8 @@ import os
 import glob
 import pytest
 import shutil
-import subprocess
 import pandas as pd
+from almos.bo import bo
 
 # Define paths
 w_dir_main = os.getcwd()
@@ -40,21 +40,18 @@ def test_bo(test_job):
     assert os.path.exists(input_csv), f"Input CSV not found: {input_csv}"
 
     if test_job == "bo":
-        # Run the BO process as a subprocess (to mimic real usage)
-        cmd = (
-            f'python -m almos --bo '
-            f'--csv_name "BO_optimization" '
-            f'--name "combination" '
-            f'--y "[ee,yield]" '
-            f'--n_exps "3" '
-            f'--batch_number "0"'
-        )
-        
+        # Run BO directly so pytest-cov tracks the module internals.
         os.chdir("tests")
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        os.chdir(w_dir_main)
-        print(result.stdout)
-        print(result.stderr)
+        try:
+            bo(
+                csv_name="BO_optimization",
+                name="combination",
+                y="[ee,yield]",
+                n_exps=3,
+                batch_number=0,
+            )
+        finally:
+            os.chdir(w_dir_main)
 
         # Check that the output for the next batch was created
         assert os.path.exists(path_batch1), "Output batch_1 folder was not created."
