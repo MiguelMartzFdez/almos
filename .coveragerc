@@ -1,0 +1,3 @@
+[run]
+source = almos
+patch = subprocess

@@ -13,5 +13,5 @@ dependencies:
   - libgfortran=14.2.0
   - pip
   - pip:
+      - scikit-learn-intelex==2025.2.
       - almos-kit
-      - scikit-learn-intelex==2025.2.0
