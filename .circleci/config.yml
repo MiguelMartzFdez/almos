@@ -24,22 +24,21 @@ jobs:
     docker:
       - image: continuumio/miniconda3
     # working_directory: /root/project
-
+    # Checkout the code as the first step. This is a dedicated CircleCI step.
+    # The python orb's install-packages step will install the dependencies from a Pipfile via Pipenv by default.
+    # Here we're making sure we use just use the system-wide pip. By default it uses the project root's requirements.txt.
+    # Then run your tests!
+    # CircleCI will report the results back to your VCS provider.
     steps:
-      # Checkout the code as the first step. This is a dedicated CircleCI step.
       - checkout
-
-      # The python orb's install-packages step will install the dependencies from a Pipfile via Pipenv by default.
-      # Here we're making sure we use just use the system-wide pip. By default it uses the project root's requirements.txt.
       - python/install-packages:
           pkg-manager: pip
-
-      # Then run your tests!
-      # CircleCI will report the results back to your VCS provider.
+          # app-dir: ~/project/package-directory/  # If your requirements.txt isn't in the root directory.
+          # pip-dependency-file: test-requirements.txt  # if you have a different name for your requirements file, maybe one that combines your runtime and test requirements.
       - run: |
           # update conda and create env
           conda update -y conda
-          conda create -n cheminf python=3.10 -y
+          conda create -n cheminf python=3.10
           source activate base 
           conda activate cheminf
 
@@ -48,34 +47,26 @@ jobs:
           conda install -y -c conda-forge openbabel=3.1.1
           conda install -y -c conda-forge glib gtk3 pango mscorefonts
           conda install -y -c conda-forge xtb=6.7.1
-          conda install -y -c conda-forge libgfortran=14.2.0
+          conda install conda-forge::libgfortran=14.2.0
           pip install scikit-learn-intelex  
           pip install aqme==1.7.3
-
-          # Install ALMOS in editable mode so coverage points to repo files (not site-packages)
-          pip install -e .
+          pip install .
 
           # install and run pytest
           pip install pytest
-          pip install pytest-cov
+          # coverage.py handles subprocess coverage when configured with patch = subprocess.
+          pip install "coverage>=7.10,<8" "pytest-cov>=7,<8"
 
-          # Debug: check where almos is imported from
-          python -c "import almos; print('ALMOS PATH:', almos.__file__)"
-
-          # the format of the codecov report has to be specified or it doesn't create for some reason
-          PYTHONPATH=. python -m pytest -v --cov=almos --cov-report=xml
-
-          echo "===== COVERAGE XML HEAD ====="
-          head -n 50 coverage.xml
-
-          echo "===== COVERAGE PATHS ====="
-          grep filename coverage.xml | head
-
-      # Persist coverage report for next job
+          # the format of the codecov report has to be scpecified or it doesn't create for some reason
+          python -m pytest -v --cov=almos --cov-report=xml
+          rm -r /tmp/*
+          cp -r * /tmp
+          
       - persist_to_workspace:
-          root: .
+          root: /tmp
           paths:
             - coverage.xml
+            - almos
 
   # the codecov orb doesn't work with the miniconda docker, so the coverage report
   # needs to be stored and loaded in a new job using a python docker
@@ -84,11 +75,12 @@ jobs:
       - image: cimg/python:3.10
     steps:
       - attach_workspace:
-          at: .
+          at: /tmp
+      # this checkout step is necessary to avoid an issue in which codecov thinks the report is empty
+      - checkout
       - codecov/upload:
-          file: coverage.xml
+          file: /tmp/coverage.xml
           token: CODECOV_TOKEN
-
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
