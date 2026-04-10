@@ -49,6 +49,7 @@ jobs:
           conda install -y -c conda-forge xtb=6.7.1
           conda install conda-forge::libgfortran=14.2.0
           pip install scikit-learn-intelex  
+          pip install aqme==1.7.3
           pip install .
 
           # install and run pytest

@@ -32,38 +32,44 @@ setup(
     ],
     
     install_requires=[
-        # --- Core almos_kit dependencies ---
+        # --- Core ---
         "aqme==1.7.3",
         "robert==2.0.2",
-        "plotly==5.24.1",
-        "matplotlib==3.10.0",
-        "numpy>=1.26.4,<3.0",
-        "pandas>=2.2.2,<2.3",
-        "pdfplumber==0.11.5",
-        "rdkit==2024.3.3",
-        "scikit_learn>=1.6,<1.7",
+
+        "numpy>=1.26,<2.0",  
+        "pandas>=2.2,<2.3",
+        "scikit-learn>=1.6,<1.7",
+        "scipy>=1.14,<1.16",
+
+        "matplotlib>=3.8,<3.11",
+        "plotly>=5.20,<6.0",
+
         "pca==2.0.9",
         "kneed==0.8.5",
+        "pdfplumber==0.11.5",
+        "rdkit==2024.3.3",
 
-        # --- Bayesian Optimization (EDBO) dependencies ---
+        # --- BO ---
         "botorch==0.7.2",
         "gpytorch==1.9.0",
+        "torch>=2.1,<3.0",
+
+        # --- legacy ---
         "idaes-pse==1.5.1",
-        "ipykernel==6.5.1",
-        "ipython==7.29.0",
-        "ipywidgets==7.6.5",
-        "Jinja2==3.0.3",
-        "joypy==0.2.6",
-        "lxml==4.6.4",
-        "mordred==1.2.0",
+
+        # --- utils ---
+        "sympy>=1.12,<1.14",
+        "lxml>=4.6,<5.0",
+        "Jinja2>=3.0,<3.2",
         "ordered-set==4.0.2",
         "pareto==1.1.1.post3",
         "pymoo==0.5.0",
-        "scipy==1.15.0",
-        "seaborn",
-        "sympy==1.13.3",
-        "torch==2.7.0",
+        "seaborn>=0.13,<0.14",
+        "joypy==0.2.6",
         "tqdm",
+
+        # Fix pkg_resources
+        "setuptools<81",
     ],
     python_requires=">=3.10",
     include_package_data=True,
