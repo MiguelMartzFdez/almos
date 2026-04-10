@@ -23,7 +23,7 @@ You can install ALMOS and all required dependencies in one step using the provid
 
 1. Open a terminal (or Anaconda Prompt on Windows).
 
-2. Go to the folder where you saved the environment file. For example:
+2. Go to the folder where you want to save the environment file. For example:
 
     ```bash
     cd path/to/download/folder
