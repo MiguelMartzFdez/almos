@@ -49,11 +49,13 @@ jobs:
           conda install -y -c conda-forge xtb=6.7.1
           conda install conda-forge::libgfortran=14.2.0
           pip install scikit-learn-intelex  
+          pip install aqme==1.7.3
           pip install .
 
           # install and run pytest
           pip install pytest
-          pip install pytest-cov
+          # coverage.py handles subprocess coverage when configured with patch = subprocess.
+          pip install "coverage>=7.10,<8" "pytest-cov>=7,<8"
 
           # the format of the codecov report has to be scpecified or it doesn't create for some reason
           python -m pytest -v --cov=almos --cov-report=xml
