@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Graphical User Interface (GUI): easyALMOS &mdash; almos v0.1 documentation</title>
+  <title>Graphical User Interface (GUI): easyALMOS &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -51,8 +51,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -98,19 +97,28 @@
              
   <section id="graphical-user-interface-gui-easyalmos">
 <h1>Graphical User Interface (GUI): easyALMOS<a class="headerlink" href="#graphical-user-interface-gui-easyalmos" title="Link to this heading"></a></h1>
-<p>You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI
-simplifies the setup of ALMOS workflows, enabling users to select files and
-configure options easily. To run easyALMOS followthese steps:</p>
+<p>easyALMOS is distributed together with ALMOS and can be launched directly from the
+same environment. It provides a simple interface for the most common CLUSTER and
+AL workflows without requiring users to type the full command line.</p>
 <p><strong>1.</strong> Install ALMOS as defined in the &quot;Installation&quot; section.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The GUI only works with ALMOS version 0.1.0 or later (check your version!).</p>
-</div>
 <p><strong>2.</strong> Open an Anaconda prompt (Windows users) or a terminal (macOS and Linux).</p>
 <p><strong>3.</strong> Activate the conda environment where ALMOS is installed (<code class="code docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">almos</span></code>).</p>
-<p><strong>4.</strong> Download <a class="reference external" href="https://github.com/MiguelMartzFdez/almos/blob/master/GUI_easyalmos/easyalmos.py">easyalmos.py:</a> <a href="#id1"><span class="problematic" id="id2">|easyalmos|</span></a>, tapping on this button on GitHub <a href="#id3"><span class="problematic" id="id4">|download|</span></a></p>
-<p><strong>5.</strong> Go to the folder with the easyalmos.py file (using the &quot;cd&quot; command, i.e. <code class="code docutils literal notranslate"><span class="pre">cd</span> <span class="pre">C:/Users/test_almos</span></code>).</p>
-<p><strong>7.</strong> Run easyALMOS with the following command line (<code class="code docutils literal notranslate"><span class="pre">python</span> <span class="pre">easyalmos.py</span></code>).</p>
+<p><strong>4.</strong> Run easyALMOS with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>easyalmos
+</pre></div>
+</div>
+<p>The current GUI supports the most common options for:</p>
+<ul class="simple">
+<li><p>CLUSTER, including direct CSV workflows, AQME-enabled descriptor generation and
+evaluation of an existing <code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code> selection with <code class="docutils literal notranslate"><span class="pre">--evaluate</span></code>.</p></li>
+<li><p>Active Learning, including:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Auto</span></code> strategy selection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Model</span> <span class="pre">mode</span></code> (highest uncertainty)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Hit</span> <span class="pre">mode</span></code> with <code class="docutils literal notranslate"><span class="pre">max</span></code> / <code class="docutils literal notranslate"><span class="pre">min</span></code> objective and optional <code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></li>
+</ul>
+</li>
+</ul>
 </section>
 
 

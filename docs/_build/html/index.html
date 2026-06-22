@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to ALMOS&#39;s documentation! &mdash; almos v0.1 documentation</title>
+  <title>Welcome to ALMOS &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=34cd777e"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/documentation_options.js?v=0737924e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -50,8 +50,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -85,7 +84,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Welcome to ALMOS's documentation!</li>
+      <li class="breadcrumb-item active">Welcome to ALMOS</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -101,9 +100,8 @@
 <a class="reference external" href="https://pepy.tech/project/almos-kit"><img alt="Downloads" src="https://pepy.tech/badge/almos-kit" /></a>
 <a class="reference external" href="https://almos.readthedocs.io/"><img alt="Documentation Status" src="https://img.shields.io/readthedocs/almos?label=Read%20the%20Docs&amp;logo=readthedocs" /></a>
 <a class="reference external" href="https://pypi.org/project/almos-kit/"><img alt="PyPI" src="https://img.shields.io/pypi/v/almos-kit" /></a></p>
-<hr class="docutils" />
-<section id="welcome-to-almos-s-documentation">
-<h1>Welcome to ALMOS's documentation!<a class="headerlink" href="#welcome-to-almos-s-documentation" title="Link to this heading"></a></h1>
+<section id="welcome-to-almos">
+<h1>Welcome to ALMOS<a class="headerlink" href="#welcome-to-almos" title="Link to this heading"></a></h1>
 <p>ALMOS is an ensemble of automated machine learning workflows designed for chemical
 discovery, which can be run sequentially through a single command line or a graphical
 user interface. The program supports tasks such as candidate selection, optimization,
@@ -111,11 +109,11 @@ and predictive model development. Comprehensive workflows have been designed to 
 modern standards in data-driven chemistry, including:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><strong>Clustering module</strong>, which performs unsupervised clustering of the input dataset
-to select an initial, diverse, and representative subset of molecules or conditions.
-This step replaces intuition-driven candidate selection and helps reduce bias in
-early-stage sampling. Input data can be user-provided or automatically generated
-from SMILES using the AQME program.</p>
+<li><p><strong>Clustering module</strong>, which selects an initial, diverse, and representative subset
+of molecules or conditions from a descriptor space. The current CLUSTER workflow
+evaluates several clustering strategies internally and recommends a coverage-driven
+batch of points instead of relying on a user-defined number of clusters. Input data
+can be user-provided or automatically generated from SMILES using the AQME program.</p>
 <ul>
 <li><p><strong>Atomic and molecular descriptor generation from SMILES</strong>, including an RDKit
 conformer sampling and the generation of 200+ steric, electronic and structural
@@ -123,14 +121,10 @@ descriptors using RDKit, xTB and MORFEUS. Requires the
 <a class="reference external" href="https://aqme.readthedocs.io">AQME program</a>.</p></li>
 </ul>
 </li>
-<li><p><strong>Active learning module</strong>, which supports two iterative exploration strategies:</p>
-<ul>
-<li><p><strong>Bayesian Optimization</strong> for identifying optimal candidates based on a target
-property, balancing exploitation and exploration.</p></li>
-<li><p><strong>Exploratory learning</strong> for building robust and interpretable ML models by
-maximizing diversity and minimizing prediction uncertainty across the dataset.</p></li>
-</ul>
-</li>
+<li><p><strong>Active learning module</strong>, which builds robust and interpretable ML models through
+iterative retraining with ROBERT. The current AL workflow supports automatic
+strategy selection, explicit model-improvement mode, and hit-seeking mode through
+upper/lower confidence bound ranking.</p></li>
 </ul>
 </div></blockquote>
 <p>The code has been designed for:</p>
@@ -150,7 +144,32 @@ and strategies.</p></li>
 <section id="overview-of-almos">
 <h2>Overview of ALMOS<a class="headerlink" href="#overview-of-almos" title="Link to this heading"></a></h2>
 <p class="centered">
-<strong><img alt="overview_almos" src="_images/overview_almos.jpg" /></strong></p><div class="toctree-wrapper compound">
+<strong><img alt="overview_almos" src="_images/overview_almos.jpg" /></strong></p></section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<p>If you are new to ALMOS, the shortest route is usually:</p>
+<ol class="arabic simple">
+<li><p>Install the conda environment from <code class="docutils literal notranslate"><span class="pre">almos.yaml</span></code>.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">cluster</span></code> to generate or evaluate <code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">al</span></code> to run the next active learning cycle.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">easyalmos</span></code> if you prefer the GUI.</p></li>
+</ol>
+<p>Typical commands:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-L<span class="w"> </span>-o<span class="w"> </span>almos.yaml<span class="w"> </span>https://raw.githubusercontent.com/MiguelMartzFdez/almos/master/install/almos.yaml
+conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>almos.yaml
+conda<span class="w"> </span>activate<span class="w"> </span>almos
+cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>Name
+al<span class="w"> </span>--csv_name<span class="w"> </span>A_b0.csv<span class="w"> </span>--name<span class="w"> </span>Name<span class="w"> </span>--y<span class="w"> </span>target<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>Start here:</p>
+<ul class="simple">
+<li><p>[Install ALMOS](Install/installation.html)</p></li>
+<li><p>[Use CLUSTER](Modules/cluster.html)</p></li>
+<li><p>[Use Active Learning](Modules/al.html)</p></li>
+<li><p>[Launch easyALMOS](Install/gui.html)</p></li>
+</ul>
+<div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Install/installation.html">Installation</a></li>
@@ -162,8 +181,7 @@ and strategies.</p></li>
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 </div>
 <dl>

@@ -6,20 +6,20 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clustering (CLUSTER) &mdash; almos v0.1 documentation</title>
+  <title>Clustering (CLUSTER) &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Exploratory Learning (EL)" href="el.html" />
+    <link rel="next" title="Active Learning (AL)" href="al.html" />
     <link rel="prev" title="Graphical User Interface (GUI): easyALMOS" href="../Install/gui.html" /> 
 </head>
 
@@ -54,12 +54,12 @@
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#how-cluster-works">How Cluster works</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#required-input">Required Input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#main-parameters">Main parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cluster-protocol-in-almos">CLUSTER Protocol in ALMOS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -109,35 +109,82 @@
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
 <p><strong>Cluster Module for Automated Chemical Space Exploration</strong></p>
 <p class="centered">
-<strong><a class="reference internal" href="../_images/chemical_space.jpg"><img alt="cluster_fig" src="../_images/chemical_space.jpg" style="width: 600px;" /></a></strong></p><p>Clustering is an unsupervised learning technique used to partition high-dimensional chemical spaces into groups of structurally or functionally similar compounds, based on molecular descriptors. Within the ALMOS framework, the clustering module enables the systematic selection of an initial, diverse set of candidate molecules to seed active learning (AL) workflows. This approach reduces human bias in the selection process and ensures representative coverage of the chemical space. It is particularly suited for scenarios where defining the scope of a molecular library is critical, as it facilitates automated, scalable, and reproducible organization of chemical diversity.</p>
+<strong><a class="reference internal" href="../_images/chemical_space.jpg"><img alt="cluster_fig" src="../_images/chemical_space.jpg" width="600" /></a></strong></p><p>Clustering is an unsupervised learning technique used to partition high-dimensional chemical spaces into groups of structurally or functionally similar compounds, based on molecular descriptors. Within the ALMOS framework, the clustering module enables the systematic selection of an initial, diverse set of candidate molecules to seed active learning (AL) workflows. This approach reduces human bias in the selection process and ensures representative coverage of the chemical space. It is particularly suited for scenarios where defining the scope of a molecular library is critical, as it facilitates automated, scalable, and reproducible organization of chemical diversity.</p>
 </section>
 <section id="how-cluster-works">
 <h2>How Cluster works<a class="headerlink" href="#how-cluster-works" title="Link to this heading"></a></h2>
-<p>The clustering module in ALMOS uses <strong>K-means</strong> to divide chemical data into k groups by minimizing intra-cluster variance. It initializes centroids and iteratively reassigns points based on proximity, refining the clusters until convergence into compact and distinct groupings.</p>
-<p>The number of clusters can be defined manually using the --n_clusters option (i.e., <code class="docutils literal notranslate"><span class="pre">--n_clusters</span> <span class="pre">5</span></code>); if not specified, ALMOS estimates the optimal k automatically using the <strong>elbow method</strong> to best capture chemical space diversity.</p>
+<p>The current CLUSTER workflow in ALMOS is coverage-driven. Instead of asking the user
+to define a fixed number of clusters, the program:</p>
+<ul class="simple">
+<li><p>builds a cleaned descriptor space from the input data,</p></li>
+<li><p>evaluates several clustering strategies internally,</p></li>
+<li><p>estimates a reasonable number of representative points automatically when
+<code class="docutils literal notranslate"><span class="pre">--n_points</span></code> is not provided,</p></li>
+<li><p>and selects a diverse <code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code> seed set for downstream active learning.</p></li>
+</ul>
+<p>The default workflow is oriented toward <em>representative selection</em>, not manual
+cluster-count tuning.</p>
 </section>
 <section id="required-input">
 <h2>Required Input<a class="headerlink" href="#required-input" title="Link to this heading"></a></h2>
-<p>There are two options:</p>
+<p>There are two main options:</p>
 <ul class="simple">
 <li><p>The user can provide a CSV file containing <strong>molecular features</strong> (i.e., DFT properties, experimental measurements, etc.). In such cases, the '--name' option must be specified (e.g. <code class="docutils literal notranslate"><span class="pre">--name</span> <span class="pre">molecules</span></code>).</p></li>
 </ul>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>almos<span class="w"> </span>--cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>The user can also provide a CSV file containing the <strong>code_name</strong> and <strong>STRING columns</strong>. In this case, ALMOS automatically generates the molecular features from SMILES strings using the <code class="docutils literal notranslate"><span class="pre">--aqme</span></code> command, implemented via the AQME package. This method can also be used with an SDF file.</p></li>
+<li><p>The user can also provide a CSV file containing the <strong>code_name</strong> and <strong>SMILES</strong>
+columns. In this case, ALMOS can automatically generate the molecular features
+from SMILES strings using the <code class="docutils literal notranslate"><span class="pre">--aqme</span></code> option, implemented via the AQME package.
+This route is intended for users who do not already have a descriptor matrix.</p></li>
 </ul>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>almos<span class="w"> </span>--cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--aqme
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--aqme
+</pre></div>
+</div>
+</section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Link to this heading"></a></h2>
+<p>The most commonly used options in the current CLUSTER workflow are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--input</span></code>: input file for clustering. This is usually a CSV containing either
+descriptors or SMILES-based inputs to be processed with AQME.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--name</span></code>: identifier column used to track the selected molecules or conditions.
+This should contain unique labels for each row.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--n_points</span></code>: number of representative points to select. If omitted, ALMOS
+estimates a suitable selection size automatically.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--y</span></code>: optional target column used only for visual interpretation in the
+chemical-space viewer and related plots.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--ignore</span></code>: columns that should not be treated as descriptors. This is useful
+for names, textual metadata or bookkeeping columns.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--aqme</span></code>: enables descriptor generation from SMILES-based inputs before the
+clustering workflow starts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--evaluate</span></code>: skips reselection and evaluates an already existing <code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code>
+selection in the input file. This is useful when the user wants ALMOS to analyse
+a manual or external seed set instead of creating a new one.</p></li>
+</ul>
+<p>Typical command-line patterns:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME
+cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME<span class="w"> </span>--n_points<span class="w"> </span><span class="m">40</span>
+cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME<span class="w"> </span>--ignore<span class="w"> </span><span class="s2">&quot;[batch,SMILES]&quot;</span>
+cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--aqme
+cluster<span class="w"> </span>--input<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--name<span class="w"> </span>MOL_NAME<span class="w"> </span>--evaluate
 </pre></div>
 </div>
 </section>
 <section id="cluster-protocol-in-almos">
 <h2>CLUSTER Protocol in ALMOS<a class="headerlink" href="#cluster-protocol-in-almos" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p>The user supplies a CSV file containing molecular features or a CSV file containing the code_name and STRING columns and uses the <code class="docutils literal notranslate"><span class="pre">--aqme</span></code> command.</p></li>
-<li><p>The CLUSTER module applies the K-means algorithm to partition the dataset into k clusters and selects the molecule closest to each cluster centroid, yielding the specified number of <code class="docutils literal notranslate"><span class="pre">--n_clusters</span></code>. If this parameter is not provided, the module automatically estimates the optimal number of clusters using the elbow method.</p></li>
-<li><p>ALMOS applies PCA to reduce the clustered chemical space to 3D, maximizing explained variance and enabling intuitive visualization. The total variance explained helps assess clustering quality.</p></li>
+<li><p>The user supplies a CSV file containing molecular descriptors, or a CSV/structure
+file that can be processed through <code class="docutils literal notranslate"><span class="pre">--aqme</span></code>.</p></li>
+<li><p>ALMOS cleans the descriptor space and evaluates clustering quality internally.</p></li>
+<li><p>The program selects a representative subset of points and writes them as
+<code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code> in the output CSV.</p></li>
+<li><p>ALMOS generates a chemical-space viewer, coverage diagnostics and descriptor-based
+interpretation plots to help assess how representative the selected batch is.</p></li>
+<li><p>If a dataset already contains a user-defined <code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code> selection, the user can
+skip reselection and evaluate that selection directly with <code class="docutils literal notranslate"><span class="pre">--evaluate</span></code>.</p></li>
 </ol>
 </section>
 <section id="example">
@@ -151,7 +198,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../Install/gui.html" class="btn btn-neutral float-left" title="Graphical User Interface (GUI): easyALMOS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="el.html" class="btn btn-neutral float-right" title="Exploratory Learning (EL)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="al.html" class="btn btn-neutral float-right" title="Active Learning (AL)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

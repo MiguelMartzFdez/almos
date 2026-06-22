@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Requirements &mdash; almos v0.1 documentation</title>
+  <title>Requirements &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -51,8 +51,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul class="current">
@@ -105,38 +104,28 @@
 <h2>Python and Python libraries<a class="headerlink" href="#python-and-python-libraries" title="Link to this heading"></a></h2>
 <p><em>Core almos_kit dependencies</em></p>
 <ul class="simple">
-<li><p>Python &gt;= 3.10</p></li>
-<li><p>PyYAML</p></li>
-<li><p>plotly</p></li>
-<li><p>matplotlib</p></li>
-<li><p>numpy</p></li>
+<li><p>Python &gt;= 3.11</p></li>
+<li><p>aqme</p></li>
+<li><p>robert</p></li>
 <li><p>pandas</p></li>
-<li><p>pdfplumber</p></li>
-<li><p>rdkit</p></li>
-<li><p>scikit_learn</p></li>
+<li><p>scipy</p></li>
+<li><p>hdbscan</p></li>
+<li><p>matplotlib</p></li>
+<li><p>plotly</p></li>
+<li><p>umap-learn</p></li>
 <li><p>pca</p></li>
 <li><p>kneed</p></li>
+<li><p>pdfplumber</p></li>
 </ul>
-<p><em>Bayesian Optimization (EDBO) dependencies</em></p>
+<p><em>Optional system / chemistry dependencies commonly installed through conda-forge</em></p>
 <ul class="simple">
-<li><p>botorch</p></li>
-<li><p>gpytorch</p></li>
-<li><p>idaes-pse</p></li>
-<li><p>ipykernel</p></li>
-<li><p>ipython</p></li>
-<li><p>ipywidgets</p></li>
-<li><p>Jinja2</p></li>
-<li><p>joypy</p></li>
-<li><p>lxml</p></li>
-<li><p>mordred</p></li>
-<li><p>ordered-set</p></li>
-<li><p>pareto</p></li>
-<li><p>pymoo</p></li>
-<li><p>scipy</p></li>
-<li><p>seaborn</p></li>
-<li><p>sympy</p></li>
-<li><p>torch</p></li>
-<li><p>tqdm</p></li>
+<li><p>openbabel</p></li>
+<li><p>xtb</p></li>
+<li><p>glib</p></li>
+<li><p>gtk3</p></li>
+<li><p>pango</p></li>
+<li><p>mscorefonts</p></li>
+<li><p>libgfortran</p></li>
 </ul>
 </section>
 </section>
