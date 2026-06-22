@@ -122,14 +122,15 @@ def test_format_lists_logger_and_check_dependencies(monkeypatch, tmp_path):
 
     fake_self = SimpleNamespace(args=SimpleNamespace(log=CaptureLog()))
 
-    monkeypatch.setattr(utils_module.shutil, "which", lambda name: True if name == "conda.bat" else False)
+    conda_commands = {"conda", "conda.bat"}
+    monkeypatch.setattr(utils_module.shutil, "which", lambda name: name in conda_commands)
 
     def fake_run_success(cmd, **kwargs):
         if cmd == ["obabel", "-H"]:
             return SimpleNamespace()
         if cmd[:3] == ["python", "-m", "aqme"]:
             return SimpleNamespace(stdout="")
-        if cmd[0] == "conda.bat":
+        if cmd[0] in conda_commands:
             return SimpleNamespace(stdout="# packages\nglib 1\ngtk3 1\npango 1\nmscorefonts 1\n")
         raise AssertionError(f"Unexpected command: {cmd}")
 
@@ -140,7 +141,7 @@ def test_format_lists_logger_and_check_dependencies(monkeypatch, tmp_path):
     monkeypatch.setattr(
         utils_module.subprocess,
         "run",
-        lambda cmd, **kwargs: SimpleNamespace(stdout="# packages\nglib 1\n") if cmd[0] == "conda.bat" else SimpleNamespace(),
+        lambda cmd, **kwargs: SimpleNamespace(stdout="# packages\nglib 1\n") if cmd[0] in conda_commands else SimpleNamespace(),
     )
     with pytest.raises(SystemExit):
         utils_module.check_dependencies(fake_self, "al")
