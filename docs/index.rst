@@ -40,14 +40,6 @@ Typical commands:
    cluster --input EXAMPLE.csv --name Name
    al --csv_name A_b0.csv --name Name --y target --n_exps 10
 
-Start here:
-
-* [Install ALMOS](Install/installation.html)
-* [Use CLUSTER](Modules/cluster.html)
-* [Use Active Learning](Modules/al.html)
-* [Launch easyALMOS](Install/gui.html)
-
-
 .. toctree::
    :maxdepth: 1
    :caption: Installation and interface
@@ -104,7 +96,6 @@ Start here:
    :maxdepth: 2
    :caption: Misc
 
-   Misc/abbreviations
    Misc/versions
    Misc/license
    Misc/help
