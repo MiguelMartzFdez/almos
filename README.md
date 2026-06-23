@@ -6,7 +6,7 @@
 [![Codecov](https://img.shields.io/codecov/c/github/MiguelMartzFdez/almos?label=Codecov&logo=codecov)](https://codecov.io/gh/MiguelMartzFdez/almos)
 [![Downloads](https://pepy.tech/badge/almos-kit)](https://pepy.tech/project/almos-kit)
 [![Read the Docs](https://img.shields.io/readthedocs/almos?label=Read%20the%20Docs&logo=readthedocs)](https://almos.readthedocs.io/)
-[![PyPI](https://img.shields.io/pypi/v/almos-kit)](https://pypi.org/project/almos-kit/)
+[![PyPI](https://img.shields.io/pypi/v/almos-kit?cacheSeconds=300)](https://pypi.org/project/almos-kit/)
 
 ## Recommended installation
 1. (Only once) Create new conda environment: `conda create -n almos python=3.10` 
