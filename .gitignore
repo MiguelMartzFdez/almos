@@ -1,0 +1,6 @@
+docs/_build/
+docs/.doctrees/
+docs/generated/
+
+__pycache__/
+*.py[cod]
