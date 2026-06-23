@@ -21,9 +21,9 @@
    :target: https://almos.readthedocs.io/
    :alt: Documentation Status
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/almos-kit
+.. |PyPI| image:: https://img.shields.io/pypi/v/almos-kit?cacheSeconds=300
    :target: https://pypi.org/project/almos-kit/
-
+   
 |CircleCI|
 |Codecov|
 |Downloads|
@@ -102,7 +102,7 @@ The code has been designed for:
 Overview of ALMOS
 ------------------
 
-.. |overview_almos| image:: ../almos/icons/overview_almos.jpg
+.. |overview_almos| image:: ../almos/icons/overview_almos_2.jpg
 
 .. centered:: |overview_almos|
 
