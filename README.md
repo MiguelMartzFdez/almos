@@ -9,7 +9,7 @@
 [![PyPI](https://img.shields.io/pypi/v/almos-kit?cacheSeconds=300)](https://pypi.org/project/almos-kit/)
 
 ## Recommended installation
-1. (Only once) Create new conda environment: `conda create -n almos python=3.10` 
+1. (Only once) Create new conda environment: `conda create -n almos python=3.11` 
 2. Activate conda environment: `conda activate almos`  
 3. Install ALMOS using pip: `pip install almos-kit`
 4. Install libraries necesaries for ROBERT `conda install -y -c conda-forge glib gtk3 pango mscorefonts`
