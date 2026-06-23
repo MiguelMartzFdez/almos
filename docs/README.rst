@@ -102,7 +102,7 @@ The code has been designed for:
 Overview of ALMOS
 ------------------
 
-.. |overview_almos| image:: ../almos/icons/overview_almos.jpg
+.. |overview_almos| image:: ../almos/icons/overview_almos_2.jpg
 
 .. centered:: |overview_almos|
 
