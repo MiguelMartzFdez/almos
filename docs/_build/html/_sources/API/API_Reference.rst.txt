@@ -10,8 +10,7 @@ Main Modules
    :maxdepth: 1
 
    almos.cluster
-   almos.el
-   almos.bo
+   almos.al
 
 Other Modules
 =============
@@ -19,6 +18,6 @@ Other Modules
 .. toctree::
    :maxdepth: 1
 
-   almos.el_utils
+   almos.al_utils
    almos.utils
 

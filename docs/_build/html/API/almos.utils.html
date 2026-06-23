@@ -6,21 +6,21 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>utils &mdash; almos v0.1 documentation</title>
+  <title>utils &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Versions" href="../Misc/versions.html" />
-    <link rel="prev" title="el_utils" href="almos.el_utils.html" /> 
+    <link rel="prev" title="al_utils" href="almos.al_utils.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -51,8 +51,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -64,7 +63,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="API_Reference.html">Main Modules</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="API_Reference.html#other-modules">Other Modules</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="almos.el_utils.html">el_utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="almos.al_utils.html">al_utils</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">utils</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#almos.utils.Logger"><code class="docutils literal notranslate"><span class="pre">Logger</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#almos.utils.Logger.finalize"><code class="docutils literal notranslate"><span class="pre">Logger.finalize()</span></code></a></li>
@@ -73,6 +72,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#almos.utils.check_dependencies"><code class="docutils literal notranslate"><span class="pre">check_dependencies()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#almos.utils.command_line_args"><code class="docutils literal notranslate"><span class="pre">command_line_args()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#almos.utils.format_cli_help"><code class="docutils literal notranslate"><span class="pre">format_cli_help()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#almos.utils.format_lists"><code class="docutils literal notranslate"><span class="pre">format_lists()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#almos.utils.load_variables"><code class="docutils literal notranslate"><span class="pre">load_variables()</span></code></a></li>
 </ul>
@@ -116,7 +116,7 @@
 <span id="utils"></span><h1>utils<a class="headerlink" href="#module-almos.utils" title="Link to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="almos.utils.Logger">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">Logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filein</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">append</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.Logger" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">Logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filein</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">append</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.Logger" title="Link to this definition"></a></dt>
 <dd><p>Class that wraps a file object to abstract the logging.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.utils.Logger.finalize">
@@ -153,9 +153,8 @@
 </dl>
 </dd>
 </dl>
-<p>For module &quot;el&quot;:
-- Requires 'robert' on all platforms.
-- Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).</p>
+<p>For module &quot;al&quot;:
+- Requires the system packages used by ROBERT/WeasyPrint on all platforms.</p>
 <section id="id1">
 <h2>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
 <dl class="simple">
@@ -181,6 +180,12 @@ and user-provided overrides.</p>
 </dd>
 </dl>
 </section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="almos.utils.format_cli_help">
+<span class="sig-prename descclassname"><span class="pre">almos.utils.</span></span><span class="sig-name descname"><span class="pre">format_cli_help</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#almos.utils.format_cli_help" title="Link to this definition"></a></dt>
+<dd><p>Return a compact, user-facing help message for the main ALMOS entrypoint.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -218,7 +223,7 @@ working directory, sets up the logger and print command line used for depending 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="almos.el_utils.html" class="btn btn-neutral float-left" title="el_utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="almos.al_utils.html" class="btn btn-neutral float-left" title="al_utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../Misc/versions.html" class="btn btn-neutral float-right" title="Versions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

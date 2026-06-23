@@ -14,7 +14,6 @@
 3. Install ALMOS using pip: `pip install almos-kit`
 4. Install libraries necesaries for ROBERT `conda install -y -c conda-forge glib gtk3 pango mscorefonts`
 5. (Only for AQME workflow uses) Install libraries necesaries for AQME `conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1`
-6. (Only for compatible devices) Install Intelex accelerator: `pip install scikit-learn-intelex==2025.2.0` 
 * Inexperienced users should visit the *Users with no Python experience* section in [Read the Docs](https://almos.readthedocs.io).
 
 ## Quick installation using Conda environment file

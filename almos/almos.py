@@ -5,9 +5,9 @@
 ###                                                                                     ###
 ###  ALMOS is a tool automates the process of:                                          ###
 ###  (CLUSTER)                                                                          ###
-###  (EL)                                                                               ###                                                                                 
+###  (AL)                                                                               ###                                                                                 
 ###  - Updating a machine learning model                                                ###                                                     
-###  - Checking and validating input data for exploratory learning                      ###
+###  - Checking and validating input data for active learning                           ###
 ###  - Running model updates and generating predictions                                 ###
 ###  - Processing and selecting data points for new batches                             ###
 ###  - Checking for convergence and generating convergence plots                        ###
@@ -27,8 +27,7 @@
 
 
 from almos.cluster import cluster
-from almos.el import el    
-from almos.bo import bo 
+from almos.al import al
 from almos.utils import command_line_args
 
 def main():
@@ -40,7 +39,7 @@ def main():
     args = command_line_args()
     args.command_line = True
     
-    if not args.cluster and not args.el and not args.bo:
+    if not args.cluster and not args.al:
         print('x  No module was specified in the command line! (i.e. --cluster for Clustering Execution). If you did specify a module, check that you are using quotation marks when using options (i.e. --csv_name "*.csv").\n')
 
     # Cluster
@@ -48,12 +47,8 @@ def main():
         cluster(**vars(args))
 
     # Active Learning process
-    if args.el:
-        el(**vars(args))
-
-    # Bayesian Optimization process
-    if args.bo:
-        bo(**vars(args))
+    if args.al:
+        al(**vars(args))
 
 if __name__ == "__main__":
     main()

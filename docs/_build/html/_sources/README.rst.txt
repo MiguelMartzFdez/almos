@@ -70,24 +70,21 @@ user interface. The program supports tasks such as candidate selection, optimiza
 and predictive model development. Comprehensive workflows have been designed to meet 
 modern standards in data-driven chemistry, including:
 
-   *  **Clustering module**, which performs unsupervised clustering of the input dataset 
-      to select an initial, diverse, and representative subset of molecules or conditions. 
-      This step replaces intuition-driven candidate selection and helps reduce bias in 
-      early-stage sampling. Input data can be user-provided or automatically generated 
-      from SMILES using the AQME program. 
+   *  **Clustering module**, which selects an initial, diverse, and representative subset 
+      of molecules or conditions from a descriptor space. The current CLUSTER workflow 
+      evaluates several clustering strategies internally and recommends a coverage-driven 
+      batch of points instead of relying on a user-defined number of clusters. Input data 
+      can be user-provided or automatically generated from SMILES using the AQME program. 
 
       *  **Atomic and molecular descriptor generation from SMILES**, including an RDKit 
          conformer sampling and the generation of 200+ steric, electronic and structural 
          descriptors using RDKit, xTB and MORFEUS. Requires the 
          `AQME program <https://aqme.readthedocs.io>`__.  
 
-   *  **Active learning module**, which supports two iterative exploration strategies:  
-
-      *  **Bayesian Optimization** for identifying optimal candidates based on a target 
-         property, balancing exploitation and exploration. 
-
-      *  **Exploratory learning** for building robust and interpretable ML models by 
-         maximizing diversity and minimizing prediction uncertainty across the dataset. 
+   *  **Active learning module**, which builds robust and interpretable ML models through 
+      iterative retraining with ROBERT. The current AL workflow supports automatic 
+      strategy selection, explicit model-improvement mode, and hit-seeking mode through 
+      upper/lower confidence bound ranking. 
 
 The code has been designed for:
 
@@ -120,16 +117,65 @@ Overview of ALMOS
 Installation
 ------------
 
-In a nutshell, ALMOS and its dependencies are installed as follows:
+ALMOS can be installed either through a ready-to-use conda environment file or
+through a more explicit manual setup.
+
+Quick Installation with ``almos.yaml``
+++++++++++++++++++++++++++++++++++++++
+
+For a quick and reproducible installation, ALMOS provides a Conda
+environment file `almos.yaml <https://github.com/MiguelMartzFdez/almos/tree/master/install>`__,
+that can be used to create the recommended environment.
+
+**1.** Open an Anaconda Prompt (Windows) or a terminal (macOS and Linux), and
+navigate to the directory where you want to create the environment:
+
+.. code-block:: shell
+
+   cd C:/Users/test_almos
+
+**2.** Download the environment file ``almos.yaml`` directly from GitHub:
+
+.. code-block:: shell
+
+   curl -L -o almos.yaml https://raw.githubusercontent.com/MiguelMartzFdez/almos/master/install/almos.yaml
+
+**3.** Build the environment using the downloaded YAML file:
+
+.. code-block:: shell
+
+   conda env create -f almos.yaml
+
+**4.** Activate the environment
+
+.. code-block:: shell
+
+   conda activate almos
+
+**5.** Verify the installation
+
+Check that the ALMOS command-line interface is available:
+
+.. code-block:: shell
+
+   almos help
+
+If the installation completed successfully, the help message should be displayed.
+
+Standard manual installation
+++++++++++++++++++++++++++++
+
+If you prefer to install the dependencies step by step, the recommended manual
+installation is:
 
 **1.** Create and activate the conda environment where you want to install the program.
+
    If you are not sure of what this point means, check out the "Users with no Python 
-   experience" section. This is an example for Python 3.10, but it also works for newer
-   Python versions (i.e., 3.11 and 3.12):
+   experience" section. ALMOS currently requires Python 3.11 or newer:
 
 .. code-block:: shell 
    
-   conda create -n almos python=3.10
+   conda create -n almos python=3.12
    conda activate almos
 
 **2.** Install ALMOS using pip:  
@@ -138,38 +184,32 @@ In a nutshell, ALMOS and its dependencies are installed as follows:
    
    pip install almos-kit
 
-
-**3.** Install libraries necesaries for ROBERT:
+**3.** Install the system libraries required by the ROBERT / WeasyPrint reporting stack:
 
 .. code-block:: shell
 
-   pip install robert
-   pip install scikit-learn-intelex==2025.2.0
    conda install -y -c conda-forge glib gtk3 pango mscorefonts
 
-**4a.** Install libraries necesaries for AQME:
+**4.** Install the chemistry-related requirements used by AQME / descriptor generation:
 
 .. code-block:: shell
 
-   pip install aqme
    conda install -y -c conda-forge openbabel=3.1.1
+   conda install -y -c conda-forge xtb=6.7.1
+   conda install -y -c conda-forge libgfortran=14.2.0
 
-**4b.** (Just if the installation with pip of step 2 is too slow) Users might instal
-   AQME using conda and update it with pip:  
+ALMOS installs its Python dependencies automatically, including AQME and ROBERT, from 
+the package metadata. After installation, you can check that the command line interface 
+is available with:
 
 .. code-block:: shell
 
-   conda install -y -c conda-forge aqme
-   pip install aqme --upgrade
+   almos help
 
 Installation of extra requirements
 ++++++++++++++++++++++++++++++++++++
 
 Extra requirements if xTB or CREST are used (compatible with MacOS and Linux only):  
-
-.. code-block:: shell 
-
-   conda install -y -c conda-forge xtb=6.7.1
 
 .. code-block:: shell 
 
@@ -212,36 +252,23 @@ familiar with conda installers, you can install `Miniconda with Python 3 <https:
 **2.** Open an Anaconda prompt (Windows users) or a terminal (macOS and Linux).
 
 
-**3.** Create a conda environment called "almos" with Python (:code:`conda create -n almos python=3.10`). 
+**3.** Create a conda environment called "almos" with Python (:code:`conda create -n almos python=3.12`). 
 |br|
-*This is an example for Python 3.10, but it also works for newer Python versions (i.e., 3.11 and 3.12).*
-
+*ALMOS currently requires Python 3.11 or newer.*
 
 **4.** Activate the conda environment called "almos" (:code:`conda activate almos`).
 
-
 **5.** Install ALMOS as defined in the "Installation" section (:code:`pip install almos-kit`).
 
+**6.** Install GLib, GTK3, pango and mscorefonts to avoid errors when creating the PDF report (:code:`conda install -y -c conda-forge glib gtk3 pango mscorefonts`).
 
-**6.** Install ROBERT as defined in the "Installation" section (:code:`pip install robert`).
+**7.** Install the chemistry-related tools needed for AQME-based descriptor generation (:code:`conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1 libgfortran=14.2.0`).
 
+**8.** Go to the folder where you want to run the program and have the input files, if any (using the "cd" command, i.e. :code:`cd C:/Users/test_almos`).
 
-**7.** Install the intelex code accelerator (only if your system is compatible with intelex) (:code:`pip install scikit-learn-intelex==2025.2.0`).
+**9.** Check that ALMOS is visible from the environment (:code:`almos help`).
 
-
-**8.** Install GLib, GTK3, pango and mscorefonts to avoid errors when creating the PDF report (:code:`conda install -y -c conda-forge glib gtk3 pango mscorefonts`).
-
-
-**9.** Install AQME as defined in the "Installation" section (:code:`pip install aqme`).
-
-
-**10.** Install OpenBabel as defined in the "Installation" section (:code:`conda install -y -c conda-forge openbabel=3.1.1`).
-
-
-**11.** Go to the folder where you want to run the program and have the input files, if any (using the "cd" command, i.e. :code:`cd C:/Users/test_almos`).
-
-
-**12.** Run ALMOS as explained in the Examples Command Line section.
+**10.** Run ALMOS as explained in the command-line examples.
 
 .. note-end 
 
@@ -250,16 +277,11 @@ familiar with conda installers, you can install `Miniconda with Python 3 <https:
 Graphical User Interface (GUI): easyALMOS
 ++++++++++++++++++++++++++++++++++++++++++
 
-You need a terminal with Python to run easyALMOS, the GUI of ALMOS. This GUI 
-simplifies the setup of ALMOS workflows, enabling users to select files and 
-configure options easily. To run easyALMOS followthese steps: 
+easyALMOS is distributed together with ALMOS and can be launched directly from the 
+same environment. It provides a simple interface for the most common CLUSTER and 
+AL workflows without requiring users to type the full command line.
 
 **1.** Install ALMOS as defined in the "Installation" section.
-
-.. warning::
-
-   The GUI only works with ALMOS version 0.1.0 or later (check your version!).
-
 
 **2.** Open an Anaconda prompt (Windows users) or a terminal (macOS and Linux).
 
@@ -267,13 +289,21 @@ configure options easily. To run easyALMOS followthese steps:
 **3.** Activate the conda environment where ALMOS is installed (:code:`conda activate almos`).
 
 
-**4.** Download `easyalmos.py: <https://github.com/MiguelMartzFdez/almos/blob/master/GUI_easyalmos/easyalmos.py>`__ |easyalmos|, tapping on this button on GitHub |download|
+**4.** Run easyALMOS with:
 
+.. code-block:: shell
 
-**5.** Go to the folder with the easyalmos.py file (using the "cd" command, i.e. :code:`cd C:/Users/test_almos`).
+   easyalmos
 
+The current GUI supports the most common options for:
 
-**7.** Run easyALMOS with the following command line (:code:`python easyalmos.py`).
+* CLUSTER, including direct CSV workflows, AQME-enabled descriptor generation and 
+  evaluation of an existing ``batch = 0`` selection with ``--evaluate``.
+* Active Learning, including:
+  
+  * ``Auto`` strategy selection
+  * ``Model mode`` (highest uncertainty)
+  * ``Hit mode`` with ``max`` / ``min`` objective and optional ``alpha``
 
 
 .. gui-end 
@@ -290,40 +320,28 @@ Python and Python libraries
 *Core almos_kit dependencies* 
 
 
-* Python >= 3.10
-* PyYAML
-* plotly
-* matplotlib
-* numpy
+* Python >= 3.11
+* aqme
+* robert
 * pandas
-* pdfplumber
-* rdkit
-* scikit_learn
+* scipy
+* hdbscan
+* matplotlib
+* plotly
+* umap-learn
 * pca
 * kneed
+* pdfplumber
 
+*Optional system / chemistry dependencies commonly installed through conda-forge*
 
-*Bayesian Optimization (EDBO) dependencies*
-
-
-* botorch
-* gpytorch
-* idaes-pse
-* ipykernel
-* ipython
-* ipywidgets
-* Jinja2
-* joypy
-* lxml
-* mordred
-* ordered-set
-* pareto
-* pymoo
-* scipy
-* seaborn
-* sympy
-* torch
-* tqdm
+* openbabel
+* xtb
+* glib
+* gtk3
+* pango
+* mscorefonts
+* libgfortran
 
 
 .. requirements-end
@@ -374,7 +392,7 @@ List of main developers and contact emails:
    `ORCID <https://orcid.org/0009-0002-8538-7250>`__ , 
    `Github <https://github.com/MiguelMartzFdez>`__ , 
    `email <miguel.martinez@csic.es>`__ ]
-   developer of the EL module.  
+   developer of the AL module.  
 *  Susana P. García Abellán [
    `ORCID <https://orcid.org/0000-0002-3138-5527>`__ , 
    `Github <https://github.com/sgabellan>`__ , 
@@ -401,7 +419,7 @@ License
 
 .. license-start 
 
-AQME is freely available under an `MIT License <https://opensource.org/licenses/MIT>`_  
+ALMOS is freely available under an `MIT License <https://opensource.org/licenses/MIT>`_  
 
 .. license-end
 

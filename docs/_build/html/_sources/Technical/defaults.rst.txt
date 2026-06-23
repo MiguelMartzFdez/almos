@@ -13,15 +13,9 @@ CLUSTER
 .. automodule:: almos.cluster
    :noindex:
 
-EL 
+AL 
 ------
 
-.. automodule:: almos.el
-   :noindex:
-
-BO
---------
-
-.. automodule:: almos.bo
+.. automodule:: almos.al
    :noindex:
 

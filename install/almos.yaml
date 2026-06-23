@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.12
   - openbabel=3.1.1
   - xtb=6.7.1
   - glib
@@ -13,5 +13,4 @@ dependencies:
   - libgfortran=14.2.0
   - pip
   - pip:
-      - scikit-learn-intelex==2025.2.
       - almos-kit
