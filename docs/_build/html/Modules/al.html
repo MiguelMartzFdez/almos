@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Active Learning (AL) &mdash; almos v1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Default parameters" href="../Technical/defaults.html" />
+    <link rel="prev" title="Clustering (CLUSTER)" href="cluster.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            almos
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Install/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/note.html">Users with no Python experience</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Install/gui.html">Graphical User Interface (GUI): easyALMOS</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering (CLUSTER)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Active Learning (AL)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-al-works">How AL works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#main-parameters">Main parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#al-protocol-in-almos">AL Protocol in ALMOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#important-options">Important options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference">Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/defaults.html">Default parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Technical/development.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html">Main Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API/API_Reference.html#other-modules">Other Modules</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Misc</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/versions.html">Versions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Misc/help.html">Help?</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">almos</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Active Learning (AL)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Modules/al.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="active-learning-al">
+<h1>Active Learning (AL)<a class="headerlink" href="#active-learning-al" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p><strong>Active Learning module for building predictive and interpretable models</strong></p>
+<p class="centered">
+<strong><a class="reference internal" href="../_images/AL_overview.png"><img alt="al_fig" src="../_images/AL_overview.png" width="800" /></a></strong></p><p>When the goal is to build a predictive and interpretable model, ALMOS incorporates
+an active learning strategy designed to improve model performance through informed
+data acquisition. The current implementation uses ROBERT to train and evaluate the
+predictive model at each iteration, then ranks unlabeled points according to the
+selected active learning strategy.</p>
+<p>The AL module supports three practical operating modes:</p>
+<ul class="simple">
+<li><p><strong>Auto mode</strong>: ALMOS decides whether the next batch should prioritize model
+improvement or hit-seeking based on the current ROBERT model score.</p></li>
+<li><p><strong>Model mode</strong>: ALMOS ranks unlabeled candidates only by predictive uncertainty
+and selects the highest-uncertainty points.</p></li>
+<li><p><strong>Hit mode</strong>: ALMOS ranks candidates using a confidence-bound acquisition
+function. For maximization it uses an upper confidence bound (UCB), and for
+minimization it uses a lower confidence bound (LCB).</p></li>
+</ul>
+</section>
+<section id="how-al-works">
+<h2>How AL works<a class="headerlink" href="#how-al-works" title="Link to this heading"></a></h2>
+<p>The AL workflow is currently:</p>
+<ul class="simple">
+<li><p><strong>Retrain the model</strong> with the currently labeled rows.</p></li>
+<li><p><strong>Generate predictions</strong> and predictive uncertainty for the unlabeled rows.</p></li>
+<li><p><strong>Choose a strategy</strong>:</p>
+<ul>
+<li><p>in <code class="docutils literal notranslate"><span class="pre">auto</span></code>, from the ROBERT score;</p></li>
+<li><p>in <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">model</span></code>, by pure uncertainty;</p></li>
+<li><p>in <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">hit</span></code>, by <code class="docutils literal notranslate"><span class="pre">objective</span></code> and optional <code class="docutils literal notranslate"><span class="pre">alpha</span></code>.</p></li>
+</ul>
+</li>
+<li><p><strong>Select the next batch</strong> of size <code class="docutils literal notranslate"><span class="pre">--n_exps</span></code>.</p></li>
+<li><p><strong>Write the new batch CSV</strong> and log convergence / model-quality information.</p></li>
+</ul>
+<p>The AL module requires a curated CSV file containing:</p>
+<ul class="simple">
+<li><p>Molecular descriptors (numerical input features).</p></li>
+<li><p>A target property column.</p></li>
+<li><p>A batch column indicating which datapoints are already labeled (for example,
+<code class="docutils literal notranslate"><span class="pre">batch</span> <span class="pre">=</span> <span class="pre">0</span></code> from CLUSTER and later experimental rounds).</p></li>
+</ul>
+<p>Example usage:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span>
+al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--mode<span class="w"> </span>model
+al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--mode<span class="w"> </span>hit<span class="w"> </span>--objective<span class="w"> </span>max<span class="w"> </span>--alpha<span class="w"> </span><span class="m">0</span>.5
+</pre></div>
+</div>
+</section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Link to this heading"></a></h2>
+<p>The most commonly used options in the current AL workflow are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--csv_name</span></code>: input CSV for the active learning cycle.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--name</span></code>: identifier column used to report which candidates are selected.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--y</span></code>: target property to model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--n_exps</span></code>: number of unlabeled candidates suggested for the next batch.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--ignore</span></code>: columns that should not be used as descriptors. Typical examples are
+<code class="docutils literal notranslate"><span class="pre">batch</span></code>, identifiers or textual metadata columns.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mode</span></code>: active learning mode. The available user-facing choices are:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">auto</span></code>: ALMOS decides the strategy from the current ROBERT score.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model</span></code>: select candidates only by predictive uncertainty.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hit</span></code>: select candidates using a confidence-bound acquisition function.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--objective</span></code>: only used in <code class="docutils literal notranslate"><span class="pre">hit</span></code> mode.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">max</span></code>: ranks candidates using an upper confidence bound (UCB), suitable when
+the goal is to maximize the target.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min</span></code>: ranks candidates using a lower confidence bound (LCB), suitable when
+the goal is to minimize the target.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--alpha</span></code>: only used in <code class="docutils literal notranslate"><span class="pre">hit</span></code> mode. This controls the weight of predictive
+uncertainty in the acquisition score. Larger values place more emphasis on
+exploration, while smaller values favor exploitation of the predicted optimum.</p></li>
+</ul>
+<p>Typical command-line patterns:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span>
+al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--mode<span class="w"> </span>model
+al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--mode<span class="w"> </span>hit<span class="w"> </span>--objective<span class="w"> </span>max
+al<span class="w"> </span>--csv_name<span class="w"> </span>EXAMPLE.csv<span class="w"> </span>--y<span class="w"> </span>Y_VALUE<span class="w"> </span>--name<span class="w"> </span>code_name<span class="w"> </span>--n_exps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--mode<span class="w"> </span>hit<span class="w"> </span>--objective<span class="w"> </span>min<span class="w"> </span>--alpha<span class="w"> </span><span class="m">0</span>.5
+</pre></div>
+</div>
+</section>
+<section id="al-protocol-in-almos">
+<h2>AL Protocol in ALMOS<a class="headerlink" href="#al-protocol-in-almos" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>The user supplies a CSV file with molecular descriptors, a target column and
+at least one labeled batch.</p></li>
+<li><p>ALMOS retrains a ROBERT model on the labeled rows.</p></li>
+<li><p>The model predicts values and uncertainty for all unlabeled datapoints.</p></li>
+<li><p>ALMOS resolves the active learning strategy:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">auto</span></code> based on model score,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model</span></code> for uncertainty-only selection,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hit</span></code> for UCB / LCB ranking.</p></li>
+</ul>
+</li>
+<li><p>The selected datapoints become the next suggested experimental batch.</p></li>
+</ol>
+</section>
+<section id="important-options">
+<h2>Important options<a class="headerlink" href="#important-options" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">model</span></code>: force model-improvement selection by highest uncertainty</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">hit</span></code>: force hit-seeking selection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--objective</span> <span class="pre">max</span></code>: use UCB-style ranking</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--objective</span> <span class="pre">min</span></code>: use LCB-style ranking</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--alpha</span></code>: confidence-bound weight used only in hit mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--n_exps</span></code>: number of points suggested for the next batch</p></li>
+</ul>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>ROBERT: <a class="reference external" href="https://github.com/jvalegre/robert">https://github.com/jvalegre/robert</a> (<em>Wiley Interdisciplinary Reviews: Computational Molecular Science</em> <strong>2024</strong>, <em>14</em>, e1733.)
+Dalmau, D.; Alegre Requena, J. V. ROBERT: Bridging the Gap between Machine Learning and Chemistry.</p></li>
+</ul>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
+<p>An example is available in <strong>Examples/Use of individual modules</strong>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cluster.html" class="btn btn-neutral float-left" title="Clustering (CLUSTER)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../Technical/defaults.html" class="btn btn-neutral float-right" title="Default parameters" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

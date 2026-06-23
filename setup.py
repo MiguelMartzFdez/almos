@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
-version = "1.0.0"
+from almos.package_versions import ALMOS_VERSION, AQME_VERSION
+
+version = ALMOS_VERSION
 setup(
     name="almos_kit",
-    packages=find_packages(include=["almos*", "edbo*"], exclude=["tests", "tests*"]),
+    packages=find_packages(include=["almos*"], exclude=["tests", "tests*"]),
     package_data={"almos": ["icons/*"]},
     version=version,
     license="MIT",
@@ -26,51 +28,46 @@ setup(
         "Intended Audience :: Developers",  # Define that your audience are developers
         "Topic :: Software Development :: Build Tools",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     
     install_requires=[
         # --- Core ---
-        "aqme==1.7.3",
-        "robert==2.0.2",
+        f"aqme=={AQME_VERSION}",
+        "robert==2.1.0",
 
-        "numpy>=1.26,<2.0",  
-        "pandas>=2.2,<2.3",
-        "scikit-learn>=1.6,<1.7",
+        "pandas==2.3.3",
         "scipy>=1.14,<1.16",
+        "hdbscan>=0.8.39,<0.9",
 
         "matplotlib>=3.8,<3.11",
         "plotly>=5.20,<6.0",
+        "umap-learn>=0.5.6,<0.6",
 
         "pca==2.0.9",
         "kneed==0.8.5",
         "pdfplumber==0.11.5",
-        "rdkit==2024.3.3",
 
-        # --- BO ---
-        "botorch==0.7.2",
-        "gpytorch==1.9.0",
-        "torch>=2.1,<3.0",
+        # --- Cluster natural-report optimization ---
+        "bayesian-optimization>=3.0.0b1,<4.0",
 
-        # --- legacy ---
-        "idaes-pse==1.5.1",
-
-        # --- utils ---
-        "sympy>=1.12,<1.14",
-        "lxml>=4.6,<5.0",
-        "Jinja2>=3.0,<3.2",
-        "ordered-set==4.0.2",
-        "pareto==1.1.1.post3",
-        "pymoo==0.5.0",
-        "seaborn>=0.13,<0.14",
-        "joypy==0.2.6",
-        "tqdm",
-
-        # Fix pkg_resources
-        "setuptools<81",
+        # # Fix pkg_resources
+        # "setuptools<81",
     ],
-    python_requires=">=3.10",
+    python_requires=">=3.11",
+    entry_points={
+        "console_scripts": [
+            "almos=almos.almos:main",
+            "cluster=almos.almos:main",
+            "al=almos.almos:main",
+            "almos-cluster=almos.almos:main",
+            "almos-al=almos.almos:main",
+        ],
+        "gui_scripts": [
+            "easyalmos=almos.easyalmos:main",
+        ],
+    },
     include_package_data=True,
 )

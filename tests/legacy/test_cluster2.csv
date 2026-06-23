@@ -1,0 +1,8 @@
+Code_Name,smiles,,
+acetic acid,CC(=O)O,,
+naphthalene,c1ccc2ccccc2c1,,ClC(CCl)
+benzaldehyde,O=Cc1ccccc1,ClC(CCl),
+benzene,c1ccccc1,,
+invalid,R,,
+acetic acid,CC(=O)O,,
+acetic_acid,CC(=O)O,,

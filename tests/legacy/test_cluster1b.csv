@@ -1,0 +1,4 @@
+code_name,SMILES
+2a,[H]c1c(C#N)c([H])c([H])[c:1]([C:2]#N)c1[H]
+2b,[H]c1c(S(=O)(=O)C(F)(F)F)c([H])c([H])[c:1]([C:2]#N)c1[H]
+2c,[H]c1c(S(=O)(=O)C([H])([H])[H])c([H])c([H])[c:1]([C:2]#N)c1[H]

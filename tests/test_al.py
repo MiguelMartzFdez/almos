@@ -1,480 +1,554 @@
 #!/usr/bin/env python
 
-######################################################.
-# 	        Testing AL module with pytest 	         #
-######################################################.
+from pathlib import Path
 
-import os
-import glob
-import pytest
-import shutil
-import subprocess
 import pandas as pd
-import re
+import pytest
 
-# saves the working directories and names of important files
-path_tests = os.getcwd() + "/tests"
-path_plots = os.getcwd() + "/batch_plots"
-path_batch = os.getcwd() + "/batch_1"
-batch_pattern = os.path.join(os.getcwd(), "batch_*")
-csv_to_remove = os.path.join(os.getcwd(), "options.csv")
-
-# AL tests
-@pytest.mark.parametrize(
-    "test_job",
-    [
-        (
-            "standard"
-        ),  # standard test  
-        (
-            "firewall_missing_target_values"
-        ),  # test if target column values are missing
-        (
-            "firewall_missing_batch"
-        ),  # test if batch column is missing but values of target column are valid
-        (
-            "missing_input"
-        ),  # test that if the --names, --y or --csv_name options are empty, a prompt pops up and asks for them
-        (
-            "tolerance"
-        ),  # check if change in tolerance parameter works   
-        (
-            "reverse"
-        ),  # check if we look for minimum values for exploitation with reverse parameter
-    ],
+from almos.al_utils import (
+    EarlyStopping,
+    _assign_prediction_quartiles,
+    _rank_model_candidates_with_quartile_diversity,
+    assign_values,
+    build_selected_candidates_preview,
+    check_missing_outputs,
+    describe_metric_transition,
+    extract_points_from_csv,
+    extract_rmse_and_score_from_column,
+    extract_sd_from_column,
+    get_metrics_from_batches,
+    get_scores_from_robert_report,
+    format_score_explanation,
+    format_score_interpretation,
+    format_strategy_label,
+    format_strategy_reason,
+    format_text_table,
+    generate_quartile_medians_df,
+    get_quartile,
+    plot_metrics_subplots,
+    process_batch,
+    rank_active_learning_candidates,
+    resolve_active_learning_strategy,
 )
 
 
-def test_AL(test_job):
+def build_candidate_df():
+    return pd.DataFrame(
+        {
+            "name": ["mol_a", "mol_b", "mol_c", "mol_d"],
+            "target_pred": [8.0, 9.0, 10.0, 7.5],
+            "target_pred_sd": [0.5, 1.2, 0.8, 1.5],
+        }
+    )
 
-   # Directories to delete if they exist
-    for dir_path in glob.glob(batch_pattern):
-        if os.path.isdir(dir_path):  
-            shutil.rmtree(dir_path)
-    if os.path.isdir(path_plots):
-        shutil.rmtree(path_plots)
 
-    # Remove the CSV file 'options.csv' if it exists
-    if os.path.exists(csv_to_remove):
-        os.remove(csv_to_remove)
+def test_resolve_active_learning_strategy_auto_bands():
+    weak = resolve_active_learning_strategy(score=3, objective="max")
+    balanced = resolve_active_learning_strategy(score=7, objective="min")
+    strong = resolve_active_learning_strategy(score=9, objective="max")
 
-    # runs the program with the different tests
-    cmd_almos = [
-        "python",
-        "-m",
-        "almos",
-        "--el",
-        '--robert_keywords "--model RF --repeat_kfolds 1 "',
-        "--ignore", "index",
+    assert weak["strategy"] == "model"
+    assert weak["score_band"] == "<=6"
+    assert weak["alpha"] is None
+
+    assert balanced["strategy"] == "hit"
+    assert balanced["score_band"] == "7-8"
+    assert balanced["alpha"] == 1.0
+    assert balanced["objective"] == "min"
+
+    assert strong["strategy"] == "hit"
+    assert strong["score_band"] == ">8"
+    assert strong["alpha"] == 0.5
+
+
+def test_resolve_active_learning_strategy_manual_modes():
+    manual_model = resolve_active_learning_strategy(
+        score=8,
+        objective=None,
+        mode="model",
+    )
+    manual_hit = resolve_active_learning_strategy(
+        score=2,
+        objective="max",
+        mode="hit",
+        alpha_override=0.25,
+    )
+
+    assert manual_model == {
+        "strategy": "model",
+        "objective": None,
+        "alpha": None,
+        "score": 8,
+        "score_band": "manual_model",
+        "score_source": "manual_override",
+    }
+    assert manual_hit["strategy"] == "hit"
+    assert manual_hit["objective"] == "max"
+    assert manual_hit["alpha"] == 0.25
+    assert manual_hit["score_band"] == "manual_hit"
+
+
+def test_rank_active_learning_candidates_model_uses_max_sd_only():
+    df = build_candidate_df()
+    strategy = resolve_active_learning_strategy(score=2, objective="max", mode="model")
+
+    ranked = rank_active_learning_candidates(
+        df,
+        strategy,
+        "target_pred",
+        "target_pred_sd",
+        selection_size=2,
+    )
+
+    assert list(ranked["name"]) == ["mol_d", "mol_b", "mol_c", "mol_a"]
+    assert ranked["_acquisition_label"].iloc[0] == "uncertainty"
+    assert ranked["_ranking_metric"].tolist() == [1.5, 1.2, 0.8, 0.5]
+    assert ranked["_selection_penalty"].tolist() == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_rank_active_learning_candidates_hit_max_and_min():
+    df = build_candidate_df()
+
+    max_strategy = resolve_active_learning_strategy(
+        score=8,
+        objective="max",
+        mode="hit",
+        alpha_override=0.5,
+    )
+    min_strategy = resolve_active_learning_strategy(
+        score=8,
+        objective="min",
+        mode="hit",
+        alpha_override=0.5,
+    )
+
+    ranked_max = rank_active_learning_candidates(
+        df,
+        max_strategy,
+        "target_pred",
+        "target_pred_sd",
+    )
+    ranked_min = rank_active_learning_candidates(
+        df,
+        min_strategy,
+        "target_pred",
+        "target_pred_sd",
+    )
+
+    assert list(ranked_max["name"]) == ["mol_c", "mol_b", "mol_a", "mol_d"]
+    assert list(ranked_min["name"]) == ["mol_d", "mol_a", "mol_b", "mol_c"]
+    assert ranked_max["_acquisition_label"].iloc[0] == "prediction + alpha*uncertainty"
+    assert ranked_min["_acquisition_label"].iloc[0] == "prediction - alpha*uncertainty"
+
+
+def test_score_interpretation_and_explanation_messages():
+    assert format_score_interpretation(2) == "very weak model (0-3)"
+    assert format_score_interpretation(5) == "weak-to-moderate model (4-6)"
+    assert format_score_interpretation(8) == "good model (7-8)"
+    assert format_score_interpretation(9) == "strong model (>8)"
+    assert format_score_interpretation(None) == "score unavailable"
+
+    auto_weak = resolve_active_learning_strategy(score=3, objective="max")
+    auto_strong = resolve_active_learning_strategy(score=9, objective="min")
+    manual_model = resolve_active_learning_strategy(score=8, objective=None, mode="model")
+    manual_hit = resolve_active_learning_strategy(
+        score=4,
+        objective="max",
+        mode="hit",
+        alpha_override=0.4,
+    )
+
+    assert "focus on learning" in format_score_explanation(auto_weak)
+    assert "more weight to promising candidates" in format_score_explanation(auto_strong)
+    assert "uncertainty-based model-improvement mode" in format_score_explanation(manual_model)
+    assert "hit-focused selection" in format_score_explanation(manual_hit)
+
+
+def test_strategy_labels_and_reasons_match_current_model_mode():
+    auto_model = resolve_active_learning_strategy(score=6, objective="max")
+    manual_model = resolve_active_learning_strategy(score=8, objective=None, mode="model")
+
+    assert format_strategy_label("model") == "model improvement (highest uncertainty)"
+    assert format_strategy_label("hit") == "hit discovery (prediction weighted by uncertainty)"
+    assert format_strategy_reason(auto_model) == "model score 6 is 6 or lower, so uncertainty was prioritized"
+    assert format_strategy_reason(manual_model) == "manual mode forced uncertainty-based selection"
+
+
+def test_selected_candidates_preview_and_text_table_render_cleanly():
+    df = build_candidate_df()
+    strategy = resolve_active_learning_strategy(score=2, objective="max", mode="model")
+    ranked = rank_active_learning_candidates(
+        df,
+        strategy,
+        "target_pred",
+        "target_pred_sd",
+    )
+    preview = build_selected_candidates_preview(
+        ranked.head(3),
+        "name",
+        "target_pred",
+        "target_pred_sd",
+    )
+
+    assert list(preview.columns) == [
+        "rank",
+        "candidate",
+        "prediction",
+        "uncertainty",
+        "ranking_score",
+    ]
+    assert preview.iloc[0]["candidate"] == "mol_d"
+    assert preview.iloc[0]["ranking_score"] == 1.5
+
+    table = format_text_table(preview, max_widths={"candidate": 8})
+    assert table.startswith("+")
+    assert "candidate" in table
+    assert "ranking_score" in table
+    assert "mol_d" in table
+
+
+def test_describe_metric_transition_for_score_and_rmse():
+    improved_score = describe_metric_transition("score", 4, 6, 0.05, True)
+    worsened_rmse = describe_metric_transition("rmse", 0.5, 0.6, 0.05, False)
+
+    assert improved_score == "score: 4 -> 6 | improved | converged"
+    assert (
+        worsened_rmse
+        == "rmse: 0.5000 -> 0.6000 | worsened | change = 20.00% | tolerance = 5.00% | not converged"
+    )
+
+
+def test_generate_quartiles_and_get_quartile():
+    df_total = pd.DataFrame({"target_pred": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0]})
+    df_exp = pd.DataFrame({"target_pred": [2.0, 4.0, 6.0, 8.0]})
+
+    quartiled_df, quartile_medians, boundaries = generate_quartile_medians_df(
+        df_total,
+        df_exp.copy(),
+        "target_pred",
+    )
+
+    assert list(quartiled_df["quartile"]) == ["q1", "q2", "q3", "q4"]
+    assert quartile_medians == {
+        "q1": 1.25,
+        "q2": 3.75,
+        "q3": 6.25,
+        "q4": 8.75,
+    }
+    assert boundaries == [0.0, 2.5, 5.0, 7.5, 10.0]
+    assert get_quartile(2.0, boundaries) == "q1"
+    assert get_quartile(4.0, boundaries) == "q2"
+    assert get_quartile(5.5, boundaries) == "q3"
+    assert get_quartile(9.0, boundaries) == "q4"
+
+
+def test_assign_values_prefers_high_sd_within_least_populated_quartiles():
+    df = pd.DataFrame(
+        {
+            "quartile": ["q1", "q1", "q2", "q3", "q4"],
+            "target_pred": [1.0, 1.5, 3.0, 5.0, 7.0],
+            "target_pred_sd": [0.2, 0.9, 0.5, 0.8, 0.4],
+        }
+    )
+
+    assigned_points, min_size_quartiles = assign_values(
+        df,
+        exploit_points=1,
+        explore_points=3,
+        quartile_medians={"q1": 1.25, "q2": 3.0, "q3": 5.0, "q4": 7.0},
+        size_counters={"q1": 0, "q2": 0, "q3": 0, "q4": 0},
+        predictions_column="target_pred",
+        sd_column="target_pred_sd",
+        reverse=False,
+    )
+
+    assert min_size_quartiles == ["q1", "q2", "q3"]
+    assert assigned_points["q1"] == [1.5]
+    assert assigned_points["q2"] == [3.0]
+    assert assigned_points["q3"] == [5.0]
+    assert assigned_points["q4"] == []
+
+
+class DummyPage:
+    def __init__(self, text):
+        self.text = text
+
+    def within_bbox(self, _bbox):
+        return self
+
+    def extract_text(self):
+        return self.text
+
+
+def test_extract_metrics_from_pdf_like_text():
+    test_text = "Test : R² = 0.85, MAE = 0.12, RMSE = 0.34\nScore 8"
+    valid_text = "Valid. : R² = 0.75, MAE = 0.22, RMSE = 0.44\nScore 6"
+    sd_text = "Prediction variation, 4*SD = 1.20"
+
+    assert extract_rmse_and_score_from_column(DummyPage(test_text), (0, 0, 1, 1)) == (0.34, 8)
+    assert extract_rmse_and_score_from_column(DummyPage(valid_text), (0, 0, 1, 1)) == (0.44, 6)
+    assert extract_rmse_and_score_from_column(DummyPage("nothing useful"), (0, 0, 1, 1)) == (None, None)
+    assert extract_sd_from_column(DummyPage(sd_text), (0, 0, 1, 1)) == 0.3
+    assert extract_sd_from_column(DummyPage("nothing useful"), (0, 0, 1, 1)) is None
+
+
+def test_extract_points_from_csv_reads_pfi_and_no_pfi_batches(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    base_dir = tmp_path / "batch_3" / "ROBERT_b3" / "GENERATE" / "Best_model"
+    no_pfi_dir = base_dir / "No_PFI"
+    pfi_dir = base_dir / "PFI"
+    no_pfi_dir.mkdir(parents=True)
+    pfi_dir.mkdir(parents=True)
+
+    pd.DataFrame({"Set": ["Training", "Training", "Test"]}).to_csv(
+        no_pfi_dir / "model_db.csv",
+        index=False,
+    )
+    pd.DataFrame({"Set": ["Training", "Test", "Test"]}).to_csv(
+        pfi_dir / "model_db.csv",
+        index=False,
+    )
+
+    points = extract_points_from_csv(3)
+
+    assert points == {
+        "No_PFI_Training_points": 2,
+        "No_PFI_test_points": 1,
+        "PFI_Training_points": 1,
+        "PFI_test_points": 2,
+    }
+
+
+class DummyLogger:
+    def write(self, *_args, **_kwargs):
+        return None
+
+    def finalize(self):
+        return None
+
+
+class DummyALConfig:
+    pass
+
+
+def test_check_missing_outputs_accepts_current_model_mode_flow(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    csv_path = tmp_path / "A_b0.csv"
+    pd.DataFrame(
+        {
+            "Name": ["a", "b", "c"],
+            "SMILES": ["CC", "CO", "CN"],
+            "ee": [1.0, 2.0, None],
+            "batch": [0, 0, None],
+        }
+    ).to_csv(csv_path, index=False)
+
+    self = DummyALConfig()
+    self.csv_name = "A_b0.csv"
+    self.extra_cmd = ""
+    self.ignore = []
+    self.batch_column = "batch"
+    self.name = "Name"
+    self.y = "ee"
+    self.al_mode = "model"
+    self.alpha = None
+    self.objective = None
+    self.n_exps = 2
+    self.tolerance = "medium"
+    self.levels_tolerance = ["tight", "medium", "wide"]
+    self.log = DummyLogger()
+
+    result = check_missing_outputs(self)
+
+    assert result.path_csv_name == csv_path
+    assert result.base_name == "A"
+    assert result.current_number_batch == 1
+    assert "batch" in result.ignore
+    assert "SMILES" in result.ignore
+    assert result.df_raw["batch"].iloc[0] == 0.0
+    assert result.df_raw["batch"].iloc[1] == 0.0
+    assert pd.isna(result.df_raw["batch"].iloc[2])
+
+
+def test_check_missing_outputs_rejects_alpha_with_model_mode(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    csv_path = tmp_path / "A_b0.csv"
+    pd.DataFrame(
+        {
+            "Name": ["a", "b"],
+            "ee": [1.0, 2.0],
+            "batch": [0, 0],
+        }
+    ).to_csv(csv_path, index=False)
+
+    self = DummyALConfig()
+    self.csv_name = "A_b0.csv"
+    self.extra_cmd = ""
+    self.ignore = []
+    self.batch_column = "batch"
+    self.name = "Name"
+    self.y = "ee"
+    self.al_mode = "model"
+    self.alpha = 0.5
+    self.objective = None
+    self.n_exps = 2
+    self.tolerance = "medium"
+    self.levels_tolerance = ["tight", "medium", "wide"]
+    self.log = DummyLogger()
+
+    with pytest.raises(SystemExit):
+        check_missing_outputs(self)
+
+
+class FakePDF:
+    def __init__(self):
+        self.pages = [
+            SimplePage(height=500, width=600),
+            SimplePage(height=500, width=600),
+            SimplePage(height=500, width=600),
+        ]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class SimplePage:
+    def __init__(self, height=500, width=600):
+        self.height = height
+        self.width = width
+
+
+def test_process_batch_and_score_extraction_use_pdf_helpers(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    pdf_dir = tmp_path / "batch_2" / "ROBERT_b2"
+    pdf_dir.mkdir(parents=True)
+    (pdf_dir / "ROBERT_report.pdf").write_text("stub", encoding="utf-8")
+
+    monkeypatch.setattr("almos.al_utils.pdfplumber.open", lambda _path: FakePDF())
+    monkeypatch.setattr(
+        "almos.al_utils.extract_rmse_and_score_from_column",
+        lambda _page, bbox: (0.4, 6) if bbox[0] == 0 else (0.3, 8),
+    )
+    monkeypatch.setattr(
+        "almos.al_utils.extract_sd_from_column",
+        lambda _page, bbox: 0.2 if bbox[0] == 0 else 0.1,
+    )
+    monkeypatch.setattr(
+        "almos.al_utils.extract_points_from_csv",
+        lambda _batch: {
+            "No_PFI_Training_points": 10,
+            "No_PFI_test_points": 2,
+            "PFI_Training_points": 11,
+            "PFI_test_points": 3,
+        },
+    )
+
+    no_pfi, pfi = process_batch(2)
+    score_no_pfi, score_pfi = get_scores_from_robert_report(pdf_dir / "ROBERT_report.pdf")
+
+    assert no_pfi["rmse_no_PFI"] == 0.4
+    assert no_pfi["score_no_PFI"] == 6
+    assert no_pfi["SD_no_PFI"] == 0.2
+    assert pfi["rmse_PFI"] == 0.3
+    assert pfi["score_PFI"] == 8
+    assert pfi["SD_PFI"] == 0.1
+    assert score_no_pfi == 6
+    assert score_pfi == 8
+
+
+def test_get_metrics_from_batches_ignores_non_numeric_batch_directories(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for folder in ["batch_0", "batch_1", "batch_2", "batch_random", "batch_plots"]:
+        (tmp_path / folder).mkdir()
+
+    monkeypatch.setattr(
+        "almos.al_utils.process_batch",
+        lambda batch: (
+            {"batch": int(batch), "rmse_no_PFI": 0.5},
+            {"batch": int(batch), "rmse_PFI": 0.4},
+        ),
+    )
+
+    results_no_pfi, results_pfi = get_metrics_from_batches()
+
+    assert [row["batch"] for row in results_no_pfi] == [1, 2]
+    assert [row["batch"] for row in results_pfi] == [1, 2]
+
+
+def test_early_stopping_convergence_and_csv_update(tmp_path):
+    logger = DummyLogger()
+    stopper = EarlyStopping(patience=2, score_tolerance=0, rmse_min_delta=0.05, sd_min_delta=0.05, logger=logger)
+    stopper.output_folder = tmp_path / "batch_plots"
+    stopper.output_folder.mkdir(exist_ok=True)
+    stopper.output_folder_no_pfi = stopper.output_folder / "no_PFI_plots"
+    stopper.output_folder_pfi = stopper.output_folder / "PFI_plots"
+    stopper.output_folder_no_pfi.mkdir(exist_ok=True)
+    stopper.output_folder_pfi.mkdir(exist_ok=True)
+
+    no_pfi_data = [
+        {"batch": 1, "rmse_no_PFI": 1.00, "SD_no_PFI": 0.50, "score_no_PFI": 7, "Training_points_no_PFI": 10, "test_points_no_PFI": 2},
+        {"batch": 2, "rmse_no_PFI": 0.98, "SD_no_PFI": 0.49, "score_no_PFI": 8, "Training_points_no_PFI": 12, "test_points_no_PFI": 2},
+        {"batch": 3, "rmse_no_PFI": 0.98, "SD_no_PFI": 0.49, "score_no_PFI": 8, "Training_points_no_PFI": 14, "test_points_no_PFI": 2},
+    ]
+    pfi_data = [
+        {"batch": 1, "rmse_PFI": 0.90, "SD_PFI": 0.40, "score_PFI": 8, "Training_points_PFI": 10, "test_points_PFI": 2},
+        {"batch": 2, "rmse_PFI": 0.89, "SD_PFI": 0.39, "score_PFI": 8, "Training_points_PFI": 12, "test_points_PFI": 2},
+        {"batch": 3, "rmse_PFI": 0.89, "SD_PFI": 0.39, "score_PFI": 8, "Training_points_PFI": 14, "test_points_PFI": 2},
     ]
 
-    if test_job != 'missing_input':
-        cmd_almos = cmd_almos + ['--y','target',
-                                   "--csv_name", f"{path_tests}/AL_example.csv",
-                                   "--name","name",
-                                   "--n_exps","5",]
-        
-        
-    if test_job == 'firewall_missing_target_values':
+    updated_no_pfi, updated_pfi = stopper.check_convergence(no_pfi_data, pfi_data)
 
-        # Run the command and capture the output
-        cmd_almos = (
-            f"python -m almos --el --robert_keywords "
-            f'"--model RF --repeat_kfolds 1 " '
-            f"--ignore index --y target "
-            f"--csv_name {path_tests}/AL_example_missing_targets.csv "
-            f"--name name --n_exps 5"
-        )
-
-        result = subprocess.run(
-            cmd_almos,
-            capture_output=True,  # Capture information from subprocess
-            text=True, # As text 
-            shell=True  
-        )
-
-        # Verify that the program displays the warning message
-        assert "WARNING! The column 'target' contains missing values. Please check the data before proceeding! Exiting." in result.stdout, \
-                f"The expected warning message was not found in '{test_job}' test." 
-        
-    if test_job == 'firewall_missing_batch':
-
-        # Path to the test CSV file
-        test_csv_path = 'tests/AL_example_missing_batch.csv'
-        backup_csv_path = 'tests/AL_example_missing_batch_backup.csv'
-
-        # Backup the CSV file for keep the csv without batch column for further tests
-        shutil.copyfile(test_csv_path, backup_csv_path)
-
-        try:
-            # Change the csv file for detect no batch column but valid values
-            cmd_almos = (
-                f"python -m almos --el --robert_keywords "
-                f'"--model RF --repeat_kfolds 1 " '
-                f"--ignore index --y target "
-                f"--csv_name {test_csv_path} "
-                f"--name name --n_exps 5"
-            )
-            subprocess.run(cmd_almos, shell=True)
-
-            # Load results
-            output_csv_path = 'batch_1/AL_example_missing_batch_b1.csv'
-            output_data = pd.read_csv(output_csv_path)
-
-            # Count rows for each value in the 'batch' column
-            batch_counts = output_data['batch'].value_counts()
-
-            # Validate the expected counts
-            assert batch_counts.get(0, 0) == 60, f"Expected 60 rows with batch = 0, but found {batch_counts.get(0, 0)}"
-            assert batch_counts.get(1, 0) == 5, f"Expected 5 rows with batch = 1, but found {batch_counts.get(1, 0)}"
-        
-        finally:
-            # Restore the original CSV file by copying the backup file back, then delete the backup file
-            shutil.copyfile(backup_csv_path, test_csv_path)
-            os.remove(backup_csv_path)
-    
-
-    if test_job == "tolerance":
-        cmd_almos = (
-            f'python -m almos --el --robert_keywords '
-            f'"--model RF --repeat_kfolds 1 " '
-            f'--ignore index --y target '
-            f'--csv_name {path_tests}/AL_example.csv '
-            f'--name name --n_exps 5 --tolerance tight'
-        )
-
-        # Run the command and capture the output
-        result = subprocess.run(
-            cmd_almos,
-            capture_output=True,  # Capture information from subprocess
-            text=True, # As text 
-            shell=True  
-        )
-
-        # Check that the DAT file is created and has the correct information
-        filepath = os.path.join(os.getcwd(), "batch_1", "EL_data.dat")
-        assert os.path.exists(filepath), f"EL_data.dat file not found in '{test_job}' test."
-
-        # Read .dat file as a string
-        with open(filepath, "r") as file:
-            text = file.read()
-        
-        input_found, al_valid = False,False
-        input_found = "Convergence tolerance  : tight (1.00%)" in text      
-        al_valid = 'o Subplot figures have been generated and saved successfully!' in text
-
-        assert input_found, f"Converence input not found in batch_1/EL_data.dat file in '{test_job}' test."
-        assert al_valid, f"Process was not successfully completed in '{test_job}' test."
-    
-    if test_job == "standard":
-
-        def run_subprocess_and_validate(cmd, validation_functions, delete=False): 
-            """
-            Run the subprocess command and execute the list of validation functions.
-            """
-            if not delete:
-                subprocess.run(cmd)
-
-            for func in validation_functions:
-                func()  # Execute each validation function
-
-        def validate_csv_options(expected_values):
-            """
-            Validate that the 'options.csv' file matches the expected values.
-            """
-            db_save = pd.read_csv("options.csv")
-            assert db_save['y'][0] == expected_values['y'], f"'y' mismatch! Expected {expected_values['y']}, got {db_save['y'][0]} in 'options.csv' "
-            assert db_save['name'][0] == expected_values['name'], f"'name' mismatch! Expected {expected_values['name']}, got {db_save['name'][0]} in 'options.csv'"
-            assert all(word in db_save['ignore'][0] for word in expected_values['ignore']), (
-                f"'ignore' values mismatch! Expected {expected_values['ignore']}, got {db_save['ignore'][0]} in 'options.csv'"
-            )
-
-            # Extract filename starting with "AL_example" and capturing everything after
-            actual_filename = re.search(r"(AL_example.*?\.csv)$", str(db_save['csv_name'][0]))
-            actual_filename = actual_filename.group(1) if actual_filename else None
-
-            assert expected_values['csv_name'] == actual_filename, (
-                f"'csv_name' mismatch! Expected {expected_values['csv_name']}, got {actual_filename} in 'options.csv'"
-            )
-        def validate_batches(path_batches, expected_values_al, csv_name_robert, csv_name_b1, batch_number):
-            """
-            Validate the points and batch results in the specified batch files.
-            """
-            path_robert = os.path.join(path_batches, csv_name_robert)
-            path_b1 = os.path.join(path_batches, csv_name_b1)
-
-            db_save_rb1 = pd.read_csv(path_robert)
-            db_save_b1 = pd.read_csv(path_b1)
-
-            assert len(db_save_rb1) == expected_values_al['num_points'], (
-                f"Number of points mismatch! Expected {expected_values_al['num_points']}, got {len(db_save_rb1)}"
-            )
-
-            db_save_b1 = db_save_b1.loc[db_save_b1['batch'] == batch_number, ["name", "index", "batch"]]
-            db_save_b1['batch'] = db_save_b1['batch'].astype('int64')
-
-            expected_df = pd.DataFrame(expected_values_al['rows'])
-
-            # Sort both DataFrames to ensure row equality regardless of order
-            db_save_b1_sorted = db_save_b1.sort_values(by=["name", "index", "batch"]).reset_index(drop=True)
-            expected_df_sorted = expected_df.sort_values(by=["name", "index", "batch"]).reset_index(drop=True)
-
-            assert db_save_b1_sorted.equals(expected_df_sorted), "Selected rows in batch do not match!"
-            assert len(db_save_b1) == len(expected_df), "Number of selected rows mismatch!"
-
-        def validate_plots(path_plots, expected_structure, expected_values_plot):
-            """
-            Validate the folder structure, files, and plot data.
-            """
-            for folder, files in expected_structure.items():
-                folder_path = os.path.join(path_plots, folder)
-                assert os.path.exists(folder_path), f"Folder '{folder}' is missing in '{path_plots}'!"
-                
-                for file in files:
-                    file_path = os.path.join(folder_path, file)
-                    assert os.path.exists(file_path), f"File '{file}' is missing in '{folder_path}'!"
-
-            for key, value in expected_values_plot.items():
-                file_path = os.path.join(path_plots, f"{key}_plots", value["file"])
-                columns_to_convert = [f"rmse_{key}", f"SD_{key}"]
-                expected_df = pd.DataFrame(value["data"]).round(1)
-                expected_df[columns_to_convert] = expected_df[columns_to_convert].astype(float)
-                actual_df = pd.read_csv(file_path).round(1)
-                actual_df[columns_to_convert] = actual_df[columns_to_convert].astype(float)
-                assert actual_df.equals(expected_df), f"{value['file']} does not match expected values!"
+    assert "convergence" in updated_no_pfi.columns
+    assert "convergence" in updated_pfi.columns
+    assert (stopper.output_folder_no_pfi / "results_plot_no_PFI.csv").exists()
+    assert (stopper.output_folder_pfi / "results_plot_PFI.csv").exists()
+    assert updated_no_pfi["convergence"].iloc[-1] in {"yes", "no"}
 
 
-        def validate_dat_file(filepath, expected_values):
-            """
-            Validate the .dat file contents.
-            """
-            assert os.path.exists(filepath), f"EL_data.dat file not found!"
+def test_plot_metrics_subplots_creates_expected_png(tmp_path):
+    df = pd.DataFrame(
+        {
+            "batch": [1, 2],
+            "score_PFI": [7, 8],
+            "rmse_PFI": [0.8, 0.7],
+            "SD_PFI": [0.3, 0.25],
+            "Training_points_PFI": [10, 12],
+            "test_points_PFI": [2, 2],
+            "rmse_converged": [0, 1],
+            "SD_converged": [0, 1],
+            "score_converged": [0, 1],
+        }
+    )
 
-            with open(filepath, "r") as file:
-                text = file.read()
+    plot_metrics_subplots(df, "PFI", output_dir=str(tmp_path), batch_count=2)
 
-            # Validate initial sizes
-            actual_initial_sizes = eval(text.split("Initial sizes of dataset: ")[1].split("\n")[0])
-            assert actual_initial_sizes == expected_values['initial_sizes'], f"Initial sizes mismatch! {actual_initial_sizes}"
-
-            # Validate selection order
-            actual_order = eval(text.split("Ordered assigned points: ")[1].split("\n")[0])
-            assert actual_order == expected_values['order'], f"Selection order mismatch! {actual_order}"
-
-            # Validate convergence reports
-            for model, messages in expected_values['convergence_reports'].items():
-                if isinstance(messages, dict):
-                    # Check if the values expected are in the dictionary such as batch_2 and batch_3
-                    for key, message in messages.items():
-                        if isinstance(message, list):
-                            # Chech if the dict contains a list such batch_3. We present the info in different ways in order to look up for different patterns
-                            search_key = f"Evaluating Model {model} batch {key.replace('batch_', '')}:"
-                            if search_key not in text:
-                                raise AssertionError(f"Batch section '{search_key}' for {model} is missing!")
-                            
-                            batch_section = text.split(search_key)[1].split("\n")
-                            for msg in message:
-                                assert any(msg in line for line in batch_section), (
-                                    f"Convergence message '{msg}' for {model} ({key}) is missing!"
-                                )
-                        else:
-                            # Msg are in dict but only once such as batch_2
-                            assert message in text, f"Convergence message '{message}' for {model} is missing!"
-                else:
-                    # Flat dictionary with single message
-                    assert messages in text, f"Convergence message '{messages}' for {model} is missing!"
-
-            # Validate subplot generation message
-            assert expected_values['subplot_message'] in text, "Subplot figures generation message is missing!"
+    assert (tmp_path / "PFI_plots" / "PFI_subplots_vertical.png").exists()
 
 
-        # Define validations for batch_1 and the proper cmd command
-        cmd_almos = [
-            'python', '-m', 'almos', '--el', '--robert_keywords', '--model RF --repeat_kfolds 1 ',
-            '--ignore', 'index', '--y', 'target',
-            '--csv_name', f'{path_tests}/AL_example.csv',
-            '--name', 'name', '--n_exps', '5'
-        ]
+def test_prediction_quartile_helpers_cover_constant_and_ranked_cases():
+    constant_df = pd.DataFrame({"target_pred": [5.0, 5.0], "target_pred_sd": [0.2, 0.1]})
+    quartiled_constant = _assign_prediction_quartiles(constant_df, "target_pred")
+    assert list(quartiled_constant["_prediction_quartile"]) == ["q1", "q1"]
+    assert quartiled_constant.attrs["prediction_quartile_bounds"] == [5.0] * 5
 
-        expected_values_plot ={
-            'no_PFI': {
-                'file': 'results_plot_no_PFI.csv',
-                'data': {
-                    'batch': [1],
-                    'rmse_no_PFI': [0.28],
-                    'SD_no_PFI': [0.15],
-                    'score_no_PFI': [1],
-                    'Training_points_no_PFI': [18],
-                    'test_points_no_PFI': [4],
-                    'rmse_converged': [0],
-                    'SD_converged': [0],
-                    'score_converged': [0],
-                    'convergence': ['no']
-                    }
-                },
-            'PFI': {
-                'file': 'results_plot_PFI.csv',
-                'data': {
-                    'batch': [1],
-                    'rmse_PFI': [0.39],
-                    'SD_PFI': [0.15],
-                    'score_PFI': [0],
-                    'Training_points_PFI': [18],
-                    'test_points_PFI': [4],
-                    'rmse_converged': [0],
-                    'SD_converged': [0],
-                    'score_converged': [0],
-                    'convergence': ['no']
-                    }
-                }
-            }
+    diverse_df = pd.DataFrame(
+        {
+            "target_pred": [1.0, 2.0, 3.0, 4.0],
+            "target_pred_sd": [0.9, 0.8, 0.7, 0.6],
+        }
+    )
+    ranked_diverse = _rank_model_candidates_with_quartile_diversity(
+        diverse_df,
+        "target_pred",
+        "target_pred_sd",
+        selection_size=2,
+    )
 
-        validation_functions_batch_1 = [
-            lambda: validate_csv_options({
-                'y': 'target',
-                'name': 'name',
-                'ignore': ['index', 'batch'],
-                'csv_name': 'AL_example.csv'
-            }),
-
-            lambda: validate_batches('batch_1',
-                {'num_points': 22,
-                'rows': {'name': [19, 23, 22, 21, 20],
-                'index': [119, 123, 122, 121, 120],
-                'batch': [1, 1, 1, 1, 1]}},
-                'ROBERT_b1/AL_example_ROBERT_b1.csv',
-                'AL_example_b1.csv',
-                1),    
-
-            lambda: validate_plots(
-                "batch_plots", 
-                {
-                    "PFI_plots": ["results_plot_PFI.csv", "PFI_subplots_vertical.png"],
-                    "no_PFI_plots": ["results_plot_no_PFI.csv", "no_PFI_subplots_vertical.png"]
-                }, 
-                expected_values_plot
-            ),
-            lambda: validate_dat_file('batch_1/EL_data.dat',
-                {'initial_sizes': {'q1': 6, 'q2': 8, 'q3': 0, 'q4': 8},
-                'order': ['q3', 'q3', 'q3', 'q3', 'q3'],
-                'convergence_reports': {'no_PFI': 'o Not enough batches to check for convergence for Model no_PFI!',
-                                        'PFI': 'o Not enough batches to check for convergence for Model PFI!'},
-                'subplot_message': 'o Subplot figures have been generated and saved successfully!'})
-        ]
-        
-        # Run validations for batch_1
-        run_subprocess_and_validate(cmd_almos, validation_functions_batch_1)
-    
-    elif test_job == 'missing_input':
-        # since we're inputting values for input() prompts, we use command lines and provide
-        # the answers with external files using "< FILENAME_WITH_ANSWERS" in the command line
-
-        missing_options = ['csv_name', 'y', 'name'] 
-        for missing_option in missing_options:
-
-            # Directory to delete if it exists because we are gonna repeat the process.
-            if os.path.isdir(path_batch):
-                shutil.rmtree(path_batch)
-            # Remove the CSV file 'options.csv' if it exists
-            if os.path.exists(csv_to_remove):
-                os.remove(csv_to_remove)
-
-            if missing_option == 'csv_name':
-                cmd_missing = cmd_almos + ['--y','target',
-                                            "--name","name",
-                                            "--n_exps", "5"]
-            
-            elif missing_option == 'y':
-                cmd_missing = cmd_almos + ["--csv_name", f"{path_tests}/AL_example.csv",
-                                            "--name","name",
-                                            "--n_exps", "5"]
-            
-            elif missing_option == 'name':
-                cmd_missing = cmd_almos + ['--y','target',
-                                            "--csv_name", f"{path_tests}/AL_example.csv",
-                                            "--n_exps", "5"]
-
-            cmd_missing = f'{" ".join(cmd_missing)} < {path_tests}/{missing_option}.txt'
-            os.system(cmd_missing)
-
-            # Check that the DAT file is created and has the correct information
-            filepath = os.path.join(os.getcwd(), "batch_1", "EL_data.dat")
-            assert os.path.exists(filepath), f"EL_data.dat file not found in '{test_job}' test."
-
-            # Read .dat file as a string
-            with open(filepath, "r") as file:
-                text = file.read()
-
-            input_found, al_valid = False, False
-            exploration_found, exploitation_found = False, False
-            # Check the input based on the missing option
-            if missing_option == 'csv_name':
-                input_found = "CSV test file          : AL_example.csv" in text
-            elif missing_option == 'y':
-                input_found = "Y column               : target" in text
-            elif missing_option == 'name':
-                input_found = "Name column            : name" in text
-            elif missing_option == 'n_points':
-                exploration_found = "Points exploration     : 3" in text
-                exploitation_found = "Points explotation     : 2" in text
-                input_found = exploration_found and exploitation_found
-
-            # Check if subplot figures were successfully generated
-            al_valid = 'o Subplot figures have been generated and saved successfully!' in text
-
-            # Assertions
-            assert input_found, f"Missing input not found in batch_1/EL_data.dat for option {missing_option} in '{test_job}' test."
-            assert al_valid, f"Subplot figures were not generated successfully! Option {missing_option} in '{test_job}' test."
-
-    elif test_job == 'reverse':
-
-        # Check if reverse works with negative values.
-        cmd = (
-            f'python -m almos --el --robert_keywords "--model RF --repeat_kfolds 1" '
-            f'--csv_name "{path_tests}/AL_example_reverse.csv" '
-            f'--n_exps "5" --ignore "index" --y "target" --name "name" --reverse'
-        )
-      
-        # Execute the command with shell=True to enable redirection
-        result = subprocess.run(
-            cmd,
-            shell=True,           # Enable redirection and shell usage
-            capture_output=True,  # Capture stdout and stderr
-            text=True             # Decode output as text
-        )
-        print(result.stdout)  
-        print(result.stderr)  
-
-        # Check that the DAT file is created and has the correct information
-        filepath = os.path.join(os.getcwd(), "batch_1", "EL_data.dat")
-        assert os.path.exists(filepath), f"EL_data.dat file not found in '{test_job}' test."
-
-        # Read .dat file as a string
-        with open(filepath, "r") as file:
-            text = file.read()
-
-        q1_found, q2_found, q3_found, q4_found, al_valid = False, False, False, False, False
-
-      # Check the input is found in the .dat file
-        q1_found = "Points assigned to q1: [-67.01214697818145, -64.82118804567081]" in text
-        q2_found = "Points assigned to q2: [-65.49380394190739]" in text
-        q3_found = "Points assigned to q3: [-29.373948848086776, -33.587532965119166]" in text
-        q4_found = "Points assigned to q4: []" in text
-
-        # Check if subplot figures were successfully generated
-        al_valid = 'o Subplot figures have been generated and saved successfully!' in text
-
-        # Assertions
-        assert q1_found and q2_found and q3_found and q4_found, f"Missing input not found in batch_1/EL_data.dat in '{test_job}' test."
-        assert al_valid, f"Subplot figures were not generated successfully! In '{test_job}' test."
-
-        # Directories to delete if they exist
-        for dir_path in glob.glob(batch_pattern):
-            if os.path.isdir(dir_path):  
-                shutil.rmtree(dir_path)
-        if os.path.isdir(path_plots):
-            shutil.rmtree(path_plots)
-
-        # Remove the CSV file 'options.csv' if it exists
-        if os.path.exists(csv_to_remove):
-            os.remove(csv_to_remove)
+    assert "_selection_penalty" in ranked_diverse.columns
+    assert "_selection_rank" in ranked_diverse.columns
+    assert ranked_diverse.attrs["model_diversity_lambda"] == 0.135
+    assert ranked_diverse.attrs["model_diversity_target_per_quartile"] == 1.0
+    assert sum(ranked_diverse.attrs["model_diversity_quartile_counts"].values()) == 4

@@ -10,14 +10,56 @@ from pathlib import Path
 import time
 import subprocess
 import shutil
-from almos.argument_parser import set_options, var_dict
-from almos.el_utils import check_missing_outputs
+from almos.package_versions import ALMOS_VERSION, AQME_VERSION, OBABEL_VERSION
+from almos.argument_parser import (
+    AL_OPTION_ALIASES,
+    BOOL_ARGS,
+    FLOAT_ARGS,
+    INT_ARGS,
+    LIST_ARGS,
+    NEGATED_BOOL_ALIASES,
+    set_options,
+    var_dict,
+)
+from almos.al_utils import check_missing_outputs
 
-obabel_version = "3.1.1" # this MUST match the meta.yaml
-aqme_version = "1.7.3" # this MUST match the meta.yaml
-almos_version = "1.0.0"
+obabel_version = OBABEL_VERSION
+aqme_version = AQME_VERSION
+almos_version = ALMOS_VERSION
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
+
+
+def format_cli_help():
+    """
+    Return a compact, user-facing help message for the main ALMOS entrypoint.
+    """
+
+    return f"""ALMOS v{almos_version}
+Active Learning Molecular Selection
+
+Usage
+  almos help
+  cluster --input EXAMPLE.csv --name Name
+  al --csv_name A_b0.csv --name Name --y target --n_exps 10
+  easyalmos
+
+Main commands
+  cluster      Build or evaluate a representative batch_0 selection
+  al           Run an active learning cycle
+  easyalmos    Launch the graphical interface
+
+Common examples
+  cluster --input EXAMPLE.csv --name Name --n_points 40
+  cluster --input EXAMPLE.csv --name Name --evaluate
+  al --csv_name A_b0.csv --name Name --y target --n_exps 10
+  al --csv_name A_b0.csv --name Name --y target --n_exps 10 --mode model
+  al --csv_name A_b0.csv --name Name --y target --n_exps 10 --mode hit --objective max --alpha 0.5
+
+Documentation
+  ReadTheDocs: https://almos.readthedocs.io/en/latest/
+  GitHub:      https://github.com/MiguelMartzFdez/almos
+"""
 
 def command_line_args():
     """     
@@ -37,43 +79,61 @@ def command_line_args():
     """
     # First, create dictionary with user-defined arguments
     kwargs = {}
-    available_args = ["help"]
-    bool_args = [
-        "cluster",
-        "el",
-        "al",
-        "bo",
-        "reverse",
-        "intelex",
-        "aqme"
+    raw_args = sys.argv[1:]
+    module_aliases = {
+        "cluster": "--cluster",
+        "clustering": "--cluster",
+        "al": "--al",
+        "active-learning": "--al",
+        "active_learning": "--al",
+    }
+    executable_aliases = {
+        "cluster": "--cluster",
+        "almos-cluster": "--cluster",
+        "al": "--al",
+        "almos-al": "--al",
+    }
+    if raw_args and raw_args[0].lower() in module_aliases:
+        raw_args = [module_aliases[raw_args[0].lower()]] + raw_args[1:]
+    elif raw_args and raw_args[0].lower() == "help":
+        if len(raw_args) > 1 and raw_args[1].lower() in module_aliases:
+            raw_args = [module_aliases[raw_args[1].lower()], "--help"] + raw_args[2:]
+        else:
+            raw_args = ["--help"] + raw_args[1:]
+    elif os.path.basename(sys.argv[0]).lower() in executable_aliases:
+        raw_args = [executable_aliases[os.path.basename(sys.argv[0]).lower()]] + raw_args
+    normalized_command_line_args = list(raw_args)
+    is_al_command = any(arg == "--al" for arg in raw_args)
+    normalized_raw_args = []
+    for arg in raw_args:
+        if arg == "--mode" and is_al_command:
+            normalized_raw_args.append("--al_mode")
+            continue
+        if arg.startswith("--"):
+            normalized_raw_args.append(f"--{AL_OPTION_ALIASES.get(arg[2:], arg[2:])}")
+            continue
+        normalized_raw_args.append(arg)
+    raw_args = normalized_raw_args
 
-    ]
-    int_args = [
-        "n_clusters",
-        "seed_clustered",
-        "nprocs",
-        "n_exps",
-        "batch_number",
-    ]
+    available_args = ["help"]
+    bool_args = BOOL_ARGS
+    int_args = INT_ARGS
     int_double_args = [
 
     ]
-    list_args = [
-        "ignore"
- 
-    ]
-    float_args = [
-        "explore_rt",
-    ]
+    list_args = LIST_ARGS
+    float_args = FLOAT_ARGS
 
     for arg in var_dict:
         if arg in bool_args:
             available_args.append(f"{arg}")
         else:
             available_args.append(f"{arg} =")
+    for alias in NEGATED_BOOL_ALIASES:
+        available_args.append(f"{alias}")
 
     try:
-        opts, _ = getopt.getopt(sys.argv[1:], "h", available_args)
+        opts, _ = getopt.getopt(raw_args, "h", available_args)
     except getopt.GetoptError as err:
         print(err)
         sys.exit()
@@ -83,35 +143,50 @@ def command_line_args():
             arg_name = arg.split("--")[1].strip()
         elif arg.find("-") > -1:
             arg_name = arg.split("-")[1].strip()
+        if arg_name in NEGATED_BOOL_ALIASES:
+            canonical_arg_name = NEGATED_BOOL_ALIASES[arg_name]
+            value = False
+        else:
+            canonical_arg_name = arg_name
 
         if arg_name in ("h", "help"):
-            print(f"o  ALMOS v {almos_version} is installed correctly! For more information, see the documentation in https://github.com/MiguelMartzFdez/almos")
+            print(format_cli_help())
             sys.exit()
         else:
-                # this converts the string parameters to lists
-                if arg_name in bool_args:
-                    value = True                    
-                elif arg_name.lower() in list_args:
-                    value = format_lists(value)
-                elif arg_name.lower() in int_args:
-                    if value is not None:
-                        value = int(value)
-                elif arg_name.lower() in int_double_args:
-                     if ":" in value and len(value.split(":")) == 2: 
-                        value = tuple(map(int, value.split(":")))
-                elif arg_name.lower() in float_args:
-                    value = float(value)
-                elif value == "None":
-                    value = None
-                elif value == "False":
-                    value = False
-                elif value == "True":
-                    value = True
+                try:
+                    # this converts the string parameters to lists
+                    if arg_name in NEGATED_BOOL_ALIASES:
+                        pass
+                    elif canonical_arg_name in bool_args:
+                        value = True
+                    elif canonical_arg_name.lower() in list_args:
+                        value = format_lists(value)
+                    elif canonical_arg_name.lower() in int_args:
+                        if value is not None:
+                            value = int(value)
+                    elif canonical_arg_name.lower() in int_double_args:
+                         if ":" in value and len(value.split(":")) == 2: 
+                            value = tuple(map(int, value.split(":")))
+                    elif canonical_arg_name.lower() in float_args:
+                        value = float(value)
+                    elif value == "None":
+                        value = None
+                    elif value == "False":
+                        value = False
+                    elif value == "True":
+                        value = True
+                except (SyntaxError, ValueError, TypeError):
+                    print(
+                        f"Warning! Option '{arg_name}' received an invalid value ({value}). "
+                        "The default value will be used instead."
+                    )
+                    continue
 
-                kwargs[arg_name] = value
+                kwargs[canonical_arg_name] = value
 
     # Second, combine all the default variables with the user-defined ones saved in "kwargs".
     args = load_variables(kwargs, "command")
+    args._normalized_command_line_args = normalized_command_line_args
     
     return args
 
@@ -137,7 +212,20 @@ def load_variables(kwargs, almos_module, create_dat=True):
     """
 
     # first, load default values and options manually added to the function
-    self = set_options(kwargs)
+    internal_option_names = {"_normalized_command_line_args"}
+    internal_options = {
+        key: value for key, value in kwargs.items() if key in internal_option_names
+    }
+    user_options = {
+        key: value for key, value in kwargs.items() if key not in internal_option_names
+    }
+    if "alfa" in user_options and "alpha" not in user_options:
+        user_options["alpha"] = user_options["alfa"]
+    if almos_module == "al" and "mode" in user_options and "al_mode" not in user_options:
+        user_options["al_mode"] = user_options["mode"]
+    self = set_options(user_options)
+    for key, value in internal_options.items():
+        setattr(self, key, value)
     
     if almos_module != "command":
 
@@ -149,15 +237,12 @@ def load_variables(kwargs, almos_module, create_dat=True):
         if create_dat:
             logger_1, logger_2 = "ALMOS", "data"
 
-            if almos_module == "el":
-                logger_1 = "EL"
+            if almos_module == "al":
+                logger_1 = "AL"
 
             elif almos_module == "cluster":
                 logger_1 = "CLUSTER"
             
-            elif almos_module =="bo":
-                logger_1 = "BO"
-
             if not error_setup:
                 if not self.command_line:
                     self.log = Logger(self.initial_dir / logger_1, logger_2, verbose=self.verbose)
@@ -167,14 +252,16 @@ def load_variables(kwargs, almos_module, create_dat=True):
                     self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
 
                 # check if outputs are missing and load, needed here for update "command line" with inputs.
-                if almos_module == "el":
+                if almos_module == "al":
                     self = check_missing_outputs(self)
 
                 self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
 
                 if self.command_line:
                     cmd_print = ''
-                    cmd_args = sys.argv[1:]
+                    cmd_args = list(
+                        getattr(self, "_normalized_command_line_args", sys.argv[1:])
+                    )
                     if self.extra_cmd != '':
                         for arg in self.extra_cmd.split():
                             cmd_args.append(arg)
@@ -231,7 +318,7 @@ class Logger:
     # Class Logger to write output to a file
     def __init__(self, filein, append, suffix="dat", verbose=True):
         if verbose:
-            self.log = open(f"{filein}_{append}.{suffix}", "w")
+            self.log = open(f"{filein}_{append}.{suffix}", "w", encoding="utf-8")
         else:
             self.log = ''
 
@@ -248,7 +335,18 @@ class Logger:
             self.log.write(f"{message}\n")
         except AttributeError:
             pass
-        print(f"{message}\n")
+        try:
+            print(f"{message}\n")
+        except UnicodeEncodeError:
+            console_encoding = sys.stdout.encoding or "utf-8"
+            safe_message = str(message).encode(
+                console_encoding,
+                errors="replace",
+            ).decode(
+                console_encoding,
+                errors="replace",
+            )
+            print(f"{safe_message}\n")
 
     def finalize(self):
         """
@@ -268,9 +366,8 @@ def check_dependencies(self, module):
       - Requires 'obabel', version: "3.1.1"
       - Requires 'aqme', version: "1.7.2"
 
-    For module "el":
-    - Requires 'robert' on all platforms.
-    - Requires 'scikit-learn-intelex' on Windows and Linux; optional on macOS (with a warning message).
+    For module "al":
+    - Requires the system packages used by ROBERT/WeasyPrint on all platforms.
 
     Parameters:
     -----------
@@ -297,7 +394,7 @@ def check_dependencies(self, module):
             self.args.log.finalize()
             sys.exit()
 
-    if module == "el":
+    if module == "al":
         required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
         missing_packages = []
         installed_package_names = []
@@ -357,18 +454,3 @@ def check_dependencies(self, module):
             self.args.log.finalize()
             sys.exit()
 
-        # --- Check scikit-learn-intelex ---
-        if not self.args.intelex:
-            try:
-                from sklearnex import patch_sklearn
-                
-            except ImportError:
-                self.args.log.write(
-                    "\n'scikit-learn-intelex' is not installed!"
-                    "\nInstall it with: pip install scikit-learn-intelex==2025.2.0"
-                    "\nOr pass '--intelex' to disable accelerated mode."
-                )
-                self.args.log.finalize()
-                sys.exit()
-        else:
-            self.args.log.write("\nRunning without 'scikit-learn-intelex' as requested.\n")

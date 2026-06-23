@@ -6,21 +6,21 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; almos v0.1 documentation</title>
+  <title>Installation &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Users with no Python experience" href="note.html" />
-    <link rel="prev" title="Welcome to ALMOS&#39;s documentation!" href="../index.html" /> 
+    <link rel="prev" title="Welcome to ALMOS" href="../index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -45,6 +45,8 @@
               <p class="caption" role="heading"><span class="caption-text">Installation and interface</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-installation-with-almos-yaml">Quick Installation with <code class="docutils literal notranslate"><span class="pre">almos.yaml</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#standard-manual-installation">Standard manual installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-of-extra-requirements">Installation of extra requirements</a></li>
 </ul>
 </li>
@@ -54,8 +56,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -101,14 +102,47 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
-<p>In a nutshell, ALMOS and its dependencies are installed as follows:</p>
-<dl class="simple">
-<dt><strong>1.</strong> Create and activate the conda environment where you want to install the program.</dt><dd><p>If you are not sure of what this point means, check out the &quot;Users with no Python
-experience&quot; section. This is an example for Python 3.10, but it also works for newer
-Python versions (i.e., 3.11 and 3.12):</p>
-</dd>
-</dl>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>almos<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
+<p>ALMOS can be installed either through a ready-to-use conda environment file or
+through a more explicit manual setup.</p>
+<section id="quick-installation-with-almos-yaml">
+<h2>Quick Installation with <code class="docutils literal notranslate"><span class="pre">almos.yaml</span></code><a class="headerlink" href="#quick-installation-with-almos-yaml" title="Link to this heading"></a></h2>
+<p>For a quick and reproducible installation, ALMOS provides a Conda
+environment file <a class="reference external" href="https://github.com/MiguelMartzFdez/almos/tree/master/install">almos.yaml</a>,
+that can be used to create the recommended environment.</p>
+<p><strong>1.</strong> Open an Anaconda Prompt (Windows) or a terminal (macOS and Linux), and
+navigate to the directory where you want to create the environment:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>C:/Users/test_almos
+</pre></div>
+</div>
+<p><strong>2.</strong> Download the environment file <code class="docutils literal notranslate"><span class="pre">almos.yaml</span></code> directly from GitHub:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-L<span class="w"> </span>-o<span class="w"> </span>almos.yaml<span class="w"> </span>https://raw.githubusercontent.com/MiguelMartzFdez/almos/master/install/almos.yaml
+</pre></div>
+</div>
+<p><strong>3.</strong> Build the environment using the downloaded YAML file:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>almos.yaml
+</pre></div>
+</div>
+<p><strong>4.</strong> Activate the environment</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>activate<span class="w"> </span>almos
+</pre></div>
+</div>
+<p><strong>5.</strong> Verify the installation</p>
+<p>Check that the ALMOS command-line interface is available:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>almos<span class="w"> </span><span class="nb">help</span>
+</pre></div>
+</div>
+<p>If the installation completed successfully, the help message should be displayed.</p>
+</section>
+<section id="standard-manual-installation">
+<h2>Standard manual installation<a class="headerlink" href="#standard-manual-installation" title="Link to this heading"></a></h2>
+<p>If you prefer to install the dependencies step by step, the recommended manual
+installation is:</p>
+<p><strong>1.</strong> Create and activate the conda environment where you want to install the program.</p>
+<blockquote>
+<div><p>If you are not sure of what this point means, check out the &quot;Users with no Python
+experience&quot; section. ALMOS currently requires Python 3.11 or newer:</p>
+</div></blockquote>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>almos<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.12
 conda<span class="w"> </span>activate<span class="w"> </span>almos
 </pre></div>
 </div>
@@ -116,31 +150,26 @@ conda<span class="w"> </span>activate<span class="w"> </span>almos
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>almos-kit
 </pre></div>
 </div>
-<p><strong>3.</strong> Install libraries necesaries for ROBERT:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>robert
-pip<span class="w"> </span>install<span class="w"> </span>scikit-learn-intelex<span class="o">==</span><span class="m">2025</span>.2.0
-conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>glib<span class="w"> </span>gtk3<span class="w"> </span>pango<span class="w"> </span>mscorefonts
+<p><strong>3.</strong> Install the system libraries required by the ROBERT / WeasyPrint reporting stack:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>glib<span class="w"> </span>gtk3<span class="w"> </span>pango<span class="w"> </span>mscorefonts
 </pre></div>
 </div>
-<p><strong>4a.</strong> Install libraries necesaries for AQME:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>aqme
-conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">openbabel</span><span class="o">=</span><span class="m">3</span>.1.1
+<p><strong>4.</strong> Install the chemistry-related requirements used by AQME / descriptor generation:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">openbabel</span><span class="o">=</span><span class="m">3</span>.1.1
+conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">xtb</span><span class="o">=</span><span class="m">6</span>.7.1
+conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">libgfortran</span><span class="o">=</span><span class="m">14</span>.2.0
 </pre></div>
 </div>
-<dl class="simple">
-<dt><strong>4b.</strong> (Just if the installation with pip of step 2 is too slow) Users might instal</dt><dd><p>AQME using conda and update it with pip:</p>
-</dd>
-</dl>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>aqme
-pip<span class="w"> </span>install<span class="w"> </span>aqme<span class="w"> </span>--upgrade
+<p>ALMOS installs its Python dependencies automatically, including AQME and ROBERT, from
+the package metadata. After installation, you can check that the command line interface
+is available with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>almos<span class="w"> </span><span class="nb">help</span>
 </pre></div>
 </div>
+</section>
 <section id="installation-of-extra-requirements">
 <h2>Installation of extra requirements<a class="headerlink" href="#installation-of-extra-requirements" title="Link to this heading"></a></h2>
 <p>Extra requirements if xTB or CREST are used (compatible with MacOS and Linux only):</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">xtb</span><span class="o">=</span><span class="m">6</span>.7.1
-</pre></div>
-</div>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span><span class="nv">crest</span><span class="o">=</span><span class="m">2</span>.12
 </pre></div>
 </div>
@@ -160,7 +189,7 @@ following command <strong>after</strong> installing them:</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to ALMOS&#39;s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to ALMOS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="note.html" class="btn btn-neutral float-right" title="Users with no Python experience" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

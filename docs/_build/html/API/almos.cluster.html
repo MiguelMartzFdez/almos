@@ -6,20 +6,20 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CLUSTER &mdash; almos v0.1 documentation</title>
+  <title>CLUSTER &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=34cd777e"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/documentation_options.js?v=0737924e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="EL" href="almos.el.html" />
+    <link rel="next" title="AL" href="almos.al.html" />
     <link rel="prev" title="Main Modules" href="API_Reference.html" /> 
 </head>
 
@@ -51,8 +51,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -65,24 +64,60 @@
 <li class="toctree-l1 current"><a class="reference internal" href="API_Reference.html">Main Modules</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">CLUSTER</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#almos.cluster.cluster"><code class="docutils literal notranslate"><span class="pre">cluster</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.allocate_points_by_group_population"><code class="docutils literal notranslate"><span class="pre">cluster.allocate_points_by_group_population()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.auto_fill_knn"><code class="docutils literal notranslate"><span class="pre">cluster.auto_fill_knn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.build_chemical_space_viewer"><code class="docutils literal notranslate"><span class="pre">cluster.build_chemical_space_viewer()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.categorical_transform"><code class="docutils literal notranslate"><span class="pre">cluster.categorical_transform()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.checking_cluster"><code class="docutils literal notranslate"><span class="pre">cluster.checking_cluster()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.choose_natural_selection_candidate"><code class="docutils literal notranslate"><span class="pre">cluster.choose_natural_selection_candidate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.classify_visualization_local_quality"><code class="docutils literal notranslate"><span class="pre">cluster.classify_visualization_local_quality()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.clean_up_cluster"><code class="docutils literal notranslate"><span class="pre">cluster.clean_up_cluster()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.cluster_workflow"><code class="docutils literal notranslate"><span class="pre">cluster.cluster_workflow()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.elbow_method_nclusters"><code class="docutils literal notranslate"><span class="pre">cluster.elbow_method_nclusters()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_2d_map_coverage_metrics"><code class="docutils literal notranslate"><span class="pre">cluster.compute_2d_map_coverage_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_convex_hull_area_2d"><code class="docutils literal notranslate"><span class="pre">cluster.compute_convex_hull_area_2d()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_convex_hull_points_2d"><code class="docutils literal notranslate"><span class="pre">cluster.compute_convex_hull_points_2d()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_embedding_fidelity"><code class="docutils literal notranslate"><span class="pre">cluster.compute_embedding_fidelity()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_final_2d_coverage_metrics"><code class="docutils literal notranslate"><span class="pre">cluster.compute_final_2d_coverage_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_mean_nearest_selected_distance"><code class="docutils literal notranslate"><span class="pre">cluster.compute_mean_nearest_selected_distance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_nearest_selected_distances"><code class="docutils literal notranslate"><span class="pre">cluster.compute_nearest_selected_distances()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_pca_2d_embedding"><code class="docutils literal notranslate"><span class="pre">cluster.compute_pca_2d_embedding()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_pca_2d_variance"><code class="docutils literal notranslate"><span class="pre">cluster.compute_pca_2d_variance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_umap_2d_embedding"><code class="docutils literal notranslate"><span class="pre">cluster.compute_umap_2d_embedding()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.compute_umap_area_coverage"><code class="docutils literal notranslate"><span class="pre">cluster.compute_umap_area_coverage()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.estimate_auto_coverage_budget"><code class="docutils literal notranslate"><span class="pre">cluster.estimate_auto_coverage_budget()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.evaluate_existing_selection"><code class="docutils literal notranslate"><span class="pre">cluster.evaluate_existing_selection()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.fix_cols_names"><code class="docutils literal notranslate"><span class="pre">cluster.fix_cols_names()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.k_means"><code class="docutils literal notranslate"><span class="pre">cluster.k_means()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.pca_control"><code class="docutils literal notranslate"><span class="pre">cluster.pca_control()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.format_fraction_percent"><code class="docutils literal notranslate"><span class="pre">cluster.format_fraction_percent()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.format_visual_score"><code class="docutils literal notranslate"><span class="pre">cluster.format_visual_score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.get_2d_map_grid_details"><code class="docutils literal notranslate"><span class="pre">cluster.get_2d_map_grid_details()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.get_auto_budget_candidates"><code class="docutils literal notranslate"><span class="pre">cluster.get_auto_budget_candidates()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.interpret_combined_2d_visualization_quality"><code class="docutils literal notranslate"><span class="pre">cluster.interpret_combined_2d_visualization_quality()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.interpret_final_2d_coverage"><code class="docutils literal notranslate"><span class="pre">cluster.interpret_final_2d_coverage()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.log_final_selection_quality"><code class="docutils literal notranslate"><span class="pre">cluster.log_final_selection_quality()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.molecule_svg_from_smiles"><code class="docutils literal notranslate"><span class="pre">cluster.molecule_svg_from_smiles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.point_inside_polygon_2d"><code class="docutils literal notranslate"><span class="pre">cluster.point_inside_polygon_2d()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.prepare_auto_budget_umap_area_context"><code class="docutils literal notranslate"><span class="pre">cluster.prepare_auto_budget_umap_area_context()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.prepare_coverage_selection_input"><code class="docutils literal notranslate"><span class="pre">cluster.prepare_coverage_selection_input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.prepare_coverage_selection_space"><code class="docutils literal notranslate"><span class="pre">cluster.prepare_coverage_selection_space()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.prepare_final_umap_map_context"><code class="docutils literal notranslate"><span class="pre">cluster.prepare_final_umap_map_context()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.render_chemical_space_viewer_html"><code class="docutils literal notranslate"><span class="pre">cluster.render_chemical_space_viewer_html()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.run_aqme"><code class="docutils literal notranslate"><span class="pre">cluster.run_aqme()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.run_natural_clustering_analysis"><code class="docutils literal notranslate"><span class="pre">cluster.run_natural_clustering_analysis()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.save_auto_budget_plateau_plot"><code class="docutils literal notranslate"><span class="pre">cluster.save_auto_budget_plateau_plot()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.save_cluster_outputs"><code class="docutils literal notranslate"><span class="pre">cluster.save_cluster_outputs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.save_natural_clustering_report"><code class="docutils literal notranslate"><span class="pre">cluster.save_natural_clustering_report()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.save_selection_2d_diagnostic_images"><code class="docutils literal notranslate"><span class="pre">cluster.save_selection_2d_diagnostic_images()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.save_single_2d_diagnostic_images"><code class="docutils literal notranslate"><span class="pre">cluster.save_single_2d_diagnostic_images()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.select_coverage_representatives"><code class="docutils literal notranslate"><span class="pre">cluster.select_coverage_representatives()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.select_natural_cluster_representatives"><code class="docutils literal notranslate"><span class="pre">cluster.select_natural_cluster_representatives()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.select_points_within_natural_group"><code class="docutils literal notranslate"><span class="pre">cluster.select_points_within_natural_group()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.select_representative_points"><code class="docutils literal notranslate"><span class="pre">cluster.select_representative_points()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#almos.cluster.cluster.set_up_cluster"><code class="docutils literal notranslate"><span class="pre">cluster.set_up_cluster()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#main-user-facing-parameters">Main user-facing parameters</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="almos.el.html">EL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="almos.bo.html">BO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="almos.al.html">AL</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="API_Reference.html#other-modules">Other Modules</a></li>
@@ -123,132 +158,434 @@
 <h1>CLUSTER<a class="headerlink" href="#cluster" title="Link to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="almos.cluster.cluster">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">almos.cluster.</span></span><span class="sig-name descname"><span class="pre">cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster" title="Link to this definition"></a></dt>
-<dd><p>Class containing all the functions from the CLUSTER module</p>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">almos.cluster.</span></span><span class="sig-name descname"><span class="pre">cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster" title="Link to this definition"></a></dt>
+<dd><p>Class containing the CLUSTER module workflow.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.allocate_points_by_group_population">
+<span class="sig-name descname"><span class="pre">allocate_points_by_group_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.allocate_points_by_group_population" title="Link to this definition"></a></dt>
+<dd><p>Allocate selected points across natural groups proportionally to population.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.auto_fill_knn">
 <span class="sig-name descname"><span class="pre">auto_fill_knn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.auto_fill_knn" title="Link to this definition"></a></dt>
-<dd><p>KNNImputer uses the K-nearest neighbors method to estimate and fill missing values based on the closest values to each point in the dataset
-Function to impute (or fill) null-values in a dataset</p>
+<dd><p>Fill missing values using KNNImputer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.build_chemical_space_viewer">
+<span class="sig-name descname"><span class="pre">build_chemical_space_viewer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descp_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coverage_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.build_chemical_space_viewer" title="Link to this definition"></a></dt>
+<dd><p>Build an interactive PCA/UMAP HTML viewer for the selected chemical space.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.categorical_transform">
 <span class="sig-name descname"><span class="pre">categorical_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.categorical_transform" title="Link to this definition"></a></dt>
-<dd><p>Function to categorical transform from ROBERT. It can apply to the df without the columns of ignore list
-Converts all columns with strings into categorical values (one hot encoding by default, can be set to numerical 1,2,3... with categorical = 'numbers').
-Troubleshooting! For one-hot encoding, don't use variable names that are also column headers!
-i.e. DESCRIPTOR &quot;C_atom&quot; contain C2 as a value, but C2 is already a header of a different column in the database.
-Same applies for multiple columns containing the same variable names.</p>
+<dd><p>Convert categorical columns into numeric descriptors.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.checking_cluster">
 <span class="sig-name descname"><span class="pre">checking_cluster</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.checking_cluster" title="Link to this definition"></a></dt>
-<dd><p>Detects errors and updates variables before the CLUSTER run</p>
+<dd><p>Detect errors and update variables before the CLUSTER run.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.choose_natural_selection_candidate">
+<span class="sig-name descname"><span class="pre">choose_natural_selection_candidate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">natural_result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.choose_natural_selection_candidate" title="Link to this definition"></a></dt>
+<dd><p>Choose the simplest near-best natural clustering model for point allocation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.classify_visualization_local_quality">
+<span class="sig-name descname"><span class="pre">classify_visualization_local_quality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trustworthiness_score</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.classify_visualization_local_quality" title="Link to this definition"></a></dt>
+<dd><p>User-facing recommendation based on local-neighborhood preservation in 2D.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.clean_up_cluster">
 <span class="sig-name descname"><span class="pre">clean_up_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descp_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">csv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.clean_up_cluster" title="Link to this definition"></a></dt>
-<dd><p>Prepare the CSV (descp_file) of both paths for the clustered</p>
+<dd><p>Prepare the descriptor matrix for clustering.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="almos.cluster.cluster.cluster_workflow">
-<span class="sig-name descname"><span class="pre">cluster_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filled_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descp_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">csv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.cluster_workflow" title="Link to this definition"></a></dt>
-<dd><p>cluster execution</p>
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_2d_map_coverage_metrics">
+<span class="sig-name descname"><span class="pre">compute_2d_map_coverage_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_embedding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_embedding</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_2d_map_coverage_metrics" title="Link to this definition"></a></dt>
+<dd><p>Report 2D area coverage and grid filling for selected molecules.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="almos.cluster.cluster.elbow_method_nclusters">
-<span class="sig-name descname"><span class="pre">elbow_method_nclusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filled_array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.elbow_method_nclusters" title="Link to this definition"></a></dt>
-<dd><p>define optimal n_clusters, if the user do not define it, with the Elbow Method</p>
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_convex_hull_area_2d">
+<span class="sig-name descname"><span class="pre">compute_convex_hull_area_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_convex_hull_area_2d" title="Link to this definition"></a></dt>
+<dd><p>Compute the 2D convex-hull polygon area with a monotonic chain hull.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_convex_hull_points_2d">
+<span class="sig-name descname"><span class="pre">compute_convex_hull_points_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_convex_hull_points_2d" title="Link to this definition"></a></dt>
+<dd><p>Return the 2D convex-hull vertices with a monotonic chain hull.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_embedding_fidelity">
+<span class="sig-name descname"><span class="pre">compute_embedding_fidelity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embedding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_embedding_fidelity" title="Link to this definition"></a></dt>
+<dd><p>Compute user-facing fidelity metrics for a 2D visualization.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_final_2d_coverage_metrics">
+<span class="sig-name descname"><span class="pre">compute_final_2d_coverage_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">budget_context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_final_2d_coverage_metrics" title="Link to this definition"></a></dt>
+<dd><p>Compute PCA/UMAP area and occupied-cell filling diagnostics for final reporting.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_mean_nearest_selected_distance">
+<span class="sig-name descname"><span class="pre">compute_mean_nearest_selected_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_mean_nearest_selected_distance" title="Link to this definition"></a></dt>
+<dd><p>Compute mean distance from coverage points to the nearest selected point.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_nearest_selected_distances">
+<span class="sig-name descname"><span class="pre">compute_nearest_selected_distances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_nearest_selected_distances" title="Link to this definition"></a></dt>
+<dd><p>Compute distances from each row to the nearest selected representative.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_pca_2d_embedding">
+<span class="sig-name descname"><span class="pre">compute_pca_2d_embedding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_pca_2d_embedding" title="Link to this definition"></a></dt>
+<dd><p>Project the selection space to two dimensions with PCA.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_pca_2d_variance">
+<span class="sig-name descname"><span class="pre">compute_pca_2d_variance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_pca_2d_variance" title="Link to this definition"></a></dt>
+<dd><p>Fraction of selection-space variance retained by the first two PCA axes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_umap_2d_embedding">
+<span class="sig-name descname"><span class="pre">compute_umap_2d_embedding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_umap_2d_embedding" title="Link to this definition"></a></dt>
+<dd><p>Compute a single adaptive UMAP visualization.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.compute_umap_area_coverage">
+<span class="sig-name descname"><span class="pre">compute_umap_area_coverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umap_area_context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.compute_umap_area_coverage" title="Link to this definition"></a></dt>
+<dd><p>Fraction of the dataset UMAP convex-hull area covered by selected molecules.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.estimate_auto_coverage_budget">
+<span class="sig-name descname"><span class="pre">estimate_auto_coverage_budget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaled_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selectable_indices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.estimate_auto_coverage_budget" title="Link to this definition"></a></dt>
+<dd><p>Estimate n_points by scanning coverage improvement over candidate budgets.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.evaluate_existing_selection">
+<span class="sig-name descname"><span class="pre">evaluate_existing_selection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descp_df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.evaluate_existing_selection" title="Link to this definition"></a></dt>
+<dd><p>Reuse an existing user-provided batch = 0 selection without recalculating representatives.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.fix_cols_names">
 <span class="sig-name descname"><span class="pre">fix_cols_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.fix_cols_names" title="Link to this definition"></a></dt>
-<dd><p>Set code_name and SMILES using the right format
-Function to unify the names</p>
+<dd><p>Standardize code_name and SMILES column names.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="almos.cluster.cluster.k_means">
-<span class="sig-name descname"><span class="pre">k_means</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_scaled</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed_clustered</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.k_means" title="Link to this definition"></a></dt>
-<dd><p>Returns the data points that will be used as molecules to test to generate experimental data (k-means clustering)</p>
+<dt class="sig sig-object py" id="almos.cluster.cluster.format_fraction_percent">
+<span class="sig-name descname"><span class="pre">format_fraction_percent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.format_fraction_percent" title="Link to this definition"></a></dt>
+<dd><p>Format a fraction as a user-facing percentage.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="almos.cluster.cluster.pca_control">
-<span class="sig-name descname"><span class="pre">pca_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df_pca</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc_total_val</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc1_var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc2_var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc3_var</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.pca_control" title="Link to this definition"></a></dt>
-<dd><p>provide and save the representation of the PCA in 3D</p>
+<dt class="sig sig-object py" id="almos.cluster.cluster.format_visual_score">
+<span class="sig-name descname"><span class="pre">format_visual_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.format_visual_score" title="Link to this definition"></a></dt>
+<dd><p>Format the 2D visual exploration score on a 1-10 scale.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.get_2d_map_grid_details">
+<span class="sig-name descname"><span class="pre">get_2d_map_grid_details</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_embedding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_embedding</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.get_2d_map_grid_details" title="Link to this definition"></a></dt>
+<dd><p>Return area/filling details used to plot 2D selection diagnostics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.get_auto_budget_candidates">
+<span class="sig-name descname"><span class="pre">get_auto_budget_candidates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_selectable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.get_auto_budget_candidates" title="Link to this definition"></a></dt>
+<dd><p>Build candidate exploration budgets for automatic coverage scanning.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.interpret_combined_2d_visualization_quality">
+<span class="sig-name descname"><span class="pre">interpret_combined_2d_visualization_quality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pca_trustworthiness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pca_variance_retained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umap_trustworthiness</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.interpret_combined_2d_visualization_quality" title="Link to this definition"></a></dt>
+<dd><p>Provide one compact interpretation for PCA/UMAP visualization quality.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.interpret_final_2d_coverage">
+<span class="sig-name descname"><span class="pre">interpret_final_2d_coverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_metrics</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.interpret_final_2d_coverage" title="Link to this definition"></a></dt>
+<dd><p>Provide a compact user-facing interpretation of the 2D coverage diagnostics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.log_final_selection_quality">
+<span class="sig-name descname"><span class="pre">log_final_selection_quality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avg_gap_selected</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.log_final_selection_quality" title="Link to this definition"></a></dt>
+<dd><p>Report compact raw diagnostics for the selected coverage batch.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.molecule_svg_from_smiles">
+<span class="sig-name descname"><span class="pre">molecule_svg_from_smiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smiles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.molecule_svg_from_smiles" title="Link to this definition"></a></dt>
+<dd><p>Return an SVG molecule drawing for a SMILES string, if RDKit can parse it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.point_inside_polygon_2d">
+<span class="sig-name descname"><span class="pre">point_inside_polygon_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.point_inside_polygon_2d" title="Link to this definition"></a></dt>
+<dd><p>Ray-casting point-in-polygon test for 2D coverage diagnostics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.prepare_auto_budget_umap_area_context">
+<span class="sig-name descname"><span class="pre">prepare_auto_budget_umap_area_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.prepare_auto_budget_umap_area_context" title="Link to this definition"></a></dt>
+<dd><p>Build a lightweight UMAP map used only to report visual area coverage.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.prepare_coverage_selection_input">
+<span class="sig-name descname"><span class="pre">prepare_coverage_selection_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descriptor_df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.prepare_coverage_selection_input" title="Link to this definition"></a></dt>
+<dd><p>Scale descriptors and apply the PCA safeguard used for coverage selection.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.prepare_coverage_selection_space">
+<span class="sig-name descname"><span class="pre">prepare_coverage_selection_space</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaled_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descriptor_count</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.prepare_coverage_selection_space" title="Link to this definition"></a></dt>
+<dd><p>Apply the high-dimensional PCA safeguard with selection-specific logging.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.prepare_final_umap_map_context">
+<span class="sig-name descname"><span class="pre">prepare_final_umap_map_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">budget_context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_indices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.prepare_final_umap_map_context" title="Link to this definition"></a></dt>
+<dd><p>Build the final UMAP map on the full selection dataset.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.render_chemical_space_viewer_html">
+<span class="sig-name descname"><span class="pre">render_chemical_space_viewer_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">payload</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plotly_js</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.render_chemical_space_viewer_html" title="Link to this definition"></a></dt>
+<dd><p>Render the standalone chemical-space viewer HTML.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.run_aqme">
 <span class="sig-name descname"><span class="pre">run_aqme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descp_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.run_aqme" title="Link to this definition"></a></dt>
-<dd><p>Generate the descriptors if the user needs it</p>
+<dd><p>Generate descriptors with AQME when requested.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.run_natural_clustering_analysis">
+<span class="sig-name descname"><span class="pre">run_natural_clustering_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descriptor_df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.run_natural_clustering_analysis" title="Link to this definition"></a></dt>
+<dd><p>Run the optional natural clustering model selection once and reuse the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.save_auto_budget_plateau_plot">
+<span class="sig-name descname"><span class="pre">save_auto_budget_plateau_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">evaluated_budgets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coarse_budgets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fine_window_budgets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recommended_budget</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.save_auto_budget_plateau_plot" title="Link to this definition"></a></dt>
+<dd><p>Save an avg_gap plateau diagnostic plot for the automatic budget scan.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.save_cluster_outputs">
+<span class="sig-name descname"><span class="pre">save_cluster_outputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descp_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">csv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coverage_result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.save_cluster_outputs" title="Link to this definition"></a></dt>
+<dd><p>Save the coverage-based selected point outputs.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.save_natural_clustering_report">
+<span class="sig-name descname"><span class="pre">save_natural_clustering_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">descp_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selection_result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.save_natural_clustering_report" title="Link to this definition"></a></dt>
+<dd><p>Save optional natural clustering diagnostics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.save_selection_2d_diagnostic_images">
+<span class="sig-name descname"><span class="pre">save_selection_2d_diagnostic_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">budget_context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.save_selection_2d_diagnostic_images" title="Link to this definition"></a></dt>
+<dd><p>Save PCA/UMAP final-selection area and selected-dispersion diagnostic images.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.save_single_2d_diagnostic_images">
+<span class="sig-name descname"><span class="pre">save_single_2d_diagnostic_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embedding_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_embedding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_embedding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.save_single_2d_diagnostic_images" title="Link to this definition"></a></dt>
+<dd><p>Save separate PCA/UMAP area and selected-dispersion diagnostic images.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.select_coverage_representatives">
+<span class="sig-name descname"><span class="pre">select_coverage_representatives</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaled_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selectable_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_selection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.select_coverage_representatives" title="Link to this definition"></a></dt>
+<dd><p>Select representatives with either centroid representatives or diversity pruning.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.select_natural_cluster_representatives">
+<span class="sig-name descname"><span class="pre">select_natural_cluster_representatives</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selectable_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.select_natural_cluster_representatives" title="Link to this definition"></a></dt>
+<dd><p>Select molecules from natural clusters using proportional allocation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.select_points_within_natural_group">
+<span class="sig-name descname"><span class="pre">select_points_within_natural_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.select_points_within_natural_group" title="Link to this definition"></a></dt>
+<dd><p>Pick one centroid representative, then farthest points within one natural group.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="almos.cluster.cluster.select_representative_points">
+<span class="sig-name descname"><span class="pre">select_representative_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coverage_result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.select_representative_points" title="Link to this definition"></a></dt>
+<dd><p>Select representative rows by global descriptor-space coverage.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="almos.cluster.cluster.set_up_cluster">
 <span class="sig-name descname"><span class="pre">set_up_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df_csv_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#almos.cluster.cluster.set_up_cluster" title="Link to this definition"></a></dt>
-<dd><p>Prepare the CSV file</p>
+<dd><p>Prepare the CSV file and working folders.</p>
 </dd></dl>
 
 </dd></dl>
 
-<section id="parameters">
-<span id="module-almos.cluster"></span><h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
-<blockquote>
-<div><dl>
-<dt>input<span class="classifier">str, default = '' </span></dt><dd><p>Current file extension: .csv or .sdf (i.e. example.csv).
-Only is possible use a SDF file if using AQME (--aqme).
-If the descriptors are to be obtained through AQME from a CSV file two columns are required: 'code_name' with the names and 'SMILES' for the SMILES string. 
-If the CSV already contains descriptors, it must contain at least 3, and the variable --name must be defined.
-For both cases, there cannot be any column named 'batch' in the CSV file.</p>
+<p id="module-almos.cluster">CLUSTER workflow.</p>
+<p>This module prepares descriptors, applies cleanup, and selects representative
+molecules that cover the cleaned chemical descriptor space. Natural clustering
+diagnostics are optional and are not used by the default point-selection method.</p>
+<section id="main-user-facing-parameters">
+<h2>Main user-facing parameters<a class="headerlink" href="#main-user-facing-parameters" title="Link to this heading"></a></h2>
+<dl>
+<dt>General:</dt><dd><dl class="simple">
+<dt>input<span class="classifier">str</span></dt><dd><p>Input CSV or SDF file used by the coverage-selection workflow.</p>
 </dd>
-<dt>n_clusters<span class="classifier">int, default = None </span></dt><dd><p>Number of clusters for the clustered. If not defined by the user, it is calculated using the Elbow Method.</p>
+<dt>name<span class="classifier">str</span></dt><dd><p>Identifier column when descriptors are already present in the CSV.</p>
 </dd>
-<dt>seed_clustered<span class="classifier">int, default = 0</span></dt><dd><p>Random seed used during KMeans (in k_means function).</p>
+<dt>ignore<span class="classifier">list</span></dt><dd><p>Columns excluded from descriptor cleanup and coverage selection.</p>
 </dd>
-<dt>descp_level<span class="classifier">str, default = 'interpret'</span></dt><dd><p>Type of descriptor to be used in the ALMOS workflow. Options are 'interpret', 'denovo' or 'full'.</p>
+<dt>aqme<span class="classifier">bool</span></dt><dd><p>Generate descriptors with AQME before coverage selection.</p>
 </dd>
-<dt>ignore<span class="classifier">list, default = []</span></dt><dd><p>List containing the columns of the input CSV file that will be ignored during the clustered process
-(i.e. ['code_name','SMILES']). The descriptors will be included in the clustered CSV file. The y value
-is automatically ignored.</p>
+<dt>y<span class="classifier">str</span></dt><dd><p>Optional response column to ignore during coverage selection.</p>
 </dd>
-<dt>aqme<span class="classifier">bool, default = False</span></dt><dd><p>Enables the aqme workflow to generate descriptors.</p>
-</dd>
-<dt>name<span class="classifier">str, default = ''</span></dt><dd><p>It is mandatory to define it if the clustering is to be done with the descriptors already defined by the user.
-If the descriptors are to be generated with the program (using AQME) 'name' is not defined.</p>
-</dd>
-<dt>y<span class="classifier">str, default = ''</span></dt><dd><p>Name of the column containing the response variable in the input CSV file (i.e. 'yield').</p>
-</dd>
-<dt>auto_fill: bool, default = True</dt><dd><p>If the CSV contains empty spaces (less than 30 % of NaN per column), KNNImputer is applied, using the K-nearest neighbors method 
-to estimate and fill missing values based on the closest values to each point in the dataset.
-If auto_fill is False, the KNNImputer is not applied (if there are still empty spaces the program finish).</p>
-</dd>
-<dt>categorical: str, default = 'onehot'</dt><dd><p>It can be used when the user provide their descriptors.
-Mode to convert data from columns with categorical variables. As an example, a variable containing 4 types of C atoms 
-(i.e. primary, secondary, tertiary, quaternary) will be converted into categorical variables. Options:</p>
-<blockquote>
-<div><ol class="arabic simple">
-<li><p>'onehot' (for one-hot encoding, ROBERT will create a descriptor for each type of C atom using 0s and 1s to indicate whether the C type is present)</p></li>
-<li><p>'numbers' (to describe the C atoms with numbers: 1, 2, 3, 4).</p></li>
-</ol>
-</div></blockquote>
-</dd>
-<dt>aqme_keywords: str, default = ''</dt><dd><p>It can be used to use specific functions from aqme. The entire argument must be in quotation marks, as in the example.
-(i.e., --aqme_keywords &quot;--qdescp_atoms [1,2]&quot;)</p>
-</dd>
-<dt>varfile<span class="classifier">str, default=None</span></dt><dd><p>Option to parse the variables using a yaml file (specify the filename, i.e. varfile=FILE.yaml).</p>
-</dd>
-<dt>nprocs: int, default=8</dt><dd><p>Number of processors used in AQME for the clustered</p>
+<dt>categorical<span class="classifier">str</span></dt><dd><p>Encoding mode for categorical descriptor columns.</p>
 </dd>
 </dl>
-</div></blockquote>
+</dd>
+<dt>Descriptor cleanup:</dt><dd><dl class="simple">
+<dt>missing_threshold<span class="classifier">float</span></dt><dd><p>Remove descriptor columns with too many missing values.</p>
+</dd>
+<dt>near_constant_threshold<span class="classifier">float</span></dt><dd><p>Remove descriptors dominated by almost one single value.</p>
+</dd>
+<dt>iqr_threshold<span class="classifier">float</span></dt><dd><p>Minimum absolute variability required for continuous descriptors.</p>
+</dd>
+<dt>rel_threshold<span class="classifier">float</span></dt><dd><p>Minimum relative variability required for continuous descriptors.</p>
+</dd>
+<dt>binary_threshold<span class="classifier">float</span></dt><dd><p>Minimum minority-class proportion required for binary descriptors.</p>
+</dd>
+<dt>correlation_threshold<span class="classifier">float</span></dt><dd><p>If two descriptors are too correlated, one of them is removed.</p>
+</dd>
+<dt>min_descriptors<span class="classifier">int</span></dt><dd><p>Minimum number of descriptors required after cleanup.</p>
+</dd>
+</dl>
+</dd>
+<dt>Coverage selection:</dt><dd><dl class="simple">
+<dt>n_points<span class="classifier">int or None</span></dt><dd><p>Number of representative molecules to select. If not provided, ALMOS
+estimates an automatic coverage budget.</p>
+</dd>
+<dt>evaluate<span class="classifier">bool</span></dt><dd><p>If True, skip representative reselection and only evaluate the existing
+user-provided selection stored as batch = 0 in the input CSV.</p>
+</dd>
+<dt>mode<span class="classifier">str</span></dt><dd><p>Selection strategy. &quot;representative&quot; selects one real molecule nearest
+to each prototype centroid; diversity-focused selection keeps extra
+distant candidates.</p>
+</dd>
+<dt>cluster_auto_budget_candidates<span class="classifier">list</span></dt><dd><p>Candidate budgets used as anchors for the automatic coverage scan.</p>
+</dd>
+<dt>cluster_auto_budget_marginal_gain_threshold<span class="classifier">float</span></dt><dd><p>Marginal coverage-improvement threshold used to stop the budget scan.</p>
+</dd>
+<dt>cluster_auto_budget_min_umap_area<span class="classifier">float</span></dt><dd><p>Minimum UMAP area fraction required for automatic recommendation.</p>
+</dd>
+<dt>cluster_auto_budget_lookahead<span class="classifier">int</span></dt><dd><p>Number of later tested budgets inspected for local-slowdown detection.</p>
+</dd>
+<dt>cluster_auto_budget_max_points<span class="classifier">int</span></dt><dd><p>Maximum automatic budget.</p>
+</dd>
+<dt>cluster_natural_report<span class="classifier">bool</span></dt><dd><p>Run optional KMeans/GMM/HDBSCAN natural clustering diagnostics.</p>
+</dd>
+</dl>
+</dd>
+<dt>PCA safeguard:</dt><dd><dl class="simple">
+<dt>enable_pca<span class="classifier">bool</span></dt><dd><p>Disable PCA with --no_pca.</p>
+</dd>
+<dt>cluster_high_dimensionality_threshold<span class="classifier">int</span></dt><dd><p>Descriptor-count threshold above which PCA can be activated.</p>
+</dd>
+<dt>cluster_pca_explained_variance_threshold<span class="classifier">float</span></dt><dd><p>Target explained variance retained by PCA.</p>
+</dd>
+<dt>cluster_pca_min_acceptable_variance<span class="classifier">float</span></dt><dd><p>Minimum variance required to accept PCA instead of raw descriptor space.</p>
+</dd>
+</dl>
+<p>cluster_pca_min_components : int
+pca_max_components : int
+pca_max_components_fraction : float</p>
+</dd>
+<dt>Large dataset mode:</dt><dd><dl class="simple">
+<dt>large_dataset_mode<span class="classifier">bool</span></dt><dd><p>Disable with --no_large_dataset_mode.</p>
+</dd>
+<dt>cluster_standard_dataset_threshold<span class="classifier">int</span></dt><dd><p>Upper limit of the standard regime.</p>
+</dd>
+<dt>cluster_very_large_dataset_threshold<span class="classifier">int</span></dt><dd><p>Upper limit of the large regime.</p>
+</dd>
+<dt>cluster_ultra_large_dataset_threshold<span class="classifier">int</span></dt><dd><p>Above this, the workflow enters ultra-large mode.</p>
+</dd>
+</dl>
+<p>cluster_large_silhouette_sample_size : int
+cluster_very_large_silhouette_sample_size : int
+cluster_ultra_large_silhouette_sample_size : int
+cluster_large_dataset_stability_repeats : int
+cluster_fast_screening_top_candidates : int</p>
+</dd>
+<dt>Algorithm-specific search space:</dt><dd><p>cluster_kmeans_coarse_grid_size : int
+cluster_kmeans_top_refinement_candidates : int
+cluster_kmeans_refine_radius : int
+cluster_kmeans_bo_fraction : float
+cluster_kmeans_bo_max_evaluations : int
+cluster_gmm_dimensionality_threshold : int
+cluster_gmm_standard_coarse_grid_size : int
+cluster_gmm_standard_refine_radius : int
+cluster_gmm_large_coarse_grid_size : int
+cluster_gmm_large_refine_radius : int
+cluster_gmm_very_large_coarse_grid_size : int
+cluster_gmm_very_large_refine_radius : int
+cluster_gmm_bo_fraction : float
+cluster_gmm_bo_max_evaluations : int
+cluster_gmm_bic_shortlist_size : int
+cluster_hdbscan_standard_min_cluster_ratios : list
+cluster_hdbscan_large_min_cluster_ratios : list
+cluster_hdbscan_very_large_min_cluster_ratios : list
+cluster_hdbscan_standard_min_samples : list
+cluster_hdbscan_large_min_samples : list
+cluster_hdbscan_very_large_min_samples : list</p>
+</dd>
+<dt>Quality filters:</dt><dd><dl class="simple">
+<dt>cluster_filter_max_noise_fraction<span class="classifier">float</span></dt><dd><p>Reject candidates with too many noise points, mainly for HDBSCAN.</p>
+</dd>
+<dt>cluster_filter_max_cluster_fraction<span class="classifier">float</span></dt><dd><p>Reject candidates dominated by one oversized cluster.</p>
+</dd>
+<dt>cluster_filter_max_imbalance_penalty<span class="classifier">float</span></dt><dd><p>Reject candidates with extreme cluster-size imbalance.</p>
+</dd>
+</dl>
+<p>cluster_quality_warning_silhouette_threshold : float
+cluster_quality_warning_stability_threshold : float
+cluster_quality_warning_noise_threshold : float
+cluster_quality_warning_imbalance_threshold : float
+cluster_quality_warning_final_score_threshold : float
+cluster_quality_good_silhouette_threshold : float
+cluster_quality_good_stability_threshold : float
+cluster_quality_good_noise_threshold : float
+cluster_quality_good_imbalance_threshold : float
+cluster_quality_good_final_score_threshold : float</p>
+</dd>
+</dl>
 </section>
 </section>
 
@@ -257,7 +594,7 @@ Mode to convert data from columns with categorical variables. As an example, a v
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="API_Reference.html" class="btn btn-neutral float-left" title="Main Modules" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="almos.el.html" class="btn btn-neutral float-right" title="EL" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="almos.al.html" class="btn btn-neutral float-right" title="AL" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -5,16 +5,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; almos v0.1 documentation</title>
+  <title>Index &mdash; almos v1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=34cd777e"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/documentation_options.js?v=0737924e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -48,8 +48,7 @@
 <p class="caption" role="heading"><span class="caption-text">How does ALMOS work?</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Modules/cluster.html">Clustering (CLUSTER)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/el.html">Exploratory Learning (EL)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Modules/bo.html">Bayesian Optimization (BO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modules/al.html">Active Learning (AL)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Technical Details</span></p>
 <ul>
@@ -99,10 +98,11 @@
  <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
+ | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
- | <a href="#K"><strong>K</strong></a>
+ | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
@@ -114,6 +114,12 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.al.html#almos.al.al.active_learning_process">active_learning_process() (almos.al.al method)</a>
+</li>
+      <li><a href="API/almos.al.html#almos.al.al">al (class in almos.al)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.allocate_points_by_group_population">allocate_points_by_group_population() (almos.cluster.cluster method)</a>
+</li>
       <li>
     almos
 
@@ -122,10 +128,19 @@
 </li>
       </ul></li>
       <li>
-    almos.bo
+    almos.al
 
       <ul>
-        <li><a href="API/almos.al_bayes.html#module-almos.bo">module</a>, <a href="API/almos.bo.html#module-almos.bo">[1]</a>
+        <li><a href="API/almos.al.html#module-almos.al">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    almos.al_utils
+
+      <ul>
+        <li><a href="API/almos.al_utils.html#module-almos.al_utils">module</a>
 </li>
       </ul></li>
       <li>
@@ -136,29 +151,13 @@
 </li>
       </ul></li>
       <li>
-    almos.el
-
-      <ul>
-        <li><a href="API/almos.el.html#module-almos.el">module</a>
-</li>
-      </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    almos.el_utils
-
-      <ul>
-        <li><a href="API/almos.el_utils.html#module-almos.el_utils">module</a>
-</li>
-      </ul></li>
-      <li>
     almos.utils
 
       <ul>
         <li><a href="API/almos.utils.html#module-almos.utils">module</a>
 </li>
       </ul></li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.assign_values">assign_values() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.assign_values">assign_values() (in module almos.al_utils)</a>
 </li>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster.auto_fill_knn">auto_fill_knn() (almos.cluster.cluster method)</a>
 </li>
@@ -168,7 +167,11 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.al_bayes.html#almos.bo.bo">bo (class in almos.bo)</a>, <a href="API/almos.bo.html#almos.bo.bo">[1]</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.build_chemical_space_viewer">build_chemical_space_viewer() (almos.cluster.cluster method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.build_selected_candidates_preview">build_selected_candidates_preview() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -178,31 +181,63 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster.categorical_transform">categorical_transform() (almos.cluster.cluster method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.check_convergence">check_convergence() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.check_convergence">check_convergence() (almos.al_utils.EarlyStopping method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.check_convergence_model">check_convergence_model() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.check_convergence_model">check_convergence_model() (almos.al_utils.EarlyStopping method)</a>
 </li>
       <li><a href="API/almos.utils.html#almos.utils.check_dependencies">check_dependencies() (in module almos.utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.check_metric_convergence">check_metric_convergence() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.check_metric_convergence">check_metric_convergence() (almos.al_utils.EarlyStopping method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.check_missing_outputs">check_missing_outputs() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.check_missing_outputs">check_missing_outputs() (in module almos.al_utils)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.check_score_convergence">check_score_convergence() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.check_score_convergence">check_score_convergence() (almos.al_utils.EarlyStopping method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.check_score_no_improvement">check_score_no_improvement() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.check_score_no_improvement">check_score_no_improvement() (almos.al_utils.EarlyStopping method)</a>
 </li>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster.checking_cluster">checking_cluster() (almos.cluster.cluster method)</a>
 </li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.choose_natural_selection_candidate">choose_natural_selection_candidate() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.classify_visualization_local_quality">classify_visualization_local_quality() (almos.cluster.cluster method)</a>
+</li>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster.clean_up_cluster">clean_up_cluster() (almos.cluster.cluster method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster">cluster (class in almos.cluster)</a>
 </li>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.cluster_workflow">cluster_workflow() (almos.cluster.cluster method)</a>
-</li>
       <li><a href="API/almos.utils.html#almos.utils.command_line_args">command_line_args() (in module almos.utils)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_2d_map_coverage_metrics">compute_2d_map_coverage_metrics() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_convex_hull_area_2d">compute_convex_hull_area_2d() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_convex_hull_points_2d">compute_convex_hull_points_2d() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_embedding_fidelity">compute_embedding_fidelity() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_final_2d_coverage_metrics">compute_final_2d_coverage_metrics() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_mean_nearest_selected_distance">compute_mean_nearest_selected_distance() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_nearest_selected_distances">compute_nearest_selected_distances() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_pca_2d_embedding">compute_pca_2d_embedding() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_pca_2d_variance">compute_pca_2d_variance() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_umap_2d_embedding">compute_umap_2d_embedding() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.compute_umap_area_coverage">compute_umap_area_coverage() (almos.cluster.cluster method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.describe_metric_transition">describe_metric_transition() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -210,21 +245,19 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping">EarlyStopping (class in almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping">EarlyStopping (class in almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el.html#almos.el.el">el (class in almos.el)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.estimate_auto_coverage_budget">estimate_auto_coverage_budget() (almos.cluster.cluster method)</a>
 </li>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.elbow_method_nclusters">elbow_method_nclusters() (almos.cluster.cluster method)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.evaluate_existing_selection">evaluate_existing_selection() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el.html#almos.el.el.exploratory_learning_process">exploratory_learning_process() (almos.el.el method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.extract_points_from_csv">extract_points_from_csv() (in module almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.extract_points_from_csv">extract_points_from_csv() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.extract_rmse_and_score_from_column">extract_rmse_and_score_from_column() (in module almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.extract_rmse_and_score_from_column">extract_rmse_and_score_from_column() (in module almos.el_utils)</a>
-</li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.extract_sd_from_column">extract_sd_from_column() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.extract_sd_from_column">extract_sd_from_column() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -234,15 +267,35 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/almos.utils.html#almos.utils.Logger.finalize">finalize() (almos.utils.Logger method)</a>
 </li>
-      <li><a href="API/almos.el.html#almos.el.el.finalize_process">finalize_process() (almos.el.el method)</a>
+      <li><a href="API/almos.al.html#almos.al.al.finalize_process">finalize_process() (almos.al.al method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.find_closest_value">find_closest_value() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.find_closest_value">find_closest_value() (in module almos.al_utils)</a>
 </li>
       <li><a href="API/almos.cluster.html#almos.cluster.cluster.fix_cols_names">fix_cols_names() (almos.cluster.cluster method)</a>
 </li>
+      <li><a href="API/almos.utils.html#almos.utils.format_cli_help">format_cli_help() (in module almos.utils)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.format_fraction_percent">format_fraction_percent() (almos.cluster.cluster method)</a>
+</li>
       <li><a href="API/almos.utils.html#almos.utils.format_lists">format_lists() (in module almos.utils)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_objective_label">format_objective_label() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_score_explanation">format_score_explanation() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_score_interpretation">format_score_interpretation() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_score_regime_label">format_score_regime_label() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_strategy_label">format_strategy_label() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_strategy_reason">format_strategy_reason() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.format_text_table">format_text_table() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.format_visual_score">format_visual_score() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -250,27 +303,35 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el.html#almos.el.el.generate_plots">generate_plots() (almos.el.el method)</a>
+      <li><a href="API/almos.al.html#almos.al.al.generate_plots">generate_plots() (almos.al.al method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.generate_quartile_medians_df">generate_quartile_medians_df() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.generate_quartile_medians_df">generate_quartile_medians_df() (in module almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.get_metrics_from_batches">get_metrics_from_batches() (in module almos.el_utils)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.get_2d_map_grid_details">get_2d_map_grid_details() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.get_auto_budget_candidates">get_auto_budget_candidates() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.get_quartile">get_quartile() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.get_metrics_from_batches">get_metrics_from_batches() (in module almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.get_scores_from_robert_report">get_scores_from_robert_report() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.get_quartile">get_quartile() (in module almos.al_utils)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.get_size_counters">get_size_counters() (in module almos.el_utils)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.get_scores_from_robert_report">get_scores_from_robert_report() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.get_size_counters">get_size_counters() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
 
-<h2 id="K">K</h2>
+<h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.k_means">k_means() (almos.cluster.cluster method)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.interpret_combined_2d_visualization_quality">interpret_combined_2d_visualization_quality() (almos.cluster.cluster method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.interpret_final_2d_coverage">interpret_final_2d_coverage() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -278,11 +339,11 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.load_options_from_csv">load_options_from_csv() (in module almos.el_utils)</a>
+      <li><a href="API/almos.utils.html#almos.utils.load_variables">load_variables() (in module almos.utils)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.utils.html#almos.utils.load_variables">load_variables() (in module almos.utils)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.log_final_selection_quality">log_final_selection_quality() (almos.cluster.cluster method)</a>
 </li>
       <li><a href="API/almos.utils.html#almos.utils.Logger">Logger (class in almos.utils)</a>
 </li>
@@ -298,30 +359,40 @@
       <ul>
         <li><a href="API/API_Reference.html#module-almos">almos</a>
 </li>
-        <li><a href="API/almos.al_bayes.html#module-almos.bo">almos.bo</a>, <a href="API/almos.bo.html#module-almos.bo">[1]</a>
+        <li><a href="API/almos.al.html#module-almos.al">almos.al</a>
+</li>
+        <li><a href="API/almos.al_utils.html#module-almos.al_utils">almos.al_utils</a>
 </li>
         <li><a href="API/almos.cluster.html#module-almos.cluster">almos.cluster</a>
-</li>
-        <li><a href="API/almos.el.html#module-almos.el">almos.el</a>
-</li>
-        <li><a href="API/almos.el_utils.html#module-almos.el_utils">almos.el_utils</a>
 </li>
         <li><a href="API/almos.utils.html#module-almos.utils">almos.utils</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.molecule_svg_from_smiles">molecule_svg_from_smiles() (almos.cluster.cluster method)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.pca_control">pca_control() (almos.cluster.cluster method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.plot_metrics_subplots">plot_metrics_subplots() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.point_inside_polygon_2d">point_inside_polygon_2d() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.prepare_auto_budget_umap_area_context">prepare_auto_budget_umap_area_context() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.plot_metrics_subplots">plot_metrics_subplots() (in module almos.el_utils)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.prepare_coverage_selection_input">prepare_coverage_selection_input() (almos.cluster.cluster method)</a>
 </li>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.process_batch">process_batch() (in module almos.el_utils)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.prepare_coverage_selection_space">prepare_coverage_selection_space() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.prepare_final_umap_map_context">prepare_final_umap_map_context() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.process_batch">process_batch() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -329,11 +400,19 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.run_aqme">run_aqme() (almos.cluster.cluster method)</a>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.rank_active_learning_candidates">rank_active_learning_candidates() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.render_chemical_space_viewer_html">render_chemical_space_viewer_html() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.resolve_active_learning_strategy">resolve_active_learning_strategy() (in module almos.al_utils)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el.html#almos.el.el.run_robert_process">run_robert_process() (almos.el.el method)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.run_aqme">run_aqme() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.run_natural_clustering_analysis">run_natural_clustering_analysis() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.al.html#almos.al.al.run_robert_process">run_robert_process() (almos.al.al method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -341,11 +420,29 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.cluster.html#almos.cluster.cluster.set_up_cluster">set_up_cluster() (almos.cluster.cluster method)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.save_auto_budget_plateau_plot">save_auto_budget_plateau_plot() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.save_cluster_outputs">save_cluster_outputs() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.save_natural_clustering_report">save_natural_clustering_report() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.save_selection_2d_diagnostic_images">save_selection_2d_diagnostic_images() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.save_single_2d_diagnostic_images">save_single_2d_diagnostic_images() (almos.cluster.cluster method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="API/almos.el_utils.html#almos.el_utils.EarlyStopping.show_summary">show_summary() (almos.el_utils.EarlyStopping method)</a>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.select_coverage_representatives">select_coverage_representatives() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.select_natural_cluster_representatives">select_natural_cluster_representatives() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.select_points_within_natural_group">select_points_within_natural_group() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.select_representative_points">select_representative_points() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.cluster.html#almos.cluster.cluster.set_up_cluster">set_up_cluster() (almos.cluster.cluster method)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.EarlyStopping.show_summary">show_summary() (almos.al_utils.EarlyStopping method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -354,6 +451,12 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="API/almos.utils.html#almos.utils.Logger.write">write() (almos.utils.Logger method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.write_log_block">write_log_block() (in module almos.al_utils)</a>
+</li>
+      <li><a href="API/almos.al_utils.html#almos.al_utils.write_log_header">write_log_header() (in module almos.al_utils)</a>
 </li>
   </ul></td>
 </tr></table>
