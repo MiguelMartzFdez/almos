@@ -111,18 +111,11 @@ pip install almos-kit
 conda install -y -c conda-forge glib gtk3 pango mscorefonts
 ```
 
-### (Optional) Install AQME dependencies
+### Install AQME dependencies
 
 ```bash
 conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1
 ```
-
-### (Optional) Intel acceleration
-
-```bash
-pip install scikit-learn-intelex==2025.2.0
-```
-
 ---
 
 # ▶️ Launch
