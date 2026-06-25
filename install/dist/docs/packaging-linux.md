@@ -10,7 +10,7 @@ dist/linux/easyalmos-<VERSION>.deb
 
 ## Target platform
 
-The current Linux package targets Ubuntu and other Debian-based distributions.
+The current Linux package targets 64-bit Ubuntu and other amd64 Debian-based distributions.
 
 ## Build command
 
@@ -58,6 +58,8 @@ If dependencies change, edit that file first.
 4. Creates an applications menu entry
 5. Attempts to create a desktop shortcut for the installing user
 
+If runtime creation fails during package installation, the launcher can retry it later with administrator permissions.
+
 ## User installation
 
 ### Graphical install
@@ -80,6 +82,15 @@ During package installation, logs are written under:
 ```text
 /opt/easyalmos/logs
 ```
+
+If Ubuntu shows a crash report saying that the package post-installation script failed, check:
+
+```bash
+sudo cat /opt/easyalmos/logs/install-error.log
+sudo cat /opt/easyalmos/logs/install.log
+```
+
+The package post-installation step attempts to create the private runtime, but the package remains installed if that setup fails. Launching `easyalmos` retries the runtime setup with administrator permissions.
 
 ## User removal
 
