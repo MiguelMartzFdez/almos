@@ -2,8 +2,6 @@
   <img src="almos/icons/almos_logo.png" alt="ALMOS logo" width="520">
 </p>
 
-<p align="center"><strong>Active Learning Molecular Selection</strong></p>
-
 <p align="center">
   <a href="https://app.circleci.com/pipelines/github/MiguelMartzFdez/almos"><img src="https://img.shields.io/circleci/build/github/MiguelMartzFdez/almos?label=Circle%20CI&logo=circleci" alt="CircleCI"></a>
   <a href="https://codecov.io/gh/MiguelMartzFdez/almos"><img src="https://img.shields.io/codecov/c/github/MiguelMartzFdez/almos?label=Codecov&logo=codecov" alt="Codecov"></a>
