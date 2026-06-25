@@ -2,7 +2,6 @@
   <img src="almos/icons/almos_logo.png" alt="ALMOS logo" width="520">
 </p>
 
-<h2 align="center">ALMOS</h2>
 <p align="center"><strong>Active Learning Molecular Selection</strong></p>
 
 <p align="center">
