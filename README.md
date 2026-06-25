@@ -118,7 +118,7 @@ conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1
 ```
 ---
 
-# ▶️ Launch
+# 🚀 Launch
 
 Start the command-line interface:
 
@@ -131,21 +131,6 @@ Launch the graphical interface:
 ```bash
 easyalmos
 ```
-
----
-
-# 🔄 Update
-
-### pip installation
-
-```bash
-pip install --upgrade almos-kit
-```
-
-### EasyALMOS
-
-Simply download the newest installer from the latest GitHub Release.
-
 ---
 
 # 📚 Documentation
