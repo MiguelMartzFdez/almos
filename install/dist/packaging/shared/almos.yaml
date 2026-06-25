@@ -6,12 +6,13 @@ dependencies:
   - python=3.11
   - openbabel=3.1.1
   - xtb=6.7.1
+  - openssl
+  - pkg-config
   - glib
   - gtk3
   - pango
   - mscorefonts
   - libgfortran=14.2.0
-  - cryptography
   - pip
   - pip:
       - almos-kit
