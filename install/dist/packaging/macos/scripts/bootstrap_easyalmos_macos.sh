@@ -281,7 +281,7 @@ if [[ "$need_install" == "1" ]]; then
   fi
 fi
 
-start_notice "EasyALMOS is opening...\n\nPlease wait.\n\nThe first launch may take a little longer.\n\nOn macOS, please work inside the EasyALMOS workspace:\n$WORK_DIR\n\nMove your CSV files and project folders there before running workflows."
+start_notice "EasyALMOS is opening...\n\nPlease wait.\n\nThe first launch may take a little longer.\n\nIMPORTANT: on macOS, you should work inside the EasyALMOS workspace:\n$WORK_DIR\n\nMove your CSV files and project folders there before running workflows. Do not work directly from Downloads, Desktop, or external folders."
 if ! launch_easyalmos; then
   show_error_dialog "EasyALMOS could not start. Check the logs in ~/Library/ApplicationSupport/EasyALMOS/logs."
   exit 1
