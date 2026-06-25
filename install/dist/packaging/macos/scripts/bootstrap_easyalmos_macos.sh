@@ -40,8 +40,19 @@ runtime_log() {
 clear_quarantine_attribute() {
   local target="$1"
   if command -v xattr >/dev/null 2>&1; then
-    xattr -dr com.apple.quarantine "$target" >/dev/null 2>&1 || true
+    xattr -cr "$target" >/dev/null 2>&1 || true
   fi
+}
+
+prepare_binary_for_execution() {
+  local target="$1"
+  chmod 0755 "$target" >/dev/null 2>&1 || true
+  clear_quarantine_attribute "$target"
+}
+
+validate_executable_binary() {
+  local target="$1"
+  "$target" --version >>"$INSTALL_LOG" 2>>"$INSTALL_ERR_LOG"
 }
 
 configure_private_environment() {
@@ -180,8 +191,12 @@ install_micromamba() {
   if [[ -x "$bundled_asset" ]]; then
     log "Using bundled Micromamba asset: $bundled_asset"
     install -m 0755 "$bundled_asset" "$MICROMAMBA_BIN"
-    clear_quarantine_attribute "$MICROMAMBA_BIN"
-    return 0
+    prepare_binary_for_execution "$MICROMAMBA_BIN"
+    if validate_executable_binary "$MICROMAMBA_BIN"; then
+      return 0
+    fi
+    log "Bundled Micromamba could not be executed. Falling back to downloaded Micromamba."
+    rm -f "$MICROMAMBA_BIN"
   fi
 
   downloader="$(require_download_tool)" || {
@@ -217,7 +232,12 @@ install_micromamba() {
   fi
 
   install -m 0755 "$tmp_dir/bin/micromamba" "$MICROMAMBA_BIN"
-  clear_quarantine_attribute "$MICROMAMBA_BIN"
+  prepare_binary_for_execution "$MICROMAMBA_BIN"
+  if ! validate_executable_binary "$MICROMAMBA_BIN"; then
+    echo "Downloaded Micromamba could not be executed at $MICROMAMBA_BIN" >>"$INSTALL_ERR_LOG"
+    rm -rf "$tmp_dir"
+    return 1
+  fi
   rm -rf "$tmp_dir"
 }
 
@@ -240,8 +260,7 @@ install_runtime() {
   fi
 
   install_micromamba || return 1
-  chmod 0755 "$MICROMAMBA_BIN" >/dev/null 2>&1 || true
-  clear_quarantine_attribute "$MICROMAMBA_BIN"
+  prepare_binary_for_execution "$MICROMAMBA_BIN"
 
   log "Creating ALMOS environment from $ENV_FILE"
   export MAMBA_ROOT_PREFIX
