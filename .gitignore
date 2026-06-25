@@ -4,3 +4,6 @@ docs/generated/
 
 __pycache__/
 *.py[cod]
+
+# Generated installer artifacts
+install/dist/dist/
