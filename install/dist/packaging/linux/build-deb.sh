@@ -49,9 +49,9 @@ Package: $PACKAGE_NAME
 Version: $VERSION
 Section: science
 Priority: optional
-Architecture: all
+Architecture: amd64
 Maintainer: The Alegre Group
-Depends: bash, tar, curl | wget
+Depends: bash, tar
 Recommends: desktop-file-utils
 Description: EasyALMOS full Debian installer
  This package installs the EasyALMOS launcher, menu entry, and full runtime.
@@ -91,7 +91,10 @@ export EASYALMOS_ENV_FILE=/usr/lib/easyalmos/shared/almos.yaml
 export EASYALMOS_ICON_SOURCE=/usr/share/pixmaps/easyalmos.png
 export EASYALMOS_BUNDLED_MICROMAMBA=/usr/lib/easyalmos/bootstrap/micromamba
 
-/usr/lib/easyalmos/scripts/install_easyalmos_system.sh
+if ! /usr/lib/easyalmos/scripts/install_easyalmos_system.sh; then
+  echo "EasyALMOS runtime setup failed during package installation." >&2
+  echo "The package will remain installed; launch EasyALMOS to retry setup or check /opt/easyalmos/logs/install-error.log." >&2
+fi
 
 TARGET_USER="${SUDO_USER:-}"
 if [[ -z "$TARGET_USER" ]] && command -v logname >/dev/null 2>&1; then
