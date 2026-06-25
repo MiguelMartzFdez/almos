@@ -15,137 +15,167 @@
 
 ---
 
-## Install ALMOS
+# 🚀 Installation
 
-### Option 1: EasyALMOS desktop installers
+Choose the installation method that best fits your workflow.
 
-The easiest way to use ALMOS is through the **EasyALMOS** desktop application. No Python, Conda, or terminal setup is required.
+| Method | Recommended for |
+|---------|-----------------|
+| 🖥️ **EasyALMOS installers** | Users without Python experience |
+| 📦 **Conda environment file** | Most Conda users |
+| ⚙️ **Manual Conda + pip installation** | Advanced users |
+
+---
+
+# 🖥️ Option 1 — EasyALMOS Desktop Installers (Recommended)
+
+The easiest way to use **ALMOS** is through the **EasyALMOS** desktop application.
+
+✅ No Python installation required.
+
+✅ No Conda configuration.
+
+✅ No terminal commands.
 
 <p align="center">
-  <a href="https://github.com/MiguelMartzFdez/almos/releases/latest"><strong>Download EasyALMOS from GitHub Releases</strong></a>
+  <a href="https://github.com/MiguelMartzFdez/almos/releases/latest">
+    <strong>⬇️ Download EasyALMOS</strong>
+  </a>
 </p>
 
-| Platform | File to download | How to open |
-| --- | --- | --- |
-| Windows | `easyalmos-<VERSION>.exe` | Double-click the installer, then open **EasyALMOS** from the Start Menu or Windows Search. |
-| macOS | `easyalmos-<VERSION>.dmg` | Open the disk image, drag **EasyALMOS.app** to Applications, then open the app. |
-| Ubuntu / Debian Linux | `easyalmos-<VERSION>.deb` | Double-click the package or install it with `sudo apt install ./easyalmos-<VERSION>.deb`. |
+| Operating System | Download | Installation |
+|------------------|----------|--------------|
+| 🪟 Windows | `easyalmos-<VERSION>.exe` | Double-click the installer, then launch **EasyALMOS** from the Start Menu. |
+| 🍎 macOS | `easyalmos-<VERSION>.dmg` | Drag **EasyALMOS.app** into Applications. |
+| 🐧 Ubuntu / Debian | `easyalmos-<VERSION>.deb` | Double-click the package or run `sudo apt install ./easyalmos-<VERSION>.deb`. |
 
-These installers create a private ALMOS runtime and keep it isolated from your system Python or Conda installations. The first installation may take a few minutes while the environment is prepared.
+> **Note**
+>
+> EasyALMOS installs its own private ALMOS environment, completely isolated from your system Python or Conda installations.
+>
+> The first installation may take a few minutes while the environment is prepared.
 
-For detailed installer instructions, see the release notes in [GitHub Releases](https://github.com/MiguelMartzFdez/almos/releases).
+---
 
-### Option 2: Recommended Conda and pip installation
+# 📦 Option 2 — Install with the Conda Environment File
 
-Use this option if you already work with Python environments.
+This is the recommended installation method for users already working with Conda.
 
-1. Create a new Conda environment:
+### 1. Download the environment file
 
-   ```bash
-   conda create -n almos python=3.11
-   ```
+```bash
+curl -O https://raw.githubusercontent.com/MiguelMartzFdez/almos/miguel/install/almos.yaml
+```
 
-2. Activate the environment:
+### 2. Create the environment
 
-   ```bash
-   conda activate almos
-   ```
+```bash
+conda env create -f almos.yaml
+```
 
-3. Install ALMOS:
+### 3. Activate it
 
-   ```bash
-   pip install almos-kit
-   ```
+```bash
+conda activate almos
+```
 
-4. Install libraries required by the ROBERT backend:
+That's it! 🎉
 
-   ```bash
-   conda install -y -c conda-forge glib gtk3 pango mscorefonts
-   ```
+---
 
-5. Only for AQME workflow uses, install AQME external dependencies:
+# ⚙️ Option 3 — Manual Conda + pip Installation
 
-   ```bash
-   conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1
-   ```
+Use this option if you prefer creating the environment yourself.
 
-6. Optional, only for compatible devices, install the Intel accelerator:
+### Create the environment
 
-   ```bash
-   pip install scikit-learn-intelex==2025.2.0
-   ```
+```bash
+conda create -n almos python=3.11
+```
 
-Users with no Python experience should start with the EasyALMOS installers above or visit the *Users with no Python experience* section in [Read the Docs](https://almos.readthedocs.io).
+### Activate it
 
-### Option 3: Conda environment file
+```bash
+conda activate almos
+```
 
-You can install ALMOS and its required dependencies from the provided Conda environment file.
+### Install ALMOS
 
-1. Open a terminal, or Anaconda Prompt on Windows.
+```bash
+pip install almos-kit
+```
 
-2. Go to the folder where you want to save the environment file:
+### Install ROBERT backend dependencies
 
-   ```bash
-   cd path/to/download/folder
-   ```
+```bash
+conda install -y -c conda-forge glib gtk3 pango mscorefonts
+```
 
-3. Download the Conda environment file:
+### (Optional) Install AQME dependencies
 
-   ```bash
-   curl -O https://raw.githubusercontent.com/MiguelMartzFdez/almos/miguel/install/almos.yaml
-   ```
+```bash
+conda install -y -c conda-forge openbabel=3.1.1 xtb=6.7.1
+```
 
-4. Create the Conda environment:
+### (Optional) Intel acceleration
 
-   ```bash
-   conda env create -f almos.yaml
-   ```
+```bash
+pip install scikit-learn-intelex==2025.2.0
+```
 
-5. Activate the environment:
+---
 
-   ```bash
-   conda activate almos
-   ```
+# ▶️ Launch
 
-## Launch
-
-After installing with pip or the Conda environment file, use:
+Start the command-line interface:
 
 ```bash
 almos
 ```
 
-To open the graphical interface:
+Launch the graphical interface:
 
 ```bash
 easyalmos
 ```
 
-## Update
+---
 
-For pip-based installations:
+# 🔄 Update
+
+### pip installation
 
 ```bash
-pip install almos-kit --upgrade
+pip install --upgrade almos-kit
 ```
 
-For EasyALMOS desktop installers, download the latest installer from [GitHub Releases](https://github.com/MiguelMartzFdez/almos/releases/latest).
+### EasyALMOS
 
-## Documentation
+Simply download the newest installer from the latest GitHub Release.
 
-Full documentation is available at [almos.readthedocs.io](https://almos.readthedocs.io/).
+---
 
-## Developers and Help Desk
+# 📚 Documentation
 
-List of main developers and contact emails:
+Complete documentation is available at
 
-- [Miguel Martinez Fernandez](https://orcid.org/0009-0002-8538-7250). Contact [miguel.martinez@csic.es](mailto:miguel.martinez@csic.es)
-- [Susana P. Garcia Abellan](https://orcid.org/0000-0002-3138-5527). Contact [sg.abellan@csic.es](mailto:sg.abellan@csic.es)
-- [David Dalmau Ginesta](https://orcid.org/0000-0002-2506-6546). Contact [ddalmau@unizar.es](mailto:ddalmau@unizar.es)
-- [Juan V. Alegre-Requena](https://orcid.org/0000-0002-0769-7168). Contact [jv.alegre@csic.es](mailto:jv.alegre@csic.es)
+👉 https://almos.readthedocs.io
 
-For suggestions and improvements, please use GitHub issues and pull requests.
+---
 
-## License
+# 👨‍💻 Developers
 
-ALMOS is freely available under an [MIT](https://opensource.org/licenses/MIT) License.
+| Developer | Contact |
+|-----------|---------|
+| Miguel Martinez Fernandez | miguel.martinez@csic.es |
+| Susana P. Garcia Abellan | sg.abellan@csic.es |
+| David Dalmau Ginesta | ddalmau@unizar.es |
+| Juan V. Alegre-Requena | jv.alegre@csic.es |
+
+Suggestions and contributions are welcome through **GitHub Issues** and **Pull Requests**.
+
+---
+
+# 📄 License
+
+ALMOS is distributed under the **MIT License**.
