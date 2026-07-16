@@ -3,7 +3,7 @@ param(
     [string]$InstallDir,
 
     [Parameter(Mandatory = $true)]
-    [string]$MiniforgeInstaller,
+    [string]$MicromambaInstaller,
 
     [Parameter(Mandatory = $true)]
     [string]$EnvFile,
@@ -16,12 +16,13 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $installRoot = [System.IO.Path]::GetFullPath($InstallDir)
-$miniforgeDir = Join-Path $installRoot 'miniforge'
+$micromambaDir = Join-Path $installRoot 'micromamba'
 $logsDir = Join-Path $installRoot 'logs'
-$condaExe = Join-Path $miniforgeDir 'Scripts\conda.exe'
-$envPython = Join-Path $miniforgeDir 'envs\almos\python.exe'
-$envPythonw = Join-Path $miniforgeDir 'envs\almos\pythonw.exe'
-$easyalmosExe = Join-Path $miniforgeDir 'envs\almos\Scripts\easyalmos.exe'
+$micromambaExe = Join-Path $micromambaDir 'micromamba.exe'
+$mambaRootPrefix = Join-Path $micromambaDir 'root'
+$envPrefix = Join-Path $micromambaDir 'envs\almos'
+$envPython = Join-Path $envPrefix 'python.exe'
+$envPythonw = Join-Path $envPrefix 'pythonw.exe'
 $sharedEnvFile = Join-Path $StateDir 'almos.yaml'
 
 $pidFile = Join-Path $StateDir 'pid.txt'
@@ -32,6 +33,7 @@ $script:lastProcessExitCode = -1
 $script:phaseDurations = [ordered]@{}
 $script:installStartedAt = Get-Date
 $script:utf8Encoding = New-Object System.Text.UTF8Encoding($false)
+$maxEnvironmentCreateAttempts = 3
 
 function Format-Duration {
     param(
@@ -115,8 +117,8 @@ function Normalize-LogText {
 }
 
 function Remove-PrivateRuntime {
-    if (Test-Path -LiteralPath $miniforgeDir) {
-        Remove-Item -LiteralPath $miniforgeDir -Recurse -Force
+    if (Test-Path -LiteralPath $micromambaDir) {
+        Remove-Item -LiteralPath $micromambaDir -Recurse -Force
     }
 }
 
@@ -124,7 +126,9 @@ function Invoke-LoggedProcess {
     param(
         [string]$FilePath,
         [string]$Arguments,
-        [string]$LogBaseName
+        [string]$LogBaseName,
+
+        [bool]$AppendLogs = $false
     )
 
     $stdoutLog = Join-Path $logsDir "$LogBaseName.log"
@@ -145,6 +149,7 @@ function Invoke-LoggedProcess {
     $startInfo.Environment['PYTHONUTF8'] = '1'
     $startInfo.Environment['PYTHONIOENCODING'] = 'utf-8'
     $startInfo.Environment['PIP_DISABLE_PIP_VERSION_CHECK'] = '1'
+    $startInfo.Environment['MAMBA_ROOT_PREFIX'] = $mambaRootPrefix
 
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
@@ -161,8 +166,14 @@ function Invoke-LoggedProcess {
     $process.WaitForExit()
     $stdout = Normalize-LogText -Text $stdout
     $stderr = Normalize-LogText -Text $stderr
-    [System.IO.File]::WriteAllText($stdoutLog, $stdout, $script:utf8Encoding)
-    [System.IO.File]::WriteAllText($stderrLog, $stderr, $script:utf8Encoding)
+    if ($AppendLogs) {
+        Add-Content -LiteralPath $stdoutLog -Value $stdout -Encoding UTF8
+        Add-Content -LiteralPath $stderrLog -Value $stderr -Encoding UTF8
+    }
+    else {
+        [System.IO.File]::WriteAllText($stdoutLog, $stdout, $script:utf8Encoding)
+        [System.IO.File]::WriteAllText($stderrLog, $stderr, $script:utf8Encoding)
+    }
 
     $script:lastProcessExitCode = [int]$process.ExitCode
     $duration = (Get-Date) - $startedAt
@@ -173,6 +184,34 @@ function Invoke-LoggedProcess {
 
 function Copy-EnvironmentFile {
     Copy-Item -LiteralPath $EnvFile -Destination $sharedEnvFile -Force
+}
+
+function Invoke-EnvironmentCreateWithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Arguments
+    )
+
+    for ($attempt = 1; $attempt -le $maxEnvironmentCreateAttempts; $attempt++) {
+        if ($attempt -gt 1) {
+            $delaySeconds = 5 * ($attempt - 1)
+            Add-Content -LiteralPath (Join-Path $logsDir 'conda-environment.log') `
+                -Value "Retrying environment creation: attempt $attempt of $maxEnvironmentCreateAttempts after $delaySeconds seconds." `
+                -Encoding UTF8
+            Start-Sleep -Seconds (5 * ($attempt - 1))
+        }
+
+        Invoke-LoggedProcess `
+            -FilePath $micromambaExe `
+            -Arguments $Arguments `
+            -LogBaseName 'conda-environment' `
+            -AppendLogs ($attempt -gt 1)
+        if ($script:lastProcessExitCode -eq 0) {
+            return
+        }
+    }
+
+    throw "Conda environment creation failed after $maxEnvironmentCreateAttempts attempts with exit code $script:lastProcessExitCode."
 }
 
 try {
@@ -187,32 +226,18 @@ try {
     New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
     Copy-EnvironmentFile
 
-    Set-Content -LiteralPath $phaseFile -Value 'miniforge' -Encoding ASCII
-    $miniforgeArgs = "/S /InstallationType=JustMe /AddToPath=0 /RegisterPython=0 /D=$miniforgeDir"
-    Invoke-LoggedProcess `
-        -FilePath $MiniforgeInstaller `
-        -Arguments $miniforgeArgs `
-        -LogBaseName 'miniforge-install'
-    $exitCode = $script:lastProcessExitCode
-    if ($exitCode -ne 0) {
-        throw "Miniforge installation failed with exit code $exitCode."
-    }
-    if (-not (Test-Path -LiteralPath $condaExe)) {
-        throw 'Miniforge finished but conda.exe was not created.'
+    Set-Content -LiteralPath $phaseFile -Value 'micromamba' -Encoding ASCII
+    New-Item -ItemType Directory -Path $micromambaDir -Force | Out-Null
+    Copy-Item -LiteralPath $MicromambaInstaller -Destination $micromambaExe -Force
+    if (-not (Test-Path -LiteralPath $micromambaExe)) {
+        throw 'Micromamba executable was not copied.'
     }
 
     Set-Content -LiteralPath $phaseFile -Value 'environment' -Encoding ASCII
     $quotedEnvFile = "`"$sharedEnvFile`""
-    $quotedEnvPrefix = "`"$($miniforgeDir)\envs\almos`""
-    $condaArgs = "env create --prefix $quotedEnvPrefix --yes --file $quotedEnvFile"
-    Invoke-LoggedProcess `
-        -FilePath $condaExe `
-        -Arguments $condaArgs `
-        -LogBaseName 'conda-environment'
-    $exitCode = $script:lastProcessExitCode
-    if ($exitCode -ne 0) {
-        throw "Conda environment creation failed with exit code $exitCode."
-    }
+    $quotedEnvPrefix = "`"$envPrefix`""
+    $condaArgs = "create --prefix $quotedEnvPrefix --yes --file $quotedEnvFile"
+    Invoke-EnvironmentCreateWithRetry -Arguments $condaArgs
 
     Set-Content -LiteralPath $phaseFile -Value 'validate' -Encoding ASCII
     $validationStartedAt = Get-Date
@@ -222,8 +247,12 @@ try {
     if (-not (Test-Path -LiteralPath $envPythonw)) {
         throw 'Conda finished but pythonw.exe is missing from the almos environment.'
     }
-    if (-not (Test-Path -LiteralPath $easyalmosExe)) {
-        throw 'ALMOS did not create the expected easyalmos.exe entry point.'
+    Invoke-LoggedProcess `
+        -FilePath $envPython `
+        -Arguments '-c "from almos.easyalmos import main"' `
+        -LogBaseName 'launcher-validation'
+    if ($script:lastProcessExitCode -ne 0) {
+        throw 'EasyALMOS could not import its GUI entry point.'
     }
 
     $script:phaseDurations['validate'] = (Get-Date) - $validationStartedAt

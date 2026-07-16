@@ -159,6 +159,9 @@ from almos.cluster_utils import (
     remove_low_information_descriptors,
     remove_low_variance_descriptors,
 )
+
+CHEMICAL_SPACE_OUTPUT_DIR = "batch_0/chemical_space"
+EMBEDDING_FIDELITY_MAX_POINTS = 2000
 from almos.argument_parser import CLUSTER_ALGORITHM_CHOICES, var_dict
 from almos.utils import check_dependencies, load_variables
 
@@ -3239,26 +3242,81 @@ class cluster:
         except Exception:
             return ""
 
-    def compute_embedding_fidelity(self, original_data, embedding, selected_mask):
+    def select_embedding_fidelity_indices(
+        self,
+        total_points,
+        selected_mask,
+        max_points=EMBEDDING_FIDELITY_MAX_POINTS,
+    ):
         """
-        Compute user-facing fidelity metrics for a 2D visualization.
+        Select a deterministic fidelity sample while retaining selected rows.
         """
 
-        if len(original_data) < 3:
-            return {"trustworthiness": None}
-        n_neighbors = min(15, max(1, (len(original_data) - 1) // 2))
+        all_indices = np.arange(total_points, dtype=int)
+        if total_points <= max_points:
+            return all_indices
+
+        selected_indices = np.flatnonzero(np.asarray(selected_mask, dtype=bool))
+        non_selected_indices = np.flatnonzero(~np.asarray(selected_mask, dtype=bool))
+        rng = np.random.default_rng(self.args.seed_clustered)
+
+        if len(selected_indices) >= max_points:
+            sampled_indices = rng.choice(
+                selected_indices,
+                size=max_points,
+                replace=False,
+            )
+            return np.sort(sampled_indices.astype(int))
+
+        remaining_points = max_points - len(selected_indices)
+        sampled_non_selected = rng.choice(
+            non_selected_indices,
+            size=remaining_points,
+            replace=False,
+        )
+        return np.sort(
+            np.concatenate([selected_indices, sampled_non_selected]).astype(int)
+        )
+
+    def compute_embedding_fidelity(self, original_data, embedding, selected_mask):
+        """
+        Compute sampled user-facing fidelity metrics for an embedding.
+        """
+
+        total_points = len(original_data)
+        sample_indices = self.select_embedding_fidelity_indices(
+            total_points,
+            selected_mask,
+        )
+        evaluated_points = len(sample_indices)
+        if evaluated_points < 3:
+            return {
+                "trustworthiness": None,
+                "evaluated_points": evaluated_points,
+                "total_points": total_points,
+                "error": "Trustworthiness requires at least three points.",
+            }
+
+        n_neighbors = min(15, max(1, (evaluated_points - 1) // 2))
+        error = None
         try:
             trust_score = float(
                 trustworthiness(
-                    original_data,
-                    embedding,
+                    original_data[sample_indices],
+                    embedding[sample_indices],
                     n_neighbors=n_neighbors,
                 )
             )
-        except Exception:
+        except Exception as exc:
             trust_score = None
+            error = str(exc) or type(exc).__name__
 
-        return {"trustworthiness": trust_score}
+        return {
+            "trustworthiness": trust_score,
+            "evaluated_points": evaluated_points,
+            "total_points": total_points,
+            "error": error,
+        }
 
     def compute_pca_2d_variance(self, selection_data):
         """
@@ -3281,7 +3339,9 @@ class cluster:
         User-facing recommendation based on local-neighborhood preservation in 2D.
         """
 
-        trust = trustworthiness_score if trustworthiness_score is not None else 0.0
+        if trustworthiness_score is None:
+            return "NOT COMPUTED"
+        trust = trustworthiness_score
         if trust >= 0.95:
             return "EXCELLENT"
         if trust >= 0.90:
@@ -3306,6 +3366,13 @@ class cluster:
         pca_variance_high = pca_variance >= 0.70
         pca_trust_high = pca_trust >= 0.90
         umap_trust_high = umap_trust is not None and umap_trust >= 0.90
+
+        if pca_trustworthiness is None and umap_trustworthiness is None:
+            return (
+                "Trustworthiness was not computed, so local embedding fidelity cannot be "
+                "classified. Use the maps only as visual guides until a fidelity score is "
+                "available."
+            )
 
         if pca_variance_high and pca_trust_high and umap_trust_high:
             return (
@@ -3346,6 +3413,87 @@ class cluster:
                 selection_data
             )
         return np.column_stack([selection_data[:, 0], np.zeros(len(selection_data))])
+
+    def compute_pca_3d_embedding(self, selection_data):
+        """
+        Project the selection space to three PCA coordinates.
+        """
+
+        if selection_data.shape[1] >= 3:
+            embedding = PCA(
+                n_components=3,
+                random_state=self.args.seed_clustered,
+            ).fit_transform(selection_data)
+            return embedding
+
+        padded = np.zeros((len(selection_data), 3))
+        padded[:, : selection_data.shape[1]] = selection_data[:, :3]
+        return padded
+
+    def resolve_chemical_space_name_column(self, descp_df):
+        """
+        Resolve the identifier column used in exported chemical-space tables.
+        """
+
+        if self.args.name and self.args.name in descp_df.columns:
+            return self.args.name
+        if "code_name" in descp_df.columns:
+            return "code_name"
+        return None
+
+    def export_chemical_space_csvs(self, descp_df, display_indices, embeddings):
+        """
+        Save reusable PCA/UMAP coordinate tables for the displayed chemical space.
+        """
+
+        output_paths = []
+        name_column = self.resolve_chemical_space_name_column(descp_df)
+        smiles_column = next(
+            (column for column in descp_df.columns if column.lower() == "smiles"),
+            None,
+        )
+        batch_column = next(
+            (column for column in descp_df.columns if column.lower() == "batch"),
+            None,
+        )
+
+        base_df = pd.DataFrame(index=np.arange(len(display_indices)))
+        if name_column is not None:
+            base_df[name_column] = descp_df.loc[display_indices, name_column].tolist()
+        else:
+            base_df["index"] = display_indices.astype(int).tolist()
+        if batch_column is not None:
+            base_df["batch"] = descp_df.loc[display_indices, batch_column].tolist()
+        if smiles_column is not None:
+            smiles_series = descp_df.loc[display_indices, smiles_column].fillna("")
+            base_df["smiles"] = smiles_series.astype(str).tolist()
+
+        pca_embedding = embeddings.get("PCA 3D")
+        if pca_embedding is not None:
+            pca_df = base_df.copy()
+            pca_df["pc1"] = pca_embedding["x"]
+            pca_df["pc2"] = pca_embedding["y"]
+            pca_df["pc3"] = pca_embedding["z"]
+            if "smiles" in pca_df.columns:
+                pca_df = pca_df[[column for column in pca_df.columns if column != "smiles"] + ["smiles"]]
+            os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+            pca_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_pca.csv"
+            pca_df.to_csv(pca_path, index=False)
+            output_paths.append(pca_path)
+
+        umap_embedding = embeddings.get("UMAP")
+        if umap_embedding is not None:
+            umap_df = base_df.copy()
+            umap_df["umap_1"] = umap_embedding["x"]
+            umap_df["umap_2"] = umap_embedding["y"]
+            if "smiles" in umap_df.columns:
+                umap_df = umap_df[[column for column in umap_df.columns if column != "smiles"] + ["smiles"]]
+            os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+            umap_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_umap.csv"
+            umap_df.to_csv(umap_path, index=False)
+            output_paths.append(umap_path)
+
+        return output_paths
 
     def compute_umap_2d_embedding(self, selection_data, selected_mask):
         """
@@ -3419,31 +3567,40 @@ class cluster:
         """
 
         selection_data = coverage_result["selection_data"]
-        self.args.log.write("\no Building 2D chemical space viewer")
+        self.args.log.write("\no Building chemical space viewer")
         self.args.log.write("   - Computing PCA projection")
         selected_index_set = set(int(index) for index in selected_indices)
         selected_mask_full = np.array(
             [index in selected_index_set for index in range(len(selection_data))],
             dtype=bool,
         )
-
-        all_indices = np.arange(len(selection_data))
-        display_indices = all_indices
+        display_indices = np.arange(len(selection_data), dtype=int)
+        interactive_index_set = set(display_indices.tolist())
 
         display_data = selection_data[display_indices]
         selected_mask = selected_mask_full[display_indices]
 
         embeddings = {}
-        pca_embedding = self.compute_pca_2d_embedding(display_data)
-        pca_metrics = self.compute_embedding_fidelity(
+        pca_embedding_2d = self.compute_pca_2d_embedding(display_data)
+        pca_embedding_3d = self.compute_pca_3d_embedding(display_data)
+        pca_2d_metrics = self.compute_embedding_fidelity(
             display_data,
-            pca_embedding,
+            pca_embedding_2d,
             selected_mask,
         )
-        pca_metrics["variance_retained"] = self.compute_pca_2d_variance(display_data)
-        embeddings["PCA"] = {
-            "coords": pca_embedding,
-            "metrics": pca_metrics,
+        pca_2d_metrics["variance_retained"] = self.compute_pca_2d_variance(display_data)
+        pca_3d_metrics = self.compute_embedding_fidelity(
+            display_data,
+            pca_embedding_3d,
+            selected_mask,
+        )
+        embeddings["PCA 2D"] = {
+            "coords": pca_embedding_2d,
+            "metrics": pca_2d_metrics,
+        }
+        embeddings["PCA 3D"] = {
+            "coords": pca_embedding_3d,
+            "metrics": pca_3d_metrics,
         }
 
         umap_embedding, umap_metrics, umap_warning = self.compute_umap_2d_embedding(
@@ -3456,12 +3613,24 @@ class cluster:
                 "metrics": umap_metrics,
             }
 
+        map_metrics = {
+            "PCA": self.compute_2d_map_coverage_metrics(
+                pca_embedding_2d,
+                pca_embedding_2d[selected_mask],
+            )
+        }
+        if umap_embedding is not None:
+            map_metrics["UMAP"] = self.compute_2d_map_coverage_metrics(
+                umap_embedding,
+                umap_embedding[selected_mask],
+            )
+
         smiles_column = next(
             (column for column in descp_df.columns if column.lower() == "smiles"),
             None,
         )
         has_smiles = smiles_column is not None
-        name_column = self.args.name if self.args.name in descp_df.columns else None
+        name_column = self.resolve_chemical_space_name_column(descp_df)
         target_column = self.args.y if self.args.y in descp_df.columns else None
         target_values = None
         target_is_numeric = False
@@ -3518,17 +3687,26 @@ class cluster:
                 .astype(float)
                 .tolist()
             ]
-        records = []
+        smiles_values = []
         for index in display_indices:
             row = descp_df.loc[index]
-            smiles = str(row[smiles_column]) if has_smiles else ""
-            svg = self.molecule_svg_from_smiles(smiles) if has_smiles else ""
+            smiles_values.append(str(row[smiles_column]) if has_smiles else "")
+        records = []
+        for position, index in enumerate(display_indices):
+            row = descp_df.loc[index]
+            smiles = smiles_values[position]
+            svg = (
+                self.molecule_svg_from_smiles(smiles)
+                if has_smiles and int(index) in selected_index_set
+                else ""
+            )
             records.append(
                 {
                     "index": int(index),
                     "name": str(row[name_column]) if name_column is not None else str(index),
                     "smiles": smiles,
                     "selected": bool(index in selected_index_set),
+                    "interactive": bool(index in interactive_index_set),
                     "target": (
                         None
                         if target_column is None
@@ -3543,10 +3721,26 @@ class cluster:
         for embedding_name, payload in embeddings.items():
             coords = payload["coords"]
             metrics = payload["metrics"]
+            coverage_metrics = (
+                map_metrics.get("PCA", {})
+                if embedding_name == "PCA 2D"
+                else map_metrics.get("UMAP", {})
+                if embedding_name == "UMAP"
+                else {}
+            )
             embedding_payload[embedding_name] = {
+                "dims": int(coords.shape[1]),
                 "x": coords[:, 0].astype(float).tolist(),
                 "y": coords[:, 1].astype(float).tolist(),
+                "trustworthiness": metrics.get("trustworthiness"),
+                "varianceRetained": metrics.get("variance_retained"),
+                "areaCoverage": coverage_metrics.get("area_coverage"),
+                "dispersion": coverage_metrics.get("map_filling"),
             }
+            if coords.shape[1] >= 3:
+                embedding_payload[embedding_name]["z"] = (
+                    coords[:, 2].astype(float).tolist()
+                )
             fidelity_rows.append(
                 {
                     "embedding": embedding_name,
@@ -3554,6 +3748,9 @@ class cluster:
                     "local_recommendation": self.classify_visualization_local_quality(
                         metrics.get("trustworthiness")
                     ),
+                    "evaluated_points": metrics.get("evaluated_points"),
+                    "total_points": metrics.get("total_points"),
+                    "error": metrics.get("error"),
                     "params": metrics.get("params"),
                 }
             )
@@ -3573,21 +3770,19 @@ class cluster:
             "targetIsNumeric": target_is_numeric,
             "targetCategories": target_categories,
             "hasSmiles": has_smiles,
+            "displayedCount": int(len(display_indices)),
+            "totalCount": int(len(selection_data)),
         }
-
-        try:
-            from plotly.offline import get_plotlyjs
-
-            plotly_js = get_plotlyjs()
-        except Exception:
-            plotly_js = ""
+        self._latest_chemical_space_embeddings = embedding_payload
+        self._latest_chemical_space_display_indices = display_indices
 
         html_text = self.render_chemical_space_viewer_html(
             html_payload,
-            plotly_js,
+            "",
             file_name,
         )
-        viewer_path = "batch_0/chemical_space_viewer.html"
+        os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+        viewer_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_viewer.html"
         with open(viewer_path, "w", encoding="utf-8") as handle:
             handle.write(html_text)
 
@@ -3598,9 +3793,16 @@ class cluster:
             f"   - Displayed molecules: {len(display_indices)} of {len(selection_data)} "
             "(all selected and non-selected molecules are included)."
         )
+        self.args.log.write(
+            f"   - Click interaction enabled for {len(display_indices)} molecules."
+        )
         if not has_smiles:
             self.args.log.write(
                 "x WARNING. No SMILES column was found; molecule drawings are not available in the HTML viewer."
+            )
+        else:
+            self.args.log.write(
+                "   - Molecule drawings are embedded only for selected molecules to keep the HTML viewer lightweight."
             )
         if umap_warning is not None:
             self.args.log.write(f"x WARNING. {umap_warning}; UMAP viewer was skipped.")
@@ -3614,8 +3816,8 @@ class cluster:
             "   - trustworthiness: 0-1 score; higher means nearby molecules in 2D are "
             "likely nearby in the full selection space."
         )
-        pca_variance_retained = embeddings["PCA"]["metrics"].get("variance_retained")
-        pca_trustworthiness = embeddings["PCA"]["metrics"].get("trustworthiness")
+        pca_variance_retained = embeddings["PCA 2D"]["metrics"].get("variance_retained")
+        pca_trustworthiness = embeddings["PCA 2D"]["metrics"].get("trustworthiness")
         umap_trustworthiness = (
             embeddings["UMAP"]["metrics"].get("trustworthiness")
             if "UMAP" in embeddings
@@ -3645,20 +3847,31 @@ class cluster:
             self.args.log.write(
                 "   - UMAP was not available, so only the PCA map is reported."
             )
-        self.args.log.write("   +-----------+-----------------+----------------+")
-        self.args.log.write("   | embedding | trustworthiness | recommendation |")
-        self.args.log.write("   +-----------+-----------------+----------------+")
+        self.args.log.write("   +-----------+-----------------+-----------+----------------+")
+        self.args.log.write("   | embedding | trustworthiness | evaluated | recommendation |")
+        self.args.log.write("   +-----------+-----------------+-----------+----------------+")
         for row in fidelity_rows:
             trust_text = (
                 "NA"
                 if row["trustworthiness"] is None
                 else f"{row['trustworthiness']:.3f}"
             )
+            evaluated_text = (
+                "NA"
+                if row["evaluated_points"] is None or row["total_points"] is None
+                else f"{row['evaluated_points']}/{row['total_points']}"
+            )
             self.args.log.write(
-                f"   | {row['embedding']:<9} | {trust_text:<15} | "
+                f"   | {row['embedding']:<9} | {trust_text:<15} | {evaluated_text:<9} | "
                 f"{row['local_recommendation']:<14} |"
             )
-        self.args.log.write("   +-----------+-----------------+----------------+")
+        self.args.log.write("   +-----------+-----------------+-----------+----------------+")
+        for row in fidelity_rows:
+            if row["error"]:
+                self.args.log.write(
+                    f"x WARNING. {row['embedding']} trustworthiness was not computed: "
+                    f"{row['error']}"
+                )
         self.args.log.write(
             f"   - Interpretation: "
             f"{self.interpret_combined_2d_visualization_quality(pca_trustworthiness, pca_variance_retained, umap_trustworthiness)}"
@@ -3695,11 +3908,7 @@ class cluster:
             f'<option value="{embedding}">{embedding}</option>'
             for embedding in payload["embeddings"]
         )
-        plotly_script = (
-            f"<script>{plotly_js}</script>"
-            if plotly_js
-            else '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>'
-        )
+        plotly_script = '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>'
         base_file_name_json = json.dumps(os.path.splitext(file_name)[0])
 
         return f"""<!DOCTYPE html>
@@ -3711,8 +3920,18 @@ class cluster:
   <style>
     body {{ margin: 0; font-family: Arial, sans-serif; color: #1f2933; }}
     header {{ padding: 14px 18px; border-bottom: 1px solid #d9e2ec; }}
-    main {{ min-height: calc(100vh - 86px); }}
+    main {{ min-height: calc(100vh - 86px); display: flex; }}
+    #plotWrap {{ flex: 1 1 auto; min-width: 0; }}
     #plot {{ min-height: 720px; }}
+    #detailsPanel {{
+      width: 340px;
+      flex: 0 0 340px;
+      border-left: 1px solid #d9e2ec;
+      background: #f8fafc;
+      padding: 18px 16px;
+      box-sizing: border-box;
+      overflow: auto;
+    }}
     label {{ font-size: 13px; margin-right: 14px; }}
     select {{ margin-left: 6px; }}
     button {{
@@ -3729,27 +3948,12 @@ class cluster:
     .note {{ font-size: 12px; color: #52606d; margin-top: 8px; }}
     .mol svg {{ max-width: 100%; height: auto; }}
     .empty {{ color: #66788a; }}
-    .hover-card {{
-      position: fixed;
-      display: none;
-      z-index: 1000;
-      width: 300px;
-      max-height: 430px;
-      overflow: auto;
-      padding: 12px;
-      border: 1px solid #bcccdc;
-      border-radius: 8px;
-      background: #f5f7fa;
-      box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
-      font-size: 12px;
-      line-height: 1.35;
-      color: #1f2933;
-      pointer-events: none;
-    }}
-    .hover-card h4, .meta h4 {{ margin: 10px 0 5px; font-size: 12px; }}
-    .hover-card p, .meta p {{ margin: 5px 0; }}
-    .hover-card ul, .meta ul {{ margin: 4px 0 0 17px; padding: 0; }}
-    .hover-card .mol svg {{ max-width: 100%; height: auto; }}
+    .panel-heading {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }}
+    .panel-title {{ margin: 0; font-size: 15px; }}
+    .panel-help {{ color: #52606d; font-size: 12px; line-height: 1.45; }}
+    .meta h4 {{ margin: 10px 0 5px; font-size: 12px; }}
+    .meta p {{ margin: 5px 0; }}
+    .meta ul {{ margin: 4px 0 0 17px; padding: 0; }}
   </style>
 </head>
 <body>
@@ -3766,25 +3970,60 @@ class cluster:
     </label>
     <button id="savePngButton" type="button">Save PNG</button>
     <div class="note">
-      <div>Hover over a molecule to inspect its structure, response value when available, and selected-molecule status.</div>
+      <div>Hover over a molecule to preview its details. Click it to keep those details pinned.</div>
+      <div>All molecules are shown and remain clickable across PCA 2D, PCA 3D, and UMAP.</div>
     </div>
   </header>
   <main>
-    <div id="plot"></div>
+    <div id="plotWrap">
+      <div id="errorBanner" style="display:none; padding: 12px 18px; color: #7f1d1d; background: #fee2e2; border-bottom: 1px solid #fecaca;"></div>
+      <div id="plot"></div>
+    </div>
+    <aside id="detailsPanel">
+      <div class="panel-heading">
+        <h3 class="panel-title">Molecule Details</h3>
+        <button id="unpinButton" type="button" disabled>Unpin</button>
+      </div>
+      <div id="detailsContent" class="panel-help">Hover over any point to preview its molecule, SMILES, and metadata. Click to pin it.</div>
+    </aside>
   </main>
-  <div id="hoverCard" class="hover-card"></div>
   <script>
     const payload = {payload_json};
     const plot = document.getElementById("plot");
+    const errorBanner = document.getElementById("errorBanner");
     const embeddingSelect = document.getElementById("embeddingSelect");
     const colorSelect = document.getElementById("colorSelect");
     const savePngButton = document.getElementById("savePngButton");
-    const hoverCard = document.getElementById("hoverCard");
+    const detailsContent = document.getElementById("detailsContent");
+    const unpinButton = document.getElementById("unpinButton");
+    const initialDetailsHtml = detailsContent.innerHTML;
     const baseFileName = {base_file_name_json};
+    const PINNED_TRACE_NAME = "Pinned molecule";
+    let pinnedTraceIndex = null;
+    let hoveredPointIndex = null;
+    let native3DClickMoved = false;
+    let native3DPointerStart = null;
     function colorTitle(mode) {{
       if (mode === "target" && payload.targetColumn) return payload.targetColumn;
       if (mode.startsWith("descriptor::")) return mode.replace("descriptor::", "");
       return mode;
+    }}
+    function axisBaseLabel(embedding) {{
+      return embedding.replace(/\\s+(2D|3D)$/i, "");
+    }}
+    function percentLabel(value) {{
+      return value === null || value === undefined ? "NA" : `${{(100 * value).toFixed(1)}}%`;
+    }}
+    function plotTitle(embedding, coords) {{
+      if (coords.dims !== 2) return embedding;
+      const parts = [embedding];
+      if (coords.areaCoverage !== null && coords.areaCoverage !== undefined) {{
+        parts.push(`area coverage: ${{percentLabel(coords.areaCoverage)}}`);
+      }}
+      if (coords.dispersion !== null && coords.dispersion !== undefined) {{
+        parts.push(`dispersion: ${{percentLabel(coords.dispersion)}}`);
+      }}
+      return parts.join(" | ");
     }}
 
     function safeFilename(value) {{
@@ -3808,10 +4047,13 @@ class cluster:
       }}
     }};
 
-    function draw() {{
+    async function draw() {{
+      errorBanner.style.display = "none";
+      errorBanner.textContent = "";
       const embedding = embeddingSelect.value;
       const colorMode = colorSelect.value;
       const coords = payload.embeddings[embedding];
+      const is3D = coords.dims === 3;
       const isTargetGradient = colorMode === "target";
       const isDescriptorGradient = colorMode.startsWith("descriptor::");
       const descriptorName = isDescriptorGradient ? colorMode.replace("descriptor::", "") : null;
@@ -3822,16 +4064,28 @@ class cluster:
       const yMax = Math.max(...coords.y);
       const xPad = Math.max((xMax - xMin) * 0.05, 1e-9);
       const yPad = Math.max((yMax - yMin) * 0.05, 1e-9);
+      const zMin = is3D ? Math.min(...coords.z) : null;
+      const zMax = is3D ? Math.max(...coords.z) : null;
+      const zPad = is3D ? Math.max((zMax - zMin) * 0.05, 1e-9) : null;
+      const backgroundMarkerLine = {{ width: is3D ? 0 : 0.6, color: "#64748b" }};
 
-      function makeTrace(name, indices, marker, showScale=false, colorValues=null) {{
+      function makeTrace(name, indices, marker, options={{}}) {{
+        const {{
+          showScale = false,
+          colorValues = null,
+          interactive = false,
+          showLegend = true
+        }} = options;
         return {{
-          type: "scattergl",
+          type: is3D ? "scatter3d" : "scattergl",
           mode: "markers",
           name,
+          showlegend: showLegend,
           x: indices.map(i => coords.x[i]),
           y: indices.map(i => coords.y[i]),
-          customdata: indices,
-          hoverinfo: "none",
+          z: is3D ? indices.map(i => coords.z[i]) : undefined,
+          customdata: interactive ? indices : undefined,
+          hoverinfo: interactive ? "none" : "skip",
           marker: {{
             ...marker,
             color: colorValues ? indices.map(i => colorValues[i]) : marker.color,
@@ -3844,68 +4098,108 @@ class cluster:
       const allIndices = payload.records.map((_, i) => i);
       const selectedIndices = allIndices.filter(i => payload.records[i].selected);
       const backgroundIndices = allIndices.filter(i => !payload.records[i].selected);
+      const baseMarkerSize = is3D ? 3 : 4;
+      const selectedMarkerSize = is3D ? 10 : 12;
 
       if (isTargetGradient || isDescriptorGradient) {{
         const gradientValues = isTargetGradient
           ? payload.colors.target
           : payload.colors.descriptors[descriptorName];
         const gradientIndices = isTargetGradient
-          ? allIndices.filter(i => gradientValues[i] !== null && gradientValues[i] !== undefined)
-          : allIndices;
+          ? backgroundIndices.filter(i => gradientValues[i] !== null && gradientValues[i] !== undefined)
+          : backgroundIndices;
         const missingTargetIndices = isTargetGradient
-          ? allIndices.filter(i => gradientValues[i] === null || gradientValues[i] === undefined)
+          ? backgroundIndices.filter(i => gradientValues[i] === null || gradientValues[i] === undefined)
           : [];
         if (missingTargetIndices.length > 0) {{
           traces.push(makeTrace(`No ${{colorTitle(colorMode)}} value`, missingTargetIndices, {{
-            color: "#d1d5db",
-            size: 6,
-            opacity: 0.55,
+            color: "#e5e7eb",
+            size: baseMarkerSize,
+            opacity: 0.32,
             symbol: "circle",
-            line: {{ width: 0.2, color: "#9ca3af" }}
-          }}));
+            line: backgroundMarkerLine
+          }}, {{ interactive: true }}));
         }}
         if (gradientIndices.length > 0) {{
           traces.push(makeTrace(colorTitle(colorMode), gradientIndices, {{
-          colorscale: "Turbo",
-          size: 7,
-          opacity: 0.78,
-          symbol: "circle",
-          line: {{ width: 0.3, color: "#1f2933" }}
-          }}, true, gradientValues));
+            colorscale: "Turbo",
+            size: baseMarkerSize,
+            opacity: 0.46,
+            symbol: "circle",
+            line: backgroundMarkerLine
+          }}, {{ showScale: true, colorValues: gradientValues, interactive: true }}));
         }}
         if (selectedIndices.length > 0) {{
           traces.push(makeTrace("Selected", selectedIndices, {{
             color: "#16a34a",
-            size: 12,
+            size: selectedMarkerSize,
             opacity: 1.0,
             symbol: "circle",
-            line: {{ width: 1.2, color: "#064e3b" }}
-          }}));
+            line: {{ width: 1.5, color: "#064e3b" }}
+          }}, {{ interactive: true }}));
         }}
       }} else {{
         if (backgroundIndices.length > 0) {{
-          traces.push(makeTrace("Not selected", backgroundIndices, {{
-            color: "#b8c2cc",
-            size: 6,
-            opacity: 0.62,
+          traces.push(makeTrace("All molecules", backgroundIndices, {{
+            color: "#d9e2ec",
+            size: baseMarkerSize,
+            opacity: 0.38,
             symbol: "circle",
-            line: {{ width: 0.2, color: "#8a97a6" }}
-          }}));
+            line: backgroundMarkerLine
+          }}, {{ interactive: true }}));
         }}
         if (selectedIndices.length > 0) {{
           traces.push(makeTrace("Selected", selectedIndices, {{
             color: "#16a34a",
-            size: 11,
+            size: selectedMarkerSize,
             opacity: 1.0,
             symbol: "circle",
-            line: {{ width: 1.2, color: "#064e3b" }}
-          }}));
+            line: {{ width: 1.5, color: "#064e3b" }}
+          }}, {{ interactive: true }}));
         }}
       }}
+      const pinnedIndexValue = plot.dataset.pinnedPointIndex;
+      const pinnedPointIndex = pinnedIndexValue === undefined || pinnedIndexValue === ""
+        ? null
+        : Number(pinnedIndexValue);
+      const pinnedIndices = pinnedPointIndex === null ? [] : [pinnedPointIndex];
+      pinnedTraceIndex = traces.length;
+      traces.push(makeTrace(PINNED_TRACE_NAME, pinnedIndices, {{
+        color: "#047857",
+        size: is3D ? 18 : 20,
+        opacity: 1.0,
+        symbol: "circle-open",
+        line: {{ width: 3, color: "#064e3b" }}
+      }}, {{ interactive: true, showLegend: false }}));
       const layout = {{
-        margin: {{ l: 50, r: 20, t: 25, b: 45 }},
-        xaxis: {{
-          title: embedding + " 1",
+        margin: {{ l: 50, r: 20, t: 88, b: 45 }},
+        dragmode: is3D ? "turntable" : "pan",
+        title: {{
+          text: plotTitle(embedding, coords),
+          x: 0.02,
+          xanchor: "left",
+          y: 0.99,
+          yanchor: "top",
+          pad: {{ b: 12 }},
+          font: {{ size: 15, color: "#1f2933" }}
+        }},
+        legend: {{
+          orientation: "h",
+          x: 0,
+          xanchor: "left",
+          y: 1.035,
+          yanchor: "top"
+        }}
+      }};
+      if (is3D) {{
+        layout.scene = {{
+          xaxis: {{ title: axisBaseLabel(embedding) + " 1", backgroundcolor: "#ffffff", gridcolor: "#d9e2ec", autorange: false, range: [xMin - xPad, xMax + xPad] }},
+          yaxis: {{ title: axisBaseLabel(embedding) + " 2", backgroundcolor: "#ffffff", gridcolor: "#d9e2ec", autorange: false, range: [yMin - yPad, yMax + yPad] }},
+          zaxis: {{ title: axisBaseLabel(embedding) + " 3", backgroundcolor: "#ffffff", gridcolor: "#d9e2ec", autorange: false, range: [zMin - zPad, zMax + zPad] }},
+        }};
+      }} else {{
+        layout.xaxis = {{
+          title: axisBaseLabel(embedding) + " 1",
           zeroline: false,
           showgrid: false,
           showline: true,
@@ -3918,9 +4212,9 @@ class cluster:
           titlefont: {{ color: "#000000" }},
           autorange: false,
           range: [xMin - xPad, xMax + xPad]
-        }},
-        yaxis: {{
-          title: embedding + " 2",
+        }};
+        layout.yaxis = {{
+          title: axisBaseLabel(embedding) + " 2",
           zeroline: false,
           showgrid: false,
           showline: true,
@@ -3933,12 +4227,30 @@ class cluster:
           titlefont: {{ color: "#000000" }},
           autorange: false,
           range: [yMin - yPad, yMax + yPad]
-        }},
-        dragmode: "pan",
-        legend: {{ orientation: "h", x: 0, y: 1.08 }}
-      }};
+        }};
+      }}
       plotConfig.toImageButtonOptions.filename = currentPlotFileName();
-      Plotly.react(plot, traces, layout, plotConfig);
+      try {{
+        if (typeof Plotly === "undefined") {{
+          throw new Error("Plotly was not loaded in the HTML viewer.");
+        }}
+        const previousDims = plot.dataset.plotDims;
+        const currentDims = String(coords.dims);
+        if (previousDims && previousDims !== currentDims) {{
+          Plotly.purge(plot);
+        }}
+        plot.dataset.plotDims = currentDims;
+        if (previousDims && previousDims === currentDims) {{
+          await Plotly.react(plot, traces, layout, plotConfig);
+        }} else {{
+          await Plotly.newPlot(plot, traces, layout, plotConfig);
+        }}
+        bindPlotEvents();
+        restorePinnedRecord();
+      }} catch (error) {{
+        errorBanner.textContent = `Viewer rendering error: ${{error && error.message ? error.message : error}}`;
+        errorBanner.style.display = "block";
+      }}
     }}
 
     function downloadCurrentPlot() {{
@@ -3958,9 +4270,11 @@ class cluster:
     }}
 
     function moleculeBlock(record) {{
-      return record.svg
-        ? `<div class="mol">${{record.svg}}</div>`
-        : `<p class="empty">${{payload.hasSmiles ? "No valid molecule drawing available." : "No SMILES column available."}}</p>`;
+      if (record.svg) return `<div class="mol">${{record.svg}}</div>`;
+      if (payload.hasSmiles && !record.selected) {{
+        return '<p class="empty">Molecule drawings are included only for selected molecules.</p>';
+      }}
+      return `<p class="empty">${{payload.hasSmiles ? "No valid molecule drawing available." : "No SMILES column available."}}</p>`;
     }}
 
     function recordCard(record) {{
@@ -3972,28 +4286,100 @@ class cluster:
         ${{payload.targetColumn ? `<p>${{escapeHtml(payload.targetColumn)}}: ${{escapeHtml(record.target)}}</p>` : ""}}
       `;
     }}
-
-    draw();
-    plot.on("plotly_hover", event => {{
-      const pointIndex = event.points[0].customdata;
+    function showRecord(pointIndex) {{
+      if (pointIndex === null || pointIndex === undefined) return false;
       const record = payload.records[pointIndex];
-      hoverCard.innerHTML = recordCard(record);
-      hoverCard.style.display = "block";
-      const x = event.event.clientX + 16;
-      const y = event.event.clientY + 16;
-      const maxX = window.innerWidth - hoverCard.offsetWidth - 12;
-      const maxY = window.innerHeight - hoverCard.offsetHeight - 12;
-      hoverCard.style.left = `${{Math.max(12, Math.min(x, maxX))}}px`;
-      hoverCard.style.top = `${{Math.max(12, Math.min(y, maxY))}}px`;
-    }});
+      if (!record) return false;
+      detailsContent.className = "meta";
+      detailsContent.innerHTML = recordCard(record);
+      return true;
+    }}
+    function previewRecord(pointIndex) {{
+      showRecord(pointIndex);
+    }}
+    function updatePinnedMarker(pointIndex) {{
+      if (pinnedTraceIndex === null || typeof Plotly === "undefined") return;
+      const coords = payload.embeddings[embeddingSelect.value];
+      if (coords.dims === 3) return;
+      const pointIndices = pointIndex === null || pointIndex === undefined
+        ? []
+        : [pointIndex];
+      const update = {{
+        x: [pointIndices.map(index => coords.x[index])],
+        y: [pointIndices.map(index => coords.y[index])],
+        customdata: [pointIndices]
+      }};
+      Plotly.restyle(plot, update, [pinnedTraceIndex]);
+    }}
+    function pinRecord(pointIndex) {{
+      if (!showRecord(pointIndex)) return;
+      plot.dataset.pinnedPointIndex = String(pointIndex);
+      unpinButton.disabled = false;
+      updatePinnedMarker(pointIndex);
+    }}
+    function restorePinnedRecord() {{
+      const pinnedIndex = plot.dataset.pinnedPointIndex;
+      if (pinnedIndex !== undefined && pinnedIndex !== "") {{
+        showRecord(Number(pinnedIndex));
+        return;
+      }}
+      detailsContent.className = "panel-help";
+      detailsContent.innerHTML = initialDetailsHtml;
+    }}
+    function clearPinnedRecord() {{
+      delete plot.dataset.pinnedPointIndex;
+      unpinButton.disabled = true;
+      updatePinnedMarker(null);
+      restorePinnedRecord();
+    }}
+    function bindPlotEvents() {{
+      if (typeof plot.removeAllListeners === "function") {{
+        plot.removeAllListeners("plotly_click");
+        plot.removeAllListeners("plotly_hover");
+        plot.removeAllListeners("plotly_unhover");
+      }}
+      plot.on("plotly_click", event => {{
+        if (!event.points || event.points.length === 0) return;
+        pinRecord(event.points[0].customdata);
+      }});
+      plot.on("plotly_hover", event => {{
+        if (!event.points || event.points.length === 0) return;
+        plot.style.cursor = "crosshair";
+        hoveredPointIndex = event.points[0].customdata;
+        previewRecord(hoveredPointIndex);
+      }});
+      plot.on("plotly_unhover", () => {{
+        plot.style.cursor = "";
+        hoveredPointIndex = null;
+        restorePinnedRecord();
+      }});
+    }}
 
-    plot.on("plotly_unhover", () => {{
-      hoverCard.style.display = "none";
+    plot.addEventListener("pointerdown", event => {{
+      native3DPointerStart = [event.clientX, event.clientY];
+      native3DClickMoved = false;
     }});
+    plot.addEventListener("pointermove", event => {{
+      if (native3DPointerStart === null) return;
+      const [startX, startY] = native3DPointerStart;
+      if (Math.hypot(event.clientX - startX, event.clientY - startY) > 4) {{
+        native3DClickMoved = true;
+      }}
+    }});
+    plot.addEventListener("click", () => {{
+      const coords = payload.embeddings[embeddingSelect.value];
+      if (coords.dims === 3 && !native3DClickMoved && hoveredPointIndex !== null) {{
+        pinRecord(hoveredPointIndex);
+      }}
+      native3DClickMoved = false;
+      native3DPointerStart = null;
+    }});
+    draw();
 
     embeddingSelect.addEventListener("change", draw);
     colorSelect.addEventListener("change", draw);
     savePngButton.addEventListener("click", downloadCurrentPlot);
+    unpinButton.addEventListener("click", clearPinnedRecord);
   </script>
 </body>
 </html>
@@ -4137,8 +4523,12 @@ class cluster:
             coverage_result["descriptor_df"],
             coverage_result["selection_region_labels"],
         )
+        coverage_descriptor_importance_path = (
+            f"{CHEMICAL_SPACE_OUTPUT_DIR}/coverage_descriptor_importance.csv"
+        )
+        os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
         coverage_descriptor_importance_df.to_csv(
-            "batch_0/coverage_descriptor_importance.csv",
+            coverage_descriptor_importance_path,
             index=False,
         )
 
@@ -4170,6 +4560,19 @@ class cluster:
 
         self.args.log.write("\no Saved coverage selection outputs:")
         self.args.log.write(f"   - batch_0/{csv[0]}_b0.csv")
-        self.args.log.write("   - batch_0/coverage_descriptor_importance.csv")
+        self.args.log.write(f"   - {coverage_descriptor_importance_path}")
+        exported_coordinate_files = []
+        if hasattr(self, "_latest_chemical_space_embeddings") and hasattr(
+            self,
+            "_latest_chemical_space_display_indices",
+        ):
+            exported_coordinate_files = self.export_chemical_space_csvs(
+                descp_df,
+                self._latest_chemical_space_display_indices,
+                self._latest_chemical_space_embeddings,
+            )
+
         self.args.log.write(f"   - {viewer_path}")
+        for exported_path in exported_coordinate_files:
+            self.args.log.write(f"   - {exported_path}")
         self.args.log.write(f"\no Selected representative molecules for ({file_name})")

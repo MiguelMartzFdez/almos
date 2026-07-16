@@ -82,8 +82,8 @@ def test_cluster_end_to_end_generates_current_outputs(tmp_path, monkeypatch):
 
     batch_dir = tmp_path / "batch_0"
     assert (batch_dir / "CLUSTER_data.dat").exists()
-    assert (batch_dir / "chemical_space_viewer.html").exists()
-    assert (batch_dir / "coverage_descriptor_importance.csv").exists()
+    assert (batch_dir / "chemical_space" / "chemical_space_viewer.html").exists()
+    assert (batch_dir / "chemical_space" / "coverage_descriptor_importance.csv").exists()
     assert (batch_dir / "test_cluster14_b0.csv").exists()
 
     output_df = pd.read_csv(batch_dir / "test_cluster14_b0.csv")
@@ -93,7 +93,7 @@ def test_cluster_end_to_end_generates_current_outputs(tmp_path, monkeypatch):
     dat_text = read_text(batch_dir / "CLUSTER_data.dat")
     assert "Coverage selection input preparation" in dat_text
     assert "2D chemical space visualization" in dat_text
-    assert "Saved batch_0/chemical_space_viewer.html" in dat_text
+    assert "Saved batch_0/chemical_space/chemical_space_viewer.html" in dat_text
     assert "Descriptors most associated with selection regions" in dat_text
 
 
@@ -123,7 +123,7 @@ def test_cluster_evaluate_mode_reuses_existing_selection(tmp_path, monkeypatch):
     assert "Running CLUSTER in evaluation-only mode" in dat_text
     assert "Representative reselection: skipped (--evaluate)" in dat_text
     assert "Rows selected by the user (batch = 0): 2" in dat_text
-    assert "Saved batch_0/chemical_space_viewer.html" in dat_text
+    assert "Saved batch_0/chemical_space/chemical_space_viewer.html" in dat_text
 
 
 def build_cluster_stub(tmp_path):
@@ -175,15 +175,15 @@ def test_compute_pca_2d_embedding_handles_one_and_many_dimensions(tmp_path):
     assert embedded_many.shape == (3, 2)
 
 
-def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
-    instance = build_cluster_stub(tmp_path)
-    payload = {
+def build_chemical_space_viewer_payload():
+    return {
         "targetColumn": "solubility",
         "targetIsNumeric": True,
         "descriptorColorColumns": ["TPSA", "MolWt"],
         "embeddings": {
-            "PCA": {"x": [0.0, 1.0], "y": [1.0, 0.0]},
-            "UMAP": {"x": [0.2, 0.8], "y": [0.9, 0.1]},
+            "PCA 2D": {"dims": 2, "x": [0.0, 1.0], "y": [1.0, 0.0], "trustworthiness": 0.91, "varianceRetained": 0.73, "areaCoverage": 0.84, "dispersion": 0.61},
+            "PCA 3D": {"dims": 3, "x": [0.0, 1.0], "y": [1.0, 0.0], "z": [0.5, -0.5], "trustworthiness": 0.91, "varianceRetained": 0.73, "areaCoverage": None, "dispersion": None},
+            "UMAP": {"dims": 2, "x": [0.2, 0.8], "y": [0.9, 0.1], "trustworthiness": 0.88, "varianceRetained": None, "areaCoverage": 0.79, "dispersion": 0.58},
         },
         "records": [
             {"name": "a", "selected": True, "smiles": "CC", "target": 1.2, "svg": "<svg></svg>"},
@@ -196,6 +196,11 @@ def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
         "hasSmiles": True,
     }
 
+
+def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
+    instance = build_cluster_stub(tmp_path)
+    payload = build_chemical_space_viewer_payload()
+
     html = instance.render_chemical_space_viewer_html(payload, "", "demo.csv")
 
     assert "Color by" in html
@@ -203,8 +208,124 @@ def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
     assert 'value="target"' in html
     assert 'value="descriptor::TPSA"' in html
     assert 'value="descriptor::MolWt"' in html
-    assert "PCA" in html
+    assert "PCA 2D" in html
+    assert "PCA 3D" in html
     assert "UMAP" in html
+    assert 'type: is3D ? "scatter3d" : "scattergl"' in html
+    assert 'const errorBanner = document.getElementById("errorBanner");' in html
+    assert "All molecules are shown and remain clickable across PCA 2D, PCA 3D, and UMAP." in html
+    assert "Hover over any point to preview its molecule, SMILES, and metadata." in html
+    assert 'function axisBaseLabel(embedding)' in html
+    assert "async function draw()" in html
+    assert 'function plotTitle(embedding, coords)' in html
+    assert 'area coverage: ${percentLabel(coords.areaCoverage)}' in html
+    assert 'dispersion: ${percentLabel(coords.dispersion)}' in html
+    assert 'const backgroundIndices = allIndices.filter(i => !payload.records[i].selected);' in html
+    assert '? backgroundIndices.filter(i => gradientValues[i] !== null && gradientValues[i] !== undefined)' in html
+    assert 'traces.push(makeTrace("All molecules", backgroundIndices, {' in html
+    assert 'margin: { l: 50, r: 20, t: 88, b: 45 },' in html
+    assert 'y: 1.035,' in html
+    assert 'await Plotly.react(plot, traces, layout, plotConfig);' in html
+    assert 'await Plotly.newPlot(plot, traces, layout, plotConfig);' in html
+    assert 'plot.on("plotly_click", event => {' in html
+    assert 'plot.on("plotly_hover", event => {' in html
+    assert "restorePinnedRecord();" in html
+    assert "if (is3D) {" in html
+    assert "layout.scene = {" in html
+    assert "layout.xaxis = {" in html
+    assert "layout.yaxis = {" in html
+    assert "Plotly.purge(plot);" in html
+    assert "Plotly.react(plot, traces, layout, plotConfig);" in html
+    assert "Plotly.newPlot(plot, traces, layout, plotConfig);" in html
+
+
+def test_render_chemical_space_viewer_uses_one_2d_renderer_and_selected_last(tmp_path):
+    instance = build_cluster_stub(tmp_path)
+    payload = build_chemical_space_viewer_payload()
+
+    html = instance.render_chemical_space_viewer_html(payload, "", "demo.csv")
+
+    assert 'type: is3D ? "scatter3d" : "scattergl"' in html
+    assert "useGL" not in html
+    assert 'width: is3D ? 0 : 0.6, color: "#64748b"' in html
+    assert 'line: { width: 1.5, color: "#064e3b" }' in html
+    assert html.rindex('makeTrace("All molecules"') < html.rindex(
+        'makeTrace("Selected"'
+    )
+
+
+def test_render_chemical_space_viewer_keeps_3d_ranges_and_removes_background_edges(
+    tmp_path,
+):
+    instance = build_cluster_stub(tmp_path)
+    payload = build_chemical_space_viewer_payload()
+
+    html = instance.render_chemical_space_viewer_html(payload, "", "demo.csv")
+
+    assert (
+        'const backgroundMarkerLine = { width: is3D ? 0 : 0.6, color: "#64748b" };'
+        in html
+    )
+    assert html.count("line: backgroundMarkerLine") == 3
+    assert "const zMin = is3D ? Math.min(...coords.z) : null;" in html
+    assert "const zMax = is3D ? Math.max(...coords.z) : null;" in html
+    assert (
+        "const zPad = is3D ? Math.max((zMax - zMin) * 0.05, 1e-9) : null;"
+        in html
+    )
+    assert 'autorange: false, range: [xMin - xPad, xMax + xPad]' in html
+    assert 'autorange: false, range: [yMin - yPad, yMax + yPad]' in html
+    assert 'autorange: false, range: [zMin - zPad, zMax + zPad]' in html
+
+
+def test_render_chemical_space_viewer_supports_hover_preview_and_pinning(tmp_path):
+    instance = build_cluster_stub(tmp_path)
+    payload = build_chemical_space_viewer_payload()
+
+    html = instance.render_chemical_space_viewer_html(payload, "", "demo.csv")
+
+    assert 'id="unpinButton"' in html
+    assert "function previewRecord(pointIndex)" in html
+    assert "function pinRecord(pointIndex)" in html
+    assert "function restorePinnedRecord()" in html
+    assert "function clearPinnedRecord()" in html
+    assert 'plot.on("plotly_hover", event => {' in html
+    assert "previewRecord(hoveredPointIndex);" in html
+    assert 'plot.on("plotly_unhover", () => {' in html
+    assert "restorePinnedRecord();" in html
+    assert "pinRecord(event.points[0].customdata);" in html
+    assert 'unpinButton.addEventListener("click", clearPinnedRecord);' in html
+    assert "record.selected" in html
+    assert "Molecule drawings are included only for selected molecules." in html
+    assert 'SMILES: ${escapeHtml(record.smiles || "NA")}' in html
+    assert 'const PINNED_TRACE_NAME = "Pinned molecule";' in html
+    assert "let pinnedTraceIndex = null;" in html
+    assert "showlegend: showLegend" in html
+    assert "traces.push(makeTrace(PINNED_TRACE_NAME, pinnedIndices, {" in html
+    assert 'symbol: "circle-open"' in html
+    assert 'color: "#047857"' in html
+    assert 'line: { width: 3, color: "#064e3b" }' in html
+    assert html.rindex('makeTrace("Selected"') < html.index(
+        "makeTrace(PINNED_TRACE_NAME"
+    )
+    assert "function updatePinnedMarker(pointIndex)" in html
+    assert "if (coords.dims === 3) return;" in html
+    assert "Plotly.restyle(plot, update, [pinnedTraceIndex]);" in html
+    assert "updatePinnedMarker(pointIndex);" in html
+    assert "updatePinnedMarker(null);" in html
+    assert 'plot.style.cursor = "crosshair";' in html
+    assert 'plot.style.cursor = "";' in html
+    assert "let hoveredPointIndex = null;" in html
+    assert "hoveredPointIndex = event.points[0].customdata;" in html
+    assert "hoveredPointIndex = null;" in html
+    assert 'plot.addEventListener("click", () => {' in html
+    assert "pinRecord(hoveredPointIndex);" in html
+    assert "let native3DClickMoved = false;" in html
+    assert 'plot.addEventListener("pointerdown", event => {' in html
+    assert "native3DClickMoved = false;" in html
+    assert 'plot.addEventListener("pointermove", event => {' in html
+    assert "native3DClickMoved = true;" in html
+    assert "if (coords.dims === 3 && !native3DClickMoved && hoveredPointIndex !== null)" in html
 
 
 def test_validate_cluster_threshold_options_resets_invalid_values():
@@ -412,7 +533,11 @@ def test_save_cluster_outputs_writes_files_for_new_selection(tmp_path, monkeypat
     instance.args.evaluate = False
     instance.args.ignore = []
     instance.select_representative_points = lambda _coverage_result: ([0, 2], {0: 1, 2: 2}, {})
-    instance.build_chemical_space_viewer = lambda **_kwargs: "batch_0/chemical_space_viewer.html"
+    instance.build_chemical_space_viewer = lambda **_kwargs: "batch_0/chemical_space/chemical_space_viewer.html"
+    instance.export_chemical_space_csvs = lambda *_args, **_kwargs: [
+        "batch_0/chemical_space/chemical_space_pca.csv",
+        "batch_0/chemical_space/chemical_space_umap.csv",
+    ]
     instance.args.log = SimpleNamespace(write=lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(
@@ -439,7 +564,7 @@ def test_save_cluster_outputs_writes_files_for_new_selection(tmp_path, monkeypat
 
     saved_df = pd.read_csv(tmp_path / "batch_0" / "demo_b0.csv")
     assert int(pd.to_numeric(saved_df["batch"], errors="coerce").eq(0).sum()) == 2
-    assert (tmp_path / "batch_0" / "coverage_descriptor_importance.csv").exists()
+    assert (tmp_path / "batch_0" / "chemical_space" / "coverage_descriptor_importance.csv").exists()
 
 
 def test_allocate_points_by_group_population_handles_small_and_proportional_cases():
@@ -481,11 +606,57 @@ def test_molecule_svg_from_smiles_and_visual_quality_helpers():
         np.array([True, False, True, False]),
     )
     assert fidelity["trustworthiness"] is not None
+    assert fidelity["evaluated_points"] == 4
+    assert fidelity["total_points"] == 4
+    assert fidelity["error"] is None
     assert instance.compute_pca_2d_variance(np.array([[1.0], [2.0], [3.0]])) == 1.0
     assert instance.classify_visualization_local_quality(0.96) == "EXCELLENT"
     assert instance.classify_visualization_local_quality(0.85) == "ACCEPTABLE"
+    assert instance.classify_visualization_local_quality(None) == "NOT COMPUTED"
     assert "rough visual guides" in instance.interpret_combined_2d_visualization_quality(0.7, 0.4, None)
     assert "local neighborhoods well" in instance.interpret_combined_2d_visualization_quality(0.92, 0.8, 0.93)
+    assert "not computed" in instance.interpret_combined_2d_visualization_quality(None, 0.8, None).lower()
+
+
+def test_embedding_fidelity_sampling_is_deterministic_and_keeps_selected_points(tmp_path):
+    instance = build_cluster_stub(tmp_path)
+    selected_mask = np.zeros(5000, dtype=bool)
+    selected_mask[[3, 2500, 4999]] = True
+
+    first_indices = instance.select_embedding_fidelity_indices(
+        len(selected_mask), selected_mask
+    )
+    second_indices = instance.select_embedding_fidelity_indices(
+        len(selected_mask), selected_mask
+    )
+
+    assert len(first_indices) == 2000
+    assert len(np.unique(first_indices)) == 2000
+    assert {3, 2500, 4999}.issubset(set(first_indices.tolist()))
+    assert np.array_equal(first_indices, second_indices)
+
+
+def test_compute_embedding_fidelity_reports_sampling_errors(tmp_path, monkeypatch):
+    instance = build_cluster_stub(tmp_path)
+    original_data = np.arange(40, dtype=float).reshape(20, 2)
+    embedding = original_data.copy()
+    selected_mask = np.zeros(20, dtype=bool)
+
+    def fail_trustworthiness(*_args, **_kwargs):
+        raise MemoryError("pairwise matrix is too large")
+
+    monkeypatch.setattr("almos.cluster.trustworthiness", fail_trustworthiness)
+
+    fidelity = instance.compute_embedding_fidelity(
+        original_data,
+        embedding,
+        selected_mask,
+    )
+
+    assert fidelity["trustworthiness"] is None
+    assert fidelity["evaluated_points"] == 20
+    assert fidelity["total_points"] == 20
+    assert fidelity["error"] == "pairwise matrix is too large"
 
 
 def test_build_chemical_space_viewer_generates_html_and_payload_options(tmp_path, monkeypatch):
@@ -494,9 +665,22 @@ def test_build_chemical_space_viewer_generates_html_and_payload_options(tmp_path
     instance = build_cluster_stub(tmp_path)
     instance.args.name = "Code_Name"
     instance.args.y = "target"
-    instance.args.log = SimpleNamespace(write=lambda *_args, **_kwargs: None)
+    log_lines = []
+    instance.args.log = SimpleNamespace(write=log_lines.append)
     instance.compute_umap_2d_embedding = lambda *_args, **_kwargs: (None, None, "UMAP is not installed")
     instance.molecule_svg_from_smiles = lambda smiles: f"<svg>{smiles}</svg>"
+    fidelity_dimensions = []
+
+    def record_fidelity_dimensions(original_data, embedding, selected_mask):
+        fidelity_dimensions.append(embedding.shape[1])
+        return {
+            "trustworthiness": 0.9,
+            "evaluated_points": len(original_data),
+            "total_points": len(original_data),
+            "error": None,
+        }
+
+    instance.compute_embedding_fidelity = record_fidelity_dimensions
 
     descp_df = pd.DataFrame(
         {
@@ -533,9 +717,105 @@ def test_build_chemical_space_viewer_generates_html_and_payload_options(tmp_path
     )
 
     html = read_text(tmp_path / viewer_path)
-    assert viewer_path == "batch_0/chemical_space_viewer.html"
+    assert viewer_path == "batch_0/chemical_space/chemical_space_viewer.html"
     assert "descriptor::descp2" in html
     assert "descriptor::descp1" in html
     assert "target" in html
     assert "Selected" in html
+    assert "PCA 3D" in html
     assert "No valid numeric value" in html or "Color by" in html
+    assert fidelity_dimensions == [2, 3]
+    assert any("3/3" in line for line in log_lines)
+
+
+def test_build_chemical_space_viewer_draws_svg_only_for_selected_molecules(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "batch_0").mkdir()
+    instance = build_cluster_stub(tmp_path)
+    instance.args.name = "Code_Name"
+    instance.args.y = "target"
+    instance.args.log = SimpleNamespace(write=lambda *_args, **_kwargs: None)
+    instance.compute_umap_2d_embedding = lambda *_args, **_kwargs: (None, None, "UMAP is not installed")
+    svg_calls = []
+    instance.molecule_svg_from_smiles = lambda smiles: svg_calls.append(smiles) or f"<svg>{smiles}</svg>"
+
+    descp_df = pd.DataFrame(
+        {
+            "Code_Name": ["a", "b", "c"],
+            "SMILES": ["CC", "CO", "CN"],
+            "target": [1.0, 2.5, 3.5],
+            "descp1": [0.1, 0.2, 0.3],
+            "descp2": [1.1, 1.2, 1.3],
+        }
+    )
+    coverage_result = {
+        "selection_data": np.array([[0.0, 1.0], [1.0, 0.0], [0.5, 0.5]]),
+        "descriptor_df": descp_df[["descp1", "descp2"]],
+        "selection_region_labels": np.array([0, 1, 1]),
+    }
+
+    monkeypatch.setattr(
+        "almos.cluster.compute_cluster_descriptor_importance",
+        lambda *_args, **_kwargs: pd.DataFrame(
+            {
+                "descriptor": ["descp2", "descp1"],
+                "rank": [1, 2],
+                "f_score": [2.0, 1.0],
+                "eta_squared": [0.4, 0.2],
+            }
+        ),
+    )
+
+    instance.build_chemical_space_viewer(
+        descp_df=descp_df,
+        selected_indices=[1],
+        coverage_result=coverage_result,
+        file_name="demo.csv",
+    )
+
+    assert svg_calls == ["CO"]
+
+
+def test_export_chemical_space_csvs_writes_pca_and_umap_files(tmp_path):
+    instance = build_full_cluster_stub()
+    instance.args.name = "Code_Name"
+    instance.args.y = "target"
+    instance.args.log = SimpleNamespace(write=lambda *_args, **_kwargs: None)
+    descp_df = pd.DataFrame(
+        {
+            "Code_Name": ["a", "b", "c"],
+            "SMILES": ["CC", "CO", "CN"],
+            "target": [1.0, 2.0, 3.0],
+            "batch": [0, None, 1],
+        }
+    )
+    embeddings = {
+        "PCA 3D": {
+            "dims": 3,
+            "x": [0.0, 1.0, 2.0],
+            "y": [0.1, 1.1, 2.1],
+            "z": [0.2, 1.2, 2.2],
+        },
+        "UMAP": {
+            "dims": 2,
+            "x": [3.0, 4.0, 5.0],
+            "y": [3.1, 4.1, 5.1],
+        },
+    }
+    output_paths = instance.export_chemical_space_csvs(
+        descp_df,
+        np.array([0, 1, 2]),
+        embeddings,
+    )
+
+    assert "batch_0/chemical_space/chemical_space_pca.csv" in output_paths
+    assert "batch_0/chemical_space/chemical_space_umap.csv" in output_paths
+
+    pca_df = pd.read_csv("batch_0/chemical_space/chemical_space_pca.csv")
+    umap_df = pd.read_csv("batch_0/chemical_space/chemical_space_umap.csv")
+    assert list(pca_df.columns) == ["Code_Name", "batch", "pc1", "pc2", "pc3", "smiles"]
+    assert list(umap_df.columns) == ["Code_Name", "batch", "umap_1", "umap_2", "smiles"]
+    assert pca_df.loc[1, "Code_Name"] == "b"
+    assert pd.isna(pca_df.loc[1, "batch"])
+    assert pca_df.loc[1, "smiles"] == "CO"
+    assert umap_df.loc[2, "umap_2"] == 5.1

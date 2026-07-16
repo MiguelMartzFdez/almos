@@ -9,8 +9,8 @@ SHARE_DIR="$SYSTEM_ROOT/share"
 ICON_DIR="$SHARE_DIR/icons"
 SCRIPT_ROOT="${EASYALMOS_SCRIPT_ROOT:-/usr/lib/easyalmos}"
 ENV_FILE="${EASYALMOS_ENV_FILE:-$SCRIPT_ROOT/shared/almos.yaml}"
-ICON_SOURCE="${EASYALMOS_ICON_SOURCE:-/usr/share/pixmaps/easyalmos.png}"
-ICON_TARGET="$ICON_DIR/easyalmos.png"
+ICON_SOURCE="${EASYALMOS_ICON_SOURCE:-/usr/share/pixmaps/almos_icon.png}"
+ICON_TARGET="$ICON_DIR/almos_icon.png"
 BOOTSTRAP_MICROMAMBA="${EASYALMOS_BUNDLED_MICROMAMBA:-$SCRIPT_ROOT/bootstrap/micromamba}"
 MICROMAMBA_TARBALL_URL="${MICROMAMBA_TARBALL_URL:-https://micro.mamba.pm/api/micromamba/linux-64/latest}"
 
@@ -48,8 +48,25 @@ run_and_log() {
   log "Running: $*"
   if ! "$@" 2> >(tee -a "$ERROR_LOG" >&2) | tee -a "$INSTALL_LOG"; then
     log "Command failed: $*"
-    exit 1
+    return 1
   fi
+}
+
+run_environment_create_with_retry() {
+  local max_environment_create_attempts=3
+  local attempt=1
+
+  while (( attempt <= max_environment_create_attempts )); do
+    if run_and_log "$BIN_DIR/micromamba" create -y -p "$ENV_PREFIX" -f "$ENV_FILE"; then
+      return 0
+    fi
+    if (( attempt == max_environment_create_attempts )); then
+      return 1
+    fi
+    log "Environment creation attempt $attempt of $max_environment_create_attempts failed; retrying in $((attempt * 5)) seconds."
+    sleep "$((attempt * 5))"
+    ((attempt++))
+  done
 }
 
 TMP_DIR="$(mktemp -d)"
@@ -83,8 +100,8 @@ else
   install -m 0755 "$TMP_DIR/bin/micromamba" "$BIN_DIR/micromamba"
 fi
 
-log "Creating ALMOS environment..."
-run_and_log "$BIN_DIR/micromamba" create -y -p "$ENV_PREFIX" -f "$ENV_FILE"
+log "Creating EasyALMOS environment..."
+run_environment_create_with_retry
 
 if [[ -f "$ICON_SOURCE" ]]; then
   log "Installing icon copy into system runtime..."

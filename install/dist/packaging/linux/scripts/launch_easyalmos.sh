@@ -5,8 +5,7 @@ INSTALL_ROOT="${EASYALMOS_INSTALL_ROOT:-${EASYALMOS_SYSTEM_ROOT:-${XDG_DATA_HOME
 MICROMAMBA_BIN="$INSTALL_ROOT/bin/micromamba"
 ENV_PREFIX="$INSTALL_ROOT/envs/almos"
 ENV_PYTHON="$ENV_PREFIX/bin/python"
-USER_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/easyalmos"
-LOG_DIR="$USER_STATE_DIR/logs"
+LOG_DIR="$INSTALL_ROOT/logs"
 RUNTIME_LOG="$LOG_DIR/runtime.log"
 NOTICE_PID=""
 
@@ -61,7 +60,7 @@ stop_opening_notice() {
 }
 
 if [[ ! -d "$ENV_PREFIX" ]]; then
-  echo "ALMOS environment not found at $ENV_PREFIX" >&2
+  echo "EasyALMOS environment not found at $ENV_PREFIX" >&2
   exit 1
 fi
 

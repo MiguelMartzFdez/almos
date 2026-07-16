@@ -13,7 +13,7 @@ $installRoot = [System.IO.Path]::GetFullPath($InstallDir)
 $successFile = Join-Path $StateDir 'success.flag'
 $failureFile = Join-Path $StateDir 'failure.txt'
 $targets = @(
-    (Join-Path $installRoot 'miniforge'),
+    (Join-Path $installRoot 'micromamba'),
     (Join-Path $installRoot 'logs')
 )
 

@@ -1,21 +1,21 @@
 #define MyAppName "EasyALMOS"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "__EASYALMOS_VERSION__"
 #define MyAppPublisher "The Alegre Group"
 #define MyAppIcon "assets\almos_icon.ico"
-#define MiniforgeInstaller "assets\Miniforge3-Windows-x86_64.exe"
+#define MicromambaInstaller "assets\micromamba-win-64.exe"
 #define DependencyHelper "scripts\install_easyalmos.ps1"
 #define UninstallHelper "scripts\uninstall_easyalmos.ps1"
 #define SharedEnvFile "..\shared\almos.yaml"
 #define GuiLauncher "scripts\launch_easyalmos.pyw"
 #define MyAppIconName "almos_icon.ico"
-#define MiniforgeInstallerName "Miniforge3-Windows-x86_64.exe"
+#define MicromambaInstallerName "micromamba-win-64.exe"
 #define DependencyHelperName "install_easyalmos.ps1"
 #define UninstallHelperName "uninstall_easyalmos.ps1"
 #define SharedEnvFileName "almos.yaml"
 #define GuiLauncherName "launch_easyalmos.pyw"
 
 [Setup]
-AppId={{80A5B503-8F72-4CB2-B695-7E5E922E4624}
+AppId={{744CEB57-3746-4D55-898A-6D6BAA1A89F3}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -50,7 +50,7 @@ Name: "{app}\logs"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Files]
-Source: "{#MiniforgeInstaller}"; Flags: dontcopy
+Source: "{#MicromambaInstaller}"; Flags: dontcopy
 Source: "{#SharedEnvFile}"; Flags: dontcopy
 Source: "{#DependencyHelper}"; Flags: dontcopy
 Source: "{#GuiLauncher}"; DestDir: "{app}"; DestName: "{#GuiLauncherName}"; Flags: ignoreversion
@@ -58,8 +58,8 @@ Source: "{#UninstallHelper}"; DestDir: "{app}"; DestName: "{#UninstallHelperName
 Source: "{#MyAppIcon}"; DestDir: "{app}"; DestName: "{#MyAppIconName}"; Flags: ignoreversion
 
 [Icons]
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\miniforge\envs\almos\pythonw.exe"; Parameters: """{app}\{#GuiLauncherName}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppIconName}"; Tasks: desktopicon
-Name: "{userprograms}\{#MyAppName}\{#MyAppName}"; Filename: "{app}\miniforge\envs\almos\pythonw.exe"; Parameters: """{app}\{#GuiLauncherName}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppIconName}"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\micromamba\envs\almos\pythonw.exe"; Parameters: """{app}\{#GuiLauncherName}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppIconName}"; Tasks: desktopicon
+Name: "{userprograms}\{#MyAppName}\{#MyAppName}"; Filename: "{app}\micromamba\envs\almos\pythonw.exe"; Parameters: """{app}\{#GuiLauncherName}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppIconName}"
 
 [Code]
 type
@@ -169,7 +169,7 @@ begin
     Exit;
 
   { These are the only external directories created by this installer. }
-  DelTree(AddBackslash(AppDir) + 'miniforge', True, True, True);
+  DelTree(AddBackslash(AppDir) + 'micromamba', True, True, True);
   if RemoveLogs then
     DelTree(AddBackslash(AppDir) + 'logs', True, True, True);
 end;
@@ -206,10 +206,10 @@ begin
     Exit;
 
   Phase := Trim(String(PhaseData));
-  if Phase = 'miniforge' then
+  if Phase = 'micromamba' then
   begin
     DependencyStatusLabel.Caption :=
-      'Step 1 of 4: Installing the private Miniforge distribution...';
+      'Step 1 of 3: Installing the private Micromamba runtime...';
     DependencyDetailLabel.Caption :=
       'This copy is isolated inside EasyALMOS and does not modify your Conda installation.';
   end
@@ -218,7 +218,7 @@ begin
     DependencyStatusLabel.Caption :=
       'Step 2 of 3: Creating the Conda environment from almos.yaml...';
     DependencyDetailLabel.Caption :=
-      'Conda is creating the ALMOS environment directly from the shared environment definition.';
+      'Conda is creating the EasyALMOS environment directly from the shared environment definition.';
   end
   else if Phase = 'validate' then
   begin
@@ -242,7 +242,7 @@ begin
   { Every attempt starts from a clean EasyALMOS-owned runtime. }
   RemovePrivateRuntime(True);
 
-  ExtractTemporaryFile('{#MiniforgeInstallerName}');
+  ExtractTemporaryFile('{#MicromambaInstallerName}');
   ExtractTemporaryFile('{#SharedEnvFileName}');
   ExtractTemporaryFile('{#DependencyHelperName}');
 
@@ -271,8 +271,8 @@ begin
     '-ExecutionPolicy Bypass -File ' +
     Quote(ExpandConstant('{tmp}\{#DependencyHelperName}')) +
     ' -InstallDir ' + Quote(WizardForm.DirEdit.Text) +
-    ' -MiniforgeInstaller ' +
-      Quote(ExpandConstant('{tmp}\{#MiniforgeInstallerName}')) +
+    ' -MicromambaInstaller ' +
+      Quote(ExpandConstant('{tmp}\{#MicromambaInstallerName}')) +
     ' -EnvFile ' + Quote(ExpandConstant('{tmp}\{#SharedEnvFileName}')) +
     ' -StateDir ' + Quote(DependencyStateDir);
 
@@ -332,7 +332,7 @@ begin
     DependencyFailed := True;
     RemovePrivateRuntime(False);
     SetDependencyProgressComplete(True);
-    DependencyStatusLabel.Caption := 'The ALMOS environment could not be installed.';
+    DependencyStatusLabel.Caption := 'The EasyALMOS environment could not be installed.';
     DependencyDetailLabel.Caption :=
       'Installation stopped. Diagnostic logs were kept for support.';
     WizardForm.NextButton.Enabled := False;
@@ -369,7 +369,7 @@ begin
   DependencyPage := CreateCustomPage(
     wpReady,
     'Installing EasyALMOS dependencies',
-    'Miniforge and the isolated almos environment will be installed now. This can take 5 to 10 minutes.');
+    'Micromamba and the isolated easyalmos environment will be installed now. This can take 5 to 10 minutes.');
 
   DependencyStatusLabel := TNewStaticText.Create(DependencyPage);
   DependencyStatusLabel.Parent := DependencyPage.Surface;
@@ -479,7 +479,7 @@ begin
     Confirm := False;
     if MsgBox(
       'Cancel the EasyALMOS installation?' + #13#10 + #13#10 +
-      'The current Miniforge/Conda process will be stopped and only the ' +
+      'The current Micromamba process will be stopped and only the ' +
       'private EasyALMOS runtime will be removed.',
       mbConfirmation,
       MB_YESNO) = IDYES then
