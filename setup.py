@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from almos.package_versions import ALMOS_VERSION, AQME_VERSION
+from almos.package_versions import ALMOS_VERSION, AQME_VERSION, ROBERT_VERSION
 
 version = ALMOS_VERSION
 setup(
@@ -36,7 +36,7 @@ setup(
     install_requires=[
         # --- Core ---
         f"aqme=={AQME_VERSION}",
-        "robert==2.1.0",
+        f"robert=={ROBERT_VERSION}",
 
         "pandas==2.3.3",
         "scipy>=1.14,<1.16",
