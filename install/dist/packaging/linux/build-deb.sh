@@ -54,7 +54,7 @@ Section: science
 Priority: optional
 Architecture: amd64
 Maintainer: The Alegre Group
-Depends: bash, tar, curl | wget
+Depends: bash, tar
 Recommends: desktop-file-utils
 Description: EasyALMOS full Debian installer
  This package installs the EasyALMOS launcher, menu entry, and runtime bootstrap.

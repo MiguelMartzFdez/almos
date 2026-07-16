@@ -23,15 +23,17 @@ require_command() {
 
 require_command tar
 
-DOWNLOAD_TOOL=""
-if command -v curl >/dev/null 2>&1; then
-  DOWNLOAD_TOOL="curl"
-elif command -v wget >/dev/null 2>&1; then
-  DOWNLOAD_TOOL="wget"
-else
-  echo "Either curl or wget is required to install EasyALMOS." >&2
-  exit 1
-fi
+detect_download_tool() {
+  if command -v curl >/dev/null 2>&1; then
+    printf '%s\n' "curl"
+    return 0
+  fi
+  if command -v wget >/dev/null 2>&1; then
+    printf '%s\n' "wget"
+    return 0
+  fi
+  return 1
+}
 
 mkdir -p "$BIN_DIR" "$LOG_DIR" "$ICON_DIR"
 
@@ -81,6 +83,10 @@ if [[ -x "$BOOTSTRAP_MICROMAMBA" ]]; then
   log "Using bundled Micromamba bootstrap from $BOOTSTRAP_MICROMAMBA"
   install -m 0755 "$BOOTSTRAP_MICROMAMBA" "$BIN_DIR/micromamba"
 else
+  DOWNLOAD_TOOL="$(detect_download_tool)" || {
+    echo "Either curl or wget is required to install EasyALMOS." | tee -a "$ERROR_LOG" >&2
+    exit 1
+  }
   log "Downloading Micromamba bootstrap..."
 
   MICROMAMBA_ARCHIVE="$TMP_DIR/micromamba.tar.bz2"
