@@ -157,7 +157,6 @@ def test_utils_additional_cli_and_dependency_branches(monkeypatch, tmp_path, cap
     assert "ALMOS v" in help_output
     assert "Usage" in help_output
     assert "easyalmos" in help_output
-
     monkeypatch.setattr(sys, "argv", ["prog", "help"])
     with pytest.raises(SystemExit):
         utils_module.command_line_args()

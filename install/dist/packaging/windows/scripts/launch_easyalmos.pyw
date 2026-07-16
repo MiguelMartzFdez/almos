@@ -176,8 +176,8 @@ def run_startup_notice(signal_path: Path, parent_pid: int) -> int:
 
 def configure_private_environment() -> None:
     app_dir = Path(__file__).resolve().parent
-    miniforge_dir = app_dir / "miniforge"
-    env_dir = miniforge_dir / "envs" / "almos"
+    micromamba_dir = app_dir / "micromamba"
+    env_dir = micromamba_dir / "envs" / "almos"
 
     private_paths = [
         env_dir,
@@ -185,7 +185,6 @@ def configure_private_environment() -> None:
         env_dir / "Library" / "bin",
         env_dir / "Library" / "usr" / "bin",
         env_dir / "Library" / "mingw-w64" / "bin",
-        miniforge_dir / "condabin",
     ]
 
     existing_path = os.environ.get("PATH", "")
@@ -231,10 +230,9 @@ def main() -> int:
     configure_private_environment()
     suppress_console_subprocesses()
     try:
-        from almos.easyalmos import main as easyalmos_main
+        from almos.easyalmos import main
 
-        result = easyalmos_main()
-        return result if isinstance(result, int) else 0
+        raise SystemExit(main() or 0)
     finally:
         mark_startup_ready(startup_signal_path)
 
