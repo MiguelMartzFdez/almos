@@ -51,8 +51,8 @@ def test_cluster_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch):
 
     batch_dir = tmp_path / "batch_0"
     assert (batch_dir / "CLUSTER_data.dat").exists()
-    assert (batch_dir / "chemical_space_viewer.html").exists()
-    assert (batch_dir / "coverage_descriptor_importance.csv").exists()
+    assert (batch_dir / "chemical_space" / "chemical_space_viewer.html").exists()
+    assert (batch_dir / "chemical_space" / "coverage_descriptor_importance.csv").exists()
     assert (batch_dir / "cluster_input_b0.csv").exists()
 
     output_df = pd.read_csv(batch_dir / "cluster_input_b0.csv")
@@ -62,7 +62,7 @@ def test_cluster_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch):
     dat_text = read_text(batch_dir / "CLUSTER_data.dat")
     assert "Coverage selection input preparation" in dat_text
     assert "2D chemical space visualization" in dat_text
-    assert "Saved batch_0/chemical_space_viewer.html" in dat_text
+    assert "Saved batch_0/chemical_space/chemical_space_viewer.html" in dat_text
 
 
 def test_al_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch):

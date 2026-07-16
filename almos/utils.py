@@ -27,7 +27,7 @@ obabel_version = OBABEL_VERSION
 aqme_version = AQME_VERSION
 almos_version = ALMOS_VERSION
 time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
-almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
+almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, David Dalmau, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
 
 def format_cli_help():

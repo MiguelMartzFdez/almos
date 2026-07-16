@@ -3,15 +3,24 @@ $ErrorActionPreference = 'Stop'
 $platformRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent (Split-Path -Parent $platformRoot)
 $scriptFile = Join-Path $platformRoot 'EasyALMOS.iss'
-$scriptContent = Get-Content -LiteralPath $scriptFile
-$versionLine = $scriptContent | Where-Object { $_ -match '^#define MyAppVersion "(.+)"$' } | Select-Object -First 1
-if (-not $versionLine) {
-    throw "Could not read MyAppVersion from $scriptFile"
+$sharedVersionFile = Join-Path $root 'packaging\shared\version.txt'
+if (-not (Test-Path -LiteralPath $sharedVersionFile)) {
+    throw "Required shared version file is missing: $sharedVersionFile"
 }
 
-$version = [regex]::Match($versionLine, '^#define MyAppVersion "(.+)"$').Groups[1].Value
+$version = (Get-Content -LiteralPath $sharedVersionFile | Select-Object -First 1).Trim()
+if ([string]::IsNullOrWhiteSpace($version)) {
+    throw "Could not read the EasyALMOS version from $sharedVersionFile"
+}
+
+$scriptContent = Get-Content -LiteralPath $scriptFile -Raw
+if ($scriptContent -notmatch '__EASYALMOS_VERSION__') {
+    throw "The Windows installer template does not contain the __EASYALMOS_VERSION__ placeholder: $scriptFile"
+}
+
 $outputDir = Join-Path $root "dist\windows"
 $outputFile = Join-Path $outputDir "easyalmos-$version.exe"
+$generatedScriptFile = Join-Path $platformRoot 'EasyALMOS.generated.iss'
 
 if (-not (Test-Path -LiteralPath $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
@@ -22,7 +31,7 @@ $requiredFiles = @(
     'scripts\install_easyalmos.ps1',
     'scripts\launch_easyalmos.pyw',
     'scripts\uninstall_easyalmos.ps1',
-    'assets\Miniforge3-Windows-x86_64.exe',
+    'assets\micromamba-win-64.exe',
     'assets\almos_icon.ico'
 )
 
@@ -54,15 +63,20 @@ if (-not $iscc) {
 }
 
 Write-Host "Compiling EasyALMOS with: $iscc"
+$generatedScriptContent = $scriptContent.Replace('__EASYALMOS_VERSION__', $version)
+[System.IO.File]::WriteAllText($generatedScriptFile, $generatedScriptContent, [System.Text.UTF8Encoding]::new($false))
 Push-Location $platformRoot
 try {
-    & $iscc $scriptFile
+    & $iscc $generatedScriptFile
     if ($LASTEXITCODE -ne 0) {
         throw "Inno Setup failed with exit code $LASTEXITCODE."
     }
 }
 finally {
     Pop-Location
+    if (Test-Path -LiteralPath $generatedScriptFile) {
+        Remove-Item -LiteralPath $generatedScriptFile -Force
+    }
 }
 
 if (-not (Test-Path -LiteralPath $outputFile)) {
