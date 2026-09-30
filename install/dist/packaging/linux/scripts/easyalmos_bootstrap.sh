@@ -57,6 +57,20 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   exec "$EASYALMOS_SCRIPT_ROOT/scripts/uninstall_easyalmos_full.sh"
 fi
 
+LAUNCH_LOCK_SCRIPT="$EASYALMOS_SCRIPT_ROOT/shared/launch_lock.sh"
+if [[ ! -r "$LAUNCH_LOCK_SCRIPT" ]]; then
+  echo "EasyALMOS launch lock helper is missing: $LAUNCH_LOCK_SCRIPT" >&2
+  exit 1
+fi
+source "$LAUNCH_LOCK_SCRIPT"
+mkdir -p "$EASYALMOS_INSTALL_ROOT/cache"
+LAUNCH_LOCK_DIR="$EASYALMOS_INSTALL_ROOT/cache/launch.lock"
+if ! acquire_launch_lock "$LAUNCH_LOCK_DIR"; then
+  echo "EasyALMOS is already starting." >&2
+  exit 0
+fi
+trap 'release_launch_lock "$LAUNCH_LOCK_DIR"' EXIT
+
 current_version=""
 if [[ -f "$CURRENT_VERSION_FILE" ]]; then
   current_version="$(tr -d '\r\n' < "$CURRENT_VERSION_FILE")"
@@ -68,7 +82,7 @@ if [[ -f "$INSTALLED_VERSION_FILE" ]]; then
 fi
 
 has_existing_install=0
-if [[ -d "$EASYALMOS_INSTALL_ROOT" || -x "$MICROMAMBA_BIN" || -d "$ENV_PREFIX" || -n "$installed_version" ]]; then
+if [[ -x "$MICROMAMBA_BIN" || -d "$ENV_PREFIX" || -n "$installed_version" ]]; then
   has_existing_install=1
 fi
 
@@ -80,7 +94,7 @@ if [[ ! -x "$MICROMAMBA_BIN" || ! -d "$ENV_PREFIX" || ! -x "$ENV_PYTHON" ]]; the
     install_reason="repair"
   fi
 fi
-if [[ -n "$current_version" && -n "$installed_version" && "$current_version" != "$installed_version" ]]; then
+if [[ "$has_existing_install" == "1" && -n "$current_version" && "$current_version" != "$installed_version" ]]; then
   need_install=1
   install_reason="update"
 fi
@@ -114,4 +128,6 @@ if [[ "$need_install" == "1" ]]; then
   exit 0
 fi
 
+release_launch_lock "$LAUNCH_LOCK_DIR"
+trap - EXIT
 exec "$EASYALMOS_SCRIPT_ROOT/scripts/launch_easyalmos.sh"

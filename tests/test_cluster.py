@@ -186,8 +186,8 @@ def build_chemical_space_viewer_payload():
             "UMAP": {"dims": 2, "x": [0.2, 0.8], "y": [0.9, 0.1], "trustworthiness": 0.88, "varianceRetained": None, "areaCoverage": 0.79, "dispersion": 0.58},
         },
         "records": [
-            {"name": "a", "selected": True, "smiles": "CC", "target": 1.2, "svg": "<svg></svg>"},
-            {"name": "b", "selected": False, "smiles": "CO", "target": 0.8, "svg": ""},
+            {"name": "a", "selected": True, "selectionRegion": 0, "smiles": "CC", "target": 1.2, "svg": "<svg></svg>"},
+            {"name": "b", "selected": False, "selectionRegion": 0, "smiles": "CO", "target": 0.8, "svg": ""},
         ],
         "colors": {
             "target": [1.2, 0.8],
@@ -205,6 +205,7 @@ def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
 
     assert "Color by" in html
     assert 'value="selected"' in html
+    assert '<option value="clusters">clusters</option>' in html
     assert 'value="target"' in html
     assert 'value="descriptor::TPSA"' in html
     assert 'value="descriptor::MolWt"' in html
@@ -237,6 +238,24 @@ def test_render_chemical_space_viewer_html_includes_color_controls(tmp_path):
     assert "Plotly.purge(plot);" in html
     assert "Plotly.react(plot, traces, layout, plotConfig);" in html
     assert "Plotly.newPlot(plot, traces, layout, plotConfig);" in html
+
+
+def test_render_chemical_space_viewer_colors_regions_and_highlights_representatives(
+    tmp_path,
+):
+    instance = build_cluster_stub(tmp_path)
+    payload = build_chemical_space_viewer_payload()
+
+    html = instance.render_chemical_space_viewer_html(payload, "", "demo.csv")
+
+    assert 'const isClusterMode = colorMode === "clusters";' in html
+    assert "const selectionRegions = [...new Set(" in html
+    assert 'makeTrace(`Cluster ${region + 1}`, clusterIndices' in html
+    assert 'showLegend: false' in html
+    assert 'symbol: "circle"' in html
+    assert 'makeTrace("Selected representatives", selectedIndices' in html
+    assert 'symbol: "diamond"' in html
+    assert "colorValues: payload.records.map(record => clusterColor(record.selectionRegion))" in html
 
 
 def test_render_chemical_space_viewer_uses_one_2d_renderer_and_selected_last(tmp_path):
@@ -722,6 +741,7 @@ def test_build_chemical_space_viewer_generates_html_and_payload_options(tmp_path
     assert "descriptor::descp1" in html
     assert "target" in html
     assert "Selected" in html
+    assert '"selectionRegion": 1' in html
     assert "PCA 3D" in html
     assert "No valid numeric value" in html or "Color by" in html
     assert fidelity_dimensions == [2, 3]
