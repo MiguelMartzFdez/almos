@@ -67,6 +67,7 @@ install -m 0755 "$SCRIPT_DIR/scripts/install_easyalmos.sh" "$STAGE_DIR/usr/lib/e
 install -m 0755 "$SCRIPT_DIR/scripts/launch_easyalmos.sh" "$STAGE_DIR/usr/lib/easyalmos/scripts/launch_easyalmos.sh"
 install -m 0755 "$SCRIPT_DIR/scripts/uninstall_easyalmos.sh" "$STAGE_DIR/usr/lib/easyalmos/scripts/uninstall_easyalmos.sh"
 install -m 0755 "$SCRIPT_DIR/scripts/uninstall_easyalmos_full.sh" "$STAGE_DIR/usr/lib/easyalmos/scripts/uninstall_easyalmos_full.sh"
+install -m 0644 "$REPO_ROOT/packaging/shared/launch_lock.sh" "$STAGE_DIR/usr/lib/easyalmos/shared/launch_lock.sh"
 install -m 0644 "$REPO_ROOT/packaging/shared/almos.yaml" "$STAGE_DIR/usr/lib/easyalmos/shared/almos.yaml"
 printf '%s\n' "$VERSION" > "$STAGE_DIR/usr/lib/easyalmos/shared/version.txt"
 install -m 0644 "$REPO_ROOT/packaging/windows/assets/almos_icon.png" "$STAGE_DIR/usr/share/pixmaps/almos_icon.png"

@@ -6,6 +6,20 @@ APP_BUNDLE_PATH="$(cd "$APP_ROOT/.." && pwd)"
 RESOURCES_DIR="$APP_ROOT/Resources"
 SHARED_DIR="$RESOURCES_DIR/shared"
 BOOTSTRAP_DIR="$RESOURCES_DIR/bootstrap"
+ARCHITECTURE_UTILS="$RESOURCES_DIR/scripts/architecture_utils.sh"
+LAUNCH_LOCK_SCRIPT="$SHARED_DIR/launch_lock.sh"
+
+if [[ ! -r "$ARCHITECTURE_UTILS" ]]; then
+  echo "EasyALMOS architecture utilities are missing: $ARCHITECTURE_UTILS" >&2
+  exit 1
+fi
+source "$ARCHITECTURE_UTILS"
+
+if [[ ! -r "$LAUNCH_LOCK_SCRIPT" ]]; then
+  echo "EasyALMOS launch lock helper is missing: $LAUNCH_LOCK_SCRIPT" >&2
+  exit 1
+fi
+source "$LAUNCH_LOCK_SCRIPT"
 
 APP_SUPPORT_DIR="${HOME}/Library/ApplicationSupport/EasyALMOS"
 LEGACY_APP_SUPPORT_DIR="${HOME}/Library/Application Support/EasyALMOS"
@@ -36,7 +50,15 @@ ENV_PYTHONW="$ENV_PREFIX/bin/pythonw"
 ENV_PYTHON_APP="$ENV_PREFIX/python.app/Contents/MacOS/python"
 NOTICE_PID=""
 
+migrate_legacy_support_dir() {
+  if [[ -d "$LEGACY_APP_SUPPORT_DIR" && ! -e "$APP_SUPPORT_DIR" ]]; then
+    mkdir -p "$(dirname "$APP_SUPPORT_DIR")"
+    mv "$LEGACY_APP_SUPPORT_DIR" "$APP_SUPPORT_DIR"
+  fi
+}
+
 ensure_directories() {
+  migrate_legacy_support_dir
   mkdir -p \
     "$APP_SUPPORT_DIR" \
     "$WORK_DIR" \
@@ -231,7 +253,7 @@ update_notice() {
 
 cleanup() {
   stop_notice
-  rm -rf "$LOCK_DIR"
+  release_launch_lock "$LOCK_DIR"
 }
 
 clear_execution_attributes() {
@@ -308,20 +330,6 @@ validate_macos_version() {
   fi
 }
 
-detect_micromamba_platform() {
-  case "$(uname -m)" in
-    arm64|aarch64)
-      printf '%s\n' "osx-arm64"
-      ;;
-    x86_64)
-      printf '%s\n' "osx-64"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
 require_file() {
   local path="$1"
   local description="$2"
@@ -369,12 +377,26 @@ copy_bundled_micromamba() {
 }
 
 validate_environment() {
+  local environment_architecture platform
+
   if [[ ! -x "$ENV_PYTHON" ]]; then
     echo "EasyALMOS Python interpreter was not created at $ENV_PYTHON" >>"$INSTALL_ERR_LOG"
     return 1
   fi
+
+  platform="$(detect_micromamba_platform)" || {
+    echo "Could not determine the expected macOS runtime platform." >>"$INSTALL_ERR_LOG"
+    return 1
+  }
+  environment_architecture="$("$ENV_PYTHON" -c "import platform; print(platform.machine())" 2>>"$INSTALL_ERR_LOG")" || return 1
+  if ! environment_architecture_matches_platform "$environment_architecture" "$platform"; then
+    echo "EasyALMOS Python architecture $environment_architecture does not match $platform." >>"$INSTALL_ERR_LOG"
+    return 1
+  fi
+
   configure_private_environment
   run_install_command "$ENV_PYTHON" -c "from almos.easyalmos import main" || return 1
+  log "Validated Python architecture: $environment_architecture"
 }
 
 remove_previous_runtime() {
@@ -462,7 +484,7 @@ launch_easyalmos() {
 
   configure_private_environment
   cd "$WORK_DIR"
-  rm -rf "$LOCK_DIR"
+  release_launch_lock "$LOCK_DIR"
   trap - EXIT
   exec "$launcher_python" -c "from almos.easyalmos import main; raise SystemExit(main() or 0)" \
     >>"$RUNTIME_LOG" 2>>"$RUNTIME_ERR_LOG"
@@ -471,7 +493,7 @@ launch_easyalmos() {
 ensure_directories
 write_uninstallers
 
-if ! mkdir "$LOCK_DIR" >/dev/null 2>&1; then
+if ! acquire_launch_lock "$LOCK_DIR"; then
   osascript -e 'display notification "EasyALMOS is already starting..." with title "EasyALMOS"' >/dev/null 2>&1 || true
   exit 0
 fi
@@ -488,7 +510,7 @@ if [[ -f "$INSTALLED_VERSION_FILE" ]]; then
 fi
 
 has_existing_install=0
-if [[ -d "$APP_SUPPORT_DIR" || -x "$MICROMAMBA_BIN" || -d "$ENV_PREFIX" || -n "$installed_version" ]]; then
+if [[ -x "$MICROMAMBA_BIN" || -d "$ENV_PREFIX" || -n "$installed_version" ]]; then
   has_existing_install=1
 fi
 
@@ -500,9 +522,22 @@ if [[ ! -x "$MICROMAMBA_BIN" || ! -d "$ENV_PREFIX" || ! -x "$ENV_PYTHON" ]]; the
     install_reason="repair"
   fi
 fi
-if [[ -n "$current_version" && "$current_version" != "$installed_version" ]]; then
+if [[ "$has_existing_install" == "1" && -n "$current_version" && "$current_version" != "$installed_version" ]]; then
   need_install=1
   install_reason="update"
+fi
+
+expected_platform="$(detect_micromamba_platform)" || {
+  show_error_dialog "EasyALMOS does not support this Mac architecture: $(uname -m)."
+  exit 1
+}
+installed_environment_architecture=""
+if [[ -x "$ENV_PYTHON" ]]; then
+  installed_environment_architecture="$("$ENV_PYTHON" -c "import platform; print(platform.machine())" 2>/dev/null || true)"
+  if ! environment_architecture_matches_platform "$installed_environment_architecture" "$expected_platform"; then
+    need_install=1
+    install_reason="architecture_mismatch"
+  fi
 fi
 
 if [[ "$need_install" == "1" ]]; then
@@ -515,6 +550,9 @@ if [[ "$need_install" == "1" ]]; then
   elif [[ "$install_reason" == "repair" ]]; then
     install_notice="EasyALMOS found an existing installation, but its private runtime is incomplete or damaged.\n\nEasyALMOS will repair the private runtime now. This may take a few minutes.\n\nThe app will work only inside this workspace on macOS:\n$WORK_DIR"
     install_success_message="EasyALMOS finished repairing successfully.\n\nPlease open EasyALMOS again to start the application.\n\nWorkspace:\n$WORK_DIR"
+  elif [[ "$install_reason" == "architecture_mismatch" ]]; then
+    install_notice="EasyALMOS found a runtime for ${installed_environment_architecture:-an unknown architecture}, but this Mac requires $expected_platform.\n\nEasyALMOS will rebuild its private runtime without changing your workspace. This may take a few minutes.\n\nWorkspace:\n$WORK_DIR"
+    install_success_message="EasyALMOS rebuilt its runtime for $expected_platform successfully.\n\nPlease open EasyALMOS again to start the application.\n\nWorkspace:\n$WORK_DIR"
   fi
 
   : >"$INSTALL_LOG"

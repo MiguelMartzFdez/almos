@@ -3706,6 +3706,9 @@ class cluster:
                     "name": str(row[name_column]) if name_column is not None else str(index),
                     "smiles": smiles,
                     "selected": bool(index in selected_index_set),
+                    "selectionRegion": int(
+                        coverage_result["selection_region_labels"][int(index)]
+                    ),
                     "interactive": bool(index in interactive_index_set),
                     "target": (
                         None
@@ -3887,7 +3890,7 @@ class cluster:
             payload,
             default=lambda value: value.item() if isinstance(value, np.generic) else str(value),
         ).replace("</", "<\\/")
-        color_options = ["selected"]
+        color_options = ["selected", "clusters"]
         if payload["targetColumn"] is not None and payload["targetIsNumeric"]:
             color_options.insert(2, "target")
         color_options.extend(
@@ -3896,6 +3899,8 @@ class cluster:
         )
 
         def format_color_option_label(option):
+            if option == "clusters":
+                return "clusters"
             if option == "target":
                 return payload["targetColumn"]
             return option.replace("descriptor::", "descriptor: ")
@@ -3999,14 +4004,28 @@ class cluster:
     const initialDetailsHtml = detailsContent.innerHTML;
     const baseFileName = {base_file_name_json};
     const PINNED_TRACE_NAME = "Pinned molecule";
+    const CLUSTER_COLORS = [
+      "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c",
+      "#0891b2", "#ca8a04", "#db2777", "#4f46e5", "#65a30d"
+    ];
     let pinnedTraceIndex = null;
     let hoveredPointIndex = null;
     let native3DClickMoved = false;
     let native3DPointerStart = null;
     function colorTitle(mode) {{
+      if (mode === "clusters") return "clusters";
       if (mode === "target" && payload.targetColumn) return payload.targetColumn;
       if (mode.startsWith("descriptor::")) return mode.replace("descriptor::", "");
       return mode;
+    }}
+    function clusterColor(region) {{
+      const numericRegion = Number(region);
+      if (!Number.isFinite(numericRegion)) return "#94a3b8";
+      const paletteIndex = Math.abs(Math.trunc(numericRegion)) % CLUSTER_COLORS.length;
+      const paletteCycle = Math.floor(Math.abs(Math.trunc(numericRegion)) / CLUSTER_COLORS.length);
+      if (paletteCycle === 0) return CLUSTER_COLORS[paletteIndex];
+      const hue = (numericRegion * 137.508) % 360;
+      return `hsl(${{hue < 0 ? hue + 360 : hue}}, 68%, 44%)`;
     }}
     function axisBaseLabel(embedding) {{
       return embedding.replace(/\\s+(2D|3D)$/i, "");
@@ -4054,6 +4073,7 @@ class cluster:
       const colorMode = colorSelect.value;
       const coords = payload.embeddings[embedding];
       const is3D = coords.dims === 3;
+      const isClusterMode = colorMode === "clusters";
       const isTargetGradient = colorMode === "target";
       const isDescriptorGradient = colorMode.startsWith("descriptor::");
       const descriptorName = isDescriptorGradient ? colorMode.replace("descriptor::", "") : null;
@@ -4101,7 +4121,35 @@ class cluster:
       const baseMarkerSize = is3D ? 3 : 4;
       const selectedMarkerSize = is3D ? 10 : 12;
 
-      if (isTargetGradient || isDescriptorGradient) {{
+      if (isClusterMode) {{
+        const selectionRegions = [...new Set(
+          payload.records.map(record => record.selectionRegion)
+        )].filter(region => region !== null && region !== undefined)
+          .sort((left, right) => Number(left) - Number(right));
+        selectionRegions.forEach(region => {{
+          const clusterIndices = allIndices.filter(
+            index => payload.records[index].selectionRegion === region
+          );
+          traces.push(makeTrace(`Cluster ${{region + 1}}`, clusterIndices, {{
+            color: clusterColor(region),
+            size: baseMarkerSize,
+            opacity: 0.58,
+            symbol: "circle",
+            line: {{ width: is3D ? 0 : 0.6, color: "#475569" }}
+          }}, {{ interactive: true, showLegend: false }}));
+        }});
+        if (selectedIndices.length > 0) {{
+          traces.push(makeTrace("Selected representatives", selectedIndices, {{
+            size: selectedMarkerSize,
+            opacity: 1.0,
+            symbol: "diamond",
+            line: {{ width: 2, color: "#111827" }}
+          }}, {{
+            colorValues: payload.records.map(record => clusterColor(record.selectionRegion)),
+            interactive: true
+          }}));
+        }}
+      }} else if (isTargetGradient || isDescriptorGradient) {{
         const gradientValues = isTargetGradient
           ? payload.colors.target
           : payload.colors.descriptors[descriptorName];
@@ -4282,6 +4330,7 @@ class cluster:
         ${{moleculeBlock(record)}}
         <p><strong>${{escapeHtml(record.name)}}</strong></p>
         <p>selected: ${{record.selected}}</p>
+        <p>cluster: ${{record.selectionRegion === null || record.selectionRegion === undefined ? "NA" : record.selectionRegion + 1}}</p>
         <p>SMILES: ${{escapeHtml(record.smiles || "NA")}}</p>
         ${{payload.targetColumn ? `<p>${{escapeHtml(payload.targetColumn)}}: ${{escapeHtml(record.target)}}</p>` : ""}}
       `;

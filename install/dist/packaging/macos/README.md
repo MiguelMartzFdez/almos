@@ -48,9 +48,11 @@ Compatibility target:
 
 - macOS 11 Big Sur or newer
 - Intel Macs using `osx-64`
-- Apple Silicon Macs using `osx-arm64`
+- Apple Silicon Macs using `osx-arm64`, including launches under Rosetta
+- an installed runtime with the wrong Python architecture is rebuilt automatically
+- an interrupted setup lock is recovered on the next launch
 
-Optional assets:
+Required assets:
 
 - `assets/micromamba-osx-64`
 - `assets/micromamba-osx-arm64`

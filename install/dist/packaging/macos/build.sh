@@ -47,6 +47,8 @@ mkdir -p \
 
 install -m 0755 "$SCRIPT_DIR/scripts/launch_easyalmos_macos.sh" "$APP_BUILD_DIR/Contents/MacOS/EasyALMOS"
 install -m 0755 "$SCRIPT_DIR/scripts/bootstrap_easyalmos_macos.sh" "$APP_BUILD_DIR/Contents/Resources/scripts/bootstrap_easyalmos_macos.sh"
+install -m 0755 "$SCRIPT_DIR/scripts/architecture_utils.sh" "$APP_BUILD_DIR/Contents/Resources/scripts/architecture_utils.sh"
+install -m 0644 "$REPO_ROOT/packaging/shared/launch_lock.sh" "$APP_BUILD_DIR/Contents/Resources/shared/launch_lock.sh"
 install -m 0644 "$REPO_ROOT/packaging/shared/almos.yaml" "$APP_BUILD_DIR/Contents/Resources/shared/almos.yaml"
 printf '%s\n' "$VERSION" > "$APP_BUILD_DIR/Contents/Resources/shared/version.txt"
 
