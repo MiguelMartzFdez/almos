@@ -34,17 +34,13 @@ The easiest way to use **ALMOS** is through the **EasyALMOS** desktop applicatio
 
 ✅ No terminal commands.
 
-<p align="center">
-  <a href="https://github.com/MiguelMartzFdez/almos/releases/latest">
-    <strong>⬇️ Download EasyALMOS</strong>
-  </a>
-</p>
+Latest version: `v1.1.0`
 
-| Operating System | Download | Installation |
-|------------------|----------|--------------|
-| 🪟 Windows | `easyalmos-<VERSION>.exe` | Double-click the installer, then launch **EasyALMOS** from the Start Menu. |
-| 🍎 macOS | `easyalmos-<VERSION>.dmg` | Drag **EasyALMOS.app** into Applications. |
-| 🐧 Ubuntu / Debian | `easyalmos-<VERSION>.deb` | Double-click the package or run `sudo apt install ./easyalmos-<VERSION>.deb`. |
+| Platform   | Package                | Download                                                                                                                                                                         |
+| ---------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💻 Windows | `easyalmos-1.1.0.exe` | [![Download Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows)](../../releases/latest/download/easyalmos-1.1.0.exe)                 |
+| 🐧 Linux   | `easyalmos-1.1.0.deb` | [![Download Linux](https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](../../releases/latest/download/easyalmos-1.1.0.deb)     |
+| 🍎 macOS   | `easyalmos-1.1.0.dmg` | [![Download macOS](https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple)](../../releases/latest/download/easyalmos-1.1.0.dmg)                       |
 
 > **Note**
 >
