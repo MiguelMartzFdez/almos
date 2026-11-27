@@ -4,6 +4,9 @@
 Versions
 ========
 
+Version 1.3.1
+   -  Prepare the 1.3 series for publication through the CircleCI GitHub App pipeline.
+
 Version 1.3.0
    -  Preserve campaign inputs and publish batch manifests and full candidate rankings for active learning.
    -  Protect previous clustering results when publication fails and improve selection controls in the offline chemical space viewer.
