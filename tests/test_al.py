@@ -370,6 +370,26 @@ def test_check_missing_outputs_accepts_current_model_mode_flow(tmp_path, monkeyp
     assert pd.isna(result.df_raw["batch"].iloc[2])
 
 
+def test_check_missing_outputs_preserves_input_bytes_and_explicit_identifier(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    csv_path = tmp_path / "A_b0.csv"
+    source = b"Name,code_name,ee,Batch\r\n0001,x,1.0,0\r\n0002,y,,\r\n"
+    csv_path.write_bytes(source)
+    config = DummyALConfig()
+    config.__dict__.update(
+        csv_name=csv_path.name, extra_cmd="", ignore=[], batch_column="batch",
+        name="Name", y="ee", al_mode="model", alpha=None, objective=None,
+        n_exps=1, tolerance="medium", levels_tolerance=["medium"], log=DummyLogger(),
+    )
+
+    result = check_missing_outputs(config)
+
+    assert result.name == "Name"
+    assert result.df_raw["Name"].tolist() == ["0001", "0002"]
+    assert result.df_raw["batch"].iloc[0] == 0
+    assert csv_path.read_bytes() == source
+
+
 def test_check_missing_outputs_rejects_alpha_with_model_mode(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     csv_path = tmp_path / "A_b0.csv"
@@ -461,7 +481,7 @@ def test_process_batch_and_score_extraction_use_pdf_helpers(tmp_path, monkeypatc
 
 def test_get_metrics_from_batches_ignores_non_numeric_batch_directories(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    for folder in ["batch_0", "batch_1", "batch_2", "batch_random", "batch_plots"]:
+    for folder in ["batch_0", "batch_1", "batch_2", "batch_10", "batch_random", "batch_plots"]:
         (tmp_path / folder).mkdir()
 
     monkeypatch.setattr(
@@ -474,8 +494,8 @@ def test_get_metrics_from_batches_ignores_non_numeric_batch_directories(tmp_path
 
     results_no_pfi, results_pfi = get_metrics_from_batches()
 
-    assert [row["batch"] for row in results_no_pfi] == [1, 2]
-    assert [row["batch"] for row in results_pfi] == [1, 2]
+    assert [row["batch"] for row in results_no_pfi] == [1, 2, 10]
+    assert [row["batch"] for row in results_pfi] == [1, 2, 10]
 
 
 def test_early_stopping_convergence_and_csv_update(tmp_path):

@@ -5,11 +5,18 @@
 import os
 import sys
 import ast
+from datetime import datetime
 import getopt
+from hashlib import file_digest
+from importlib.metadata import PackageNotFoundError, version
+from io import StringIO
+import json
 from pathlib import Path
-import time
 import subprocess
 import shutil
+from uuid import uuid4
+
+import pandas as pd
 from almos.package_versions import ALMOS_VERSION, AQME_VERSION, OBABEL_VERSION
 from almos.argument_parser import (
     AL_OPTION_ALIASES,
@@ -26,7 +33,6 @@ from almos.al_utils import check_missing_outputs
 obabel_version = OBABEL_VERSION
 aqme_version = AQME_VERSION
 almos_version = ALMOS_VERSION
-time_run = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 almos_ref = f"ALMOS v {almos_version}, Miguel Martínez Fernández, David Dalmau, Susana García Abellán, Juan V. Alegre Requena. ALMOS: Active Learning Molecular Selection for Researchers and Educators."
 
 
@@ -136,7 +142,7 @@ def command_line_args():
         opts, _ = getopt.getopt(raw_args, "h", available_args)
     except getopt.GetoptError as err:
         print(err)
-        sys.exit()
+        sys.exit(2)
 
     for arg, value in opts:
         if arg.find("--") > -1:
@@ -176,6 +182,9 @@ def command_line_args():
                     elif value == "True":
                         value = True
                 except (SyntaxError, ValueError, TypeError):
+                    if is_al_command and canonical_arg_name in {"alpha", "n_exps"}:
+                        print(f"Invalid value for --{arg_name}: {value!r}.")
+                        sys.exit(2)
                     print(
                         f"Warning! Option '{arg_name}' received an invalid value ({value}). "
                         "The default value will be used instead."
@@ -191,7 +200,7 @@ def command_line_args():
     return args
 
 
-def load_variables(kwargs, almos_module, create_dat=True):
+def load_variables(kwargs, almos_module, create_dat=True, *, log_directory=None):
     """    
     Combine user-defined arguments with default variables and set up the environment.
 
@@ -244,18 +253,23 @@ def load_variables(kwargs, almos_module, create_dat=True):
                 logger_1 = "CLUSTER"
             
             if not error_setup:
-                if not self.command_line:
-                    self.log = Logger(self.initial_dir / logger_1, logger_2, verbose=self.verbose)
-                else:
-                    # prevents errors when using command lines and running to remote directories
-                    path_command = Path(f"{os.getcwd()}")
-                    self.log = Logger(path_command / logger_1, logger_2, verbose=self.verbose)
+                self.started_at = datetime.now().astimezone().isoformat(timespec="seconds")
+                self.run_id = uuid4().hex
+                if almos_module == "al":
+                    logger_1 = f".AL-{self.run_id}"
+                logger_directory = self.initial_dir if log_directory is None else Path(log_directory)
+                self.log = Logger(logger_directory / logger_1, logger_2, verbose=self.verbose)
 
                 # check if outputs are missing and load, needed here for update "command line" with inputs.
+                self.log.write(f"\nALMOS v {almos_version} {self.started_at}\nCitation: {almos_ref}\n")
+                self.log.write(f"Run ID: {self.run_id}\nWorking directory: {self.initial_dir}")
                 if almos_module == "al":
-                    self = check_missing_outputs(self)
-
-                self.log.write(f"\nALMOS v {almos_version} {time_run} \nCitation: {almos_ref}\n")
+                    try:
+                        self = check_missing_outputs(self)
+                        self.input_sha256 = fingerprint_input(self.path_csv_name)
+                    except (SystemExit, Exception) as error:
+                        persist_failed_al_log(self, error)
+                        raise
 
                 if self.command_line:
                     cmd_print = ''
@@ -266,6 +280,9 @@ def load_variables(kwargs, almos_module, create_dat=True):
                         for arg in self.extra_cmd.split():
                             cmd_args.append(arg)
                     for i,elem in enumerate(cmd_args):
+                        if not elem:
+                            cmd_print += '"" '
+                            continue
                         if elem[0] in ['"',"'"]:
                             elem = elem[1:]
                         if elem[-1] in ['"',"'"]:
@@ -289,6 +306,70 @@ def load_variables(kwargs, almos_module, create_dat=True):
                 sys.exit()
 
     return self
+
+def csv_safe_identifiers(identifiers):
+    """Return string keys that survive a plain pandas CSV round trip."""
+    serialized = identifiers.to_frame().to_csv(index=False)
+    inferred = pd.read_csv(StringIO(serialized)).iloc[:, 0]
+    if inferred.tolist() == identifiers.tolist():
+        return identifiers
+    return pd.Series(
+        (f"almos_row_{index}" for index in range(len(identifiers))),
+        index=identifiers.index,
+        name=identifiers.name,
+    )
+
+
+def fingerprint_input(input_path):
+    """Calculate a SHA-256 digest without reading the entire input into memory."""
+    with Path(input_path).open("rb") as input_file:
+        return file_digest(input_file, "sha256").hexdigest()
+
+
+def write_run_manifest(args, output_directory, *, module, input_path, artifacts, summary):
+    """Write the effective configuration and artifacts for a completed run."""
+    input_path = Path(input_path).resolve()
+    dependencies = {}
+    for package in ("aqme", "robert", "pandas", "scikit-learn"):
+        try:
+            dependencies[package] = version(package)
+        except PackageNotFoundError:
+            dependencies[package] = None
+
+    manifest = {
+        "schema_version": 1,
+        "run_id": args.run_id,
+        "module": module,
+        "status": "completed",
+        "started_at": args.started_at,
+        "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "almos_version": almos_version,
+        "dependencies": dependencies,
+        "input": {"path": str(input_path), "sha256": args.input_sha256},
+        "effective_options": {key: getattr(args, key) for key in var_dict if hasattr(args, key)},
+        "summary": summary,
+        "artifacts": [Path(artifact).as_posix() for artifact in artifacts],
+    }
+    output = Path(output_directory) / "run.json"
+    temporary = output.with_name(f".run-{args.run_id}.json")
+    temporary.write_text(json.dumps(manifest, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
+    temporary.replace(output)
+
+
+def persist_failed_al_log(args, error):
+    """Preserve a failed run's diagnostics at the conventional campaign path."""
+    message = f"Run failed: {error}"
+    if args.log.path is None or not args.log.log.closed:
+        args.log.write(message)
+        args.log.finalize()
+    else:
+        with args.log.path.open("a", encoding="utf-8") as log_file:
+            log_file.write(f"{message}\n")
+    failure_log = args.initial_dir / "AL_data.dat"
+    source = getattr(args, "path_csv_name", None)
+    if args.log.path is not None and source != failure_log:
+        args.log.path.replace(failure_log)
+
 
 def format_lists(value):
     '''
@@ -316,9 +397,10 @@ class Logger:
     """
 
     # Class Logger to write output to a file
-    def __init__(self, filein, append, suffix="dat", verbose=True):
+    def __init__(self, filein, append, suffix="dat", verbose=True, mode="w"):
+        self.path = Path(f"{filein}_{append}.{suffix}") if verbose else None
         if verbose:
-            self.log = open(f"{filein}_{append}.{suffix}", "w", encoding="utf-8")
+            self.log = self.path.open(mode, encoding="utf-8", buffering=1)
         else:
             self.log = ''
 
@@ -382,20 +464,24 @@ def check_dependencies(self, module):
         except FileNotFoundError:
             self.args.log.write(f"x  Open Babel is not installed! You can install the program with 'conda install -y -c conda-forge openbabel={obabel_version}'")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(1)
             
         # this is a dummy command just to warn the user if AQME is not installed       
         try:
-            command_run_2 = ["python","-m","aqme", "-h"]
+            command_run_2 = [sys.executable, "-m", "aqme", "-h"]
             result = subprocess.run(command_run_2,capture_output=True, text=True, check=True)
             
         except subprocess.CalledProcessError:
             self.args.log.write(f"x  AQME is not installed! You can install the program with 'pip install aqme=={aqme_version}'")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(1)
 
     if module == "al":
         required_packages = ["glib", "gtk3", "pango", "mscorefonts"]
+        conda_records = Path(sys.prefix) / "conda-meta"
+        installed_native = {record.stem.rsplit("-", 2)[0] for record in conda_records.glob("*.json")}
+        if set(required_packages).issubset(installed_native):
+            return
         missing_packages = []
         installed_package_names = []
         using_conda = False
@@ -421,7 +507,7 @@ def check_dependencies(self, module):
             except Exception as e:
                 self.args.log.write(f"\nERROR: Failed to run 'conda list': {str(e)}")
                 self.args.log.finalize()
-                sys.exit()
+                sys.exit(1)
 
         elif shutil.which("pip"):
             result = subprocess.run(
@@ -436,11 +522,11 @@ def check_dependencies(self, module):
         else:
             self.args.log.write("\nERROR! Neither 'conda' nor 'pip' found in PATH. Cannot verify package installation.")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(1)
 
         # --- Check each required package ---
         for package in required_packages:
-            found = any(package.lower() in name for name in installed_package_names)
+            found = package in installed_native or package in installed_package_names
             if not found:
                 missing_packages.append(package)
 
@@ -452,5 +538,5 @@ def check_dependencies(self, module):
             else:
                 self.args.log.write("\nTry installing equivalents via pip or conda-forge.")
             self.args.log.finalize()
-            sys.exit()
+            sys.exit(1)
 

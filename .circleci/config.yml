@@ -288,6 +288,40 @@ jobs:
           file: /tmp/coverage.xml
           token: CODECOV_TOKEN
 
+  check-pr-version:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install version parser
+          command: python -m pip install packaging
+      - run:
+          name: Require a version bump for PRs into master
+          command: |
+            git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master
+            python .circleci/check_release_version.py master
+
+  publish-to-pypi:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install release tools
+          command: python -m pip install build packaging twine
+      - run:
+          name: Require a new ALMOS version
+          command: python .circleci/check_release_version.py pypi
+      - run:
+          name: Build and publish almos-kit to PyPI
+          command: |
+            : "${ALMOS_PYPI_TOKEN:?Set ALMOS_PYPI_TOKEN in the almos-pypi-publish CircleCI context}"
+            python -m build
+            python -m twine check dist/*
+            TWINE_USERNAME=__token__ TWINE_PASSWORD="$ALMOS_PYPI_TOKEN" \
+              python -m twine upload --non-interactive dist/*
+
 workflows:
   test-and-coverage:
     jobs:
@@ -300,3 +334,22 @@ workflows:
       - codecov-coverage:
           requires:
             - build-and-test
+
+      - check-pr-version:
+          filters: |
+            pipeline.integration_source == "github_app"
+            and pipeline.event.name == "pull_request"
+            and pipeline.event.github.pull_request.base.ref == "master"
+
+      - publish-to-pypi:
+          context: almos-pypi-publish
+          requires:
+            - build-and-test
+            - codecov-coverage
+          filters: |
+            pipeline.integration_source == "github_app"
+            and pipeline.event.name == "push"
+            and pipeline.event.github.ref == "refs/heads/master"
+            and pipeline.config.ref == "refs/heads/master"
+            and pipeline.git.branch == "master"
+          serial-group: << pipeline.project.slug >>/pypi-publish

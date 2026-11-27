@@ -11,7 +11,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import os , sys
-import shutil
+import numpy as np
 
 LOG_MIN_WIDTH = 54
 
@@ -267,247 +267,153 @@ def describe_metric_transition(metric_name, previous_value, current_value, toler
     )
 
 def check_missing_outputs(self):
-        """
-        Validates input parameters for active learning.
+    """Validate AL input and prepare a normalized, in-memory working dataset."""
+    def fail(message):
+        self.log.write(f"Invalid AL input: {message}")
+        raise SystemExit(2)
 
-        This method:
-        - Prompts for and locates the CSV file if not specified, loading it into a DataFrame.
-        - Ensures that required columns for molecule names and target values exist, prompting for values if necessary.
-        - Validates acquisition settings such as objective, mode, and alpha.
-        - Validates 'tolerance' ensuring valid ranges.
-        - Validates 'n_exps' ensuring it is a positive integer.
-        - Manages the 'batch_column', adding or updating it as needed for data completeness.
+    def prompt(message):
+        try:
+            return input(message)
+        except (EOFError, KeyboardInterrupt):
+            fail("Required input was not provided.")
 
-        Raises:
-            SystemExit: If any required input is missing, invalid, or the file is not found.
-        """
-
-        # Validate CSV file 
+    if not self.csv_name:
+        self.csv_name = prompt("Enter the input CSV file: ")
         if not self.csv_name:
-            self.csv_name = input("\nx WARNING! The name of the file was not introduced. Introduce name of the CSV file: ")
-            self.extra_cmd += f' --csv_name {self.csv_name}'
-            if not self.csv_name:
-                print("\nx WARNING! The name of the file was not introduced. Exiting.")
-                sys.exit()
+            fail("An input CSV file is required.")
+        self.extra_cmd += f" --csv_name {self.csv_name}"
 
-        if os.path.exists(self.csv_name):
-            print(f"\no File '{self.csv_name}' found in the current directory.")
-            self.path_csv_name = Path.cwd() / self.csv_name
-        else:
-            print(f"\no File '{self.csv_name}' was not found in the current directory. Searching in batch directories...")
-            for batch_dir in Path.cwd().glob('batch_*'):
-                if batch_dir.name != 'batch_plots':
-                    potential_path = batch_dir / self.csv_name
-                    if potential_path.exists():
-                        print(f"\no File '{self.csv_name}' found in '{batch_dir}' directory.")
-                        self.path_csv_name = potential_path
-                        break
-            else:
-                print(f"\nx WARNING! The file '{self.csv_name}' was not found. Exiting.")
-                sys.exit()
-
-        self.base_name_raw = os.path.splitext(self.csv_name)[0]
-        self.df_raw = pd.read_csv(self.path_csv_name)
-
-        # Normalize metadata columns used by AL before validating the dataset.
-        # Batch is metadata, not a descriptor, regardless of capitalization.
-        batch_columns = [
-            column for column in self.df_raw.columns
-            if column.lower() == str(self.batch_column).lower()
+    requested_path = Path(self.csv_name)
+    if requested_path.is_file():
+        self.path_csv_name = requested_path.resolve()
+    elif not requested_path.is_absolute():
+        matches = [
+            folder / requested_path
+            for folder in Path.cwd().glob("batch_*")
+            if folder.name.removeprefix("batch_").isdigit()
+            and (folder / requested_path).is_file()
         ]
-        if len(batch_columns) > 1:
-            print(
-                f"\nx WARNING! Multiple batch columns were found with different "
-                f"capitalization: {batch_columns}. Please keep only one. Exiting."
-            )
-            sys.exit()
-        if batch_columns and batch_columns[0] != self.batch_column:
-            self.df_raw = self.df_raw.rename(columns={batch_columns[0]: self.batch_column})
-            print(f"\no Batch column '{batch_columns[0]}' renamed to '{self.batch_column}'.")
+        if len(matches) != 1:
+            fail(f"Could not resolve a unique input CSV for '{self.csv_name}'.")
+        self.path_csv_name = matches[0]
+    else:
+        fail(f"The input CSV '{self.csv_name}' does not exist.")
 
-        for column in self.df_raw.columns:
-            if column.lower() == "smiles" and column not in self.ignore:
-                self.ignore.append(column)
+    self.base_name_raw = self.path_csv_name.stem
+    self.base_name = re.sub(r"_b\d+$", "", self.base_name_raw)
+    try:
+        columns = pd.read_csv(self.path_csv_name, nrows=0).columns
+    except (OSError, ValueError) as error:
+        fail(f"Could not read '{self.path_csv_name.name}': {error}")
 
-        # Validate column names and set base name
-        match = re.search(r'_b(\d+)', self.base_name_raw)
-        self.base_name = re.sub(r'_b\d+', '', self.base_name_raw) if match else self.base_name_raw
-        if 'code_name' in self.df_raw.columns:
-            self.name = 'code_name'
-
-        if not self.name:
-            self.name = input("\nx WARNING! Specify the column containing molecule names: ")
-            self.extra_cmd += f' --name {self.name}'
-        if self.name not in self.df_raw.columns:
-            print(f"\nx WARNING! The column '{self.name}' hasn't been found. Exiting.")
-            sys.exit()
-
-        # Validate target column
-        if not self.y:
-            self.y = input("\nx WARNING! The target column has not been specified correctly. Specify the column: ")
-            self.extra_cmd += f' --y {self.y}'
-
-        if self.y not in self.df_raw.columns:
-            print(f"\nx WARNING! The target column '{self.y}' hasn't been found. Exiting.")
-            sys.exit()
-        valid_y_mask = self.df_raw[self.y].notna() & (
-            self.df_raw[self.y].astype(str).str.strip() != ""
-        )
-
-        # Validate active-learning objective and acquisition settings
-        if self.al_mode is not None:
-            self.al_mode = str(self.al_mode).strip().lower()
-            if self.al_mode == "":
-                self.al_mode = None
-        if self.al_mode not in {None, "model", "hit"}:
-            print(
-                f"\nx WARNING! The mode '{self.al_mode}' is not valid. "
-                "Use '--mode model' or '--mode hit'. Exiting."
-            )
-            sys.exit()
-
-        if self.alpha is not None:
-            try:
-                self.alpha = float(self.alpha)
-            except (TypeError, ValueError):
-                print(
-                    f"\nx WARNING! Invalid alpha value '{self.alpha}'. "
-                    "Expected a number between 0 and 1. Exiting."
-                )
-                sys.exit()
-            if not (0 <= self.alpha <= 1):
-                print(
-                    f"\nx WARNING! Invalid alpha value '{self.alpha}'. "
-                    "Expected a number between 0 and 1. Exiting."
-                )
-                sys.exit()
-
-        if self.objective is not None and str(self.objective).strip() != "":
-            self.objective = str(self.objective).strip().lower()
-            if self.objective not in {"max", "min"}:
-                print(
-                    f"\nx WARNING! The objective '{self.objective}' is not valid. "
-                    "Use '--objective max' or '--objective min'. Exiting."
-                )
-                sys.exit()
+    if not self.name:
+        if "code_name" in columns:
+            self.name = "code_name"
         else:
-            self.objective = None
+            self.name = prompt("Enter the molecule identifier column: ")
+            self.extra_cmd += f" --name {self.name}"
+    if self.name not in columns:
+        fail(f"Identifier column '{self.name}' was not found.")
+    if not self.y:
+        self.y = prompt("Enter the target column: ")
+        self.extra_cmd += f" --y {self.y}"
+    if self.y not in columns:
+        fail(f"Target column '{self.y}' was not found.")
 
-        if self.al_mode != "model" and self.objective is None:
-            print(
-                "\nx WARNING! The objective must be specified with "
-                "'--objective max' or '--objective min' unless '--mode model' is used. Exiting."
-            )
-            sys.exit()
+    batch_columns = [
+        column for column in columns if column.lower() == self.batch_column.lower()
+    ]
+    if len(batch_columns) > 1:
+        fail(f"Multiple columns match the batch column: {batch_columns}.")
+    if self.y == self.name or any(column in batch_columns for column in (self.y, self.name)):
+        fail("The identifier, target, and batch columns must be different.")
 
-        if self.al_mode == "model" and self.alpha is not None:
-            print(
-                "\nx WARNING! '--alpha/--alfa' cannot be used with '--mode model' "
-                "because model mode ranks only by uncertainty. Exiting."
-            )
-            sys.exit()
+    try:
+        self.df_raw = pd.read_csv(self.path_csv_name, converters={self.name: str})
+    except (OSError, ValueError) as error:
+        fail(f"Could not read '{self.path_csv_name.name}': {error}")
+    if batch_columns and batch_columns[0] != self.batch_column:
+        self.df_raw = self.df_raw.rename(columns={batch_columns[0]: self.batch_column})
+        self.log.write(f"Batch column '{batch_columns[0]}' renamed to '{self.batch_column}' in memory.")
 
-        # Validate n_exps
-        if self.n_exps is None or not isinstance(self.n_exps, int) or self.n_exps <= 0:
-            user_input = input("\nx WARNING! The number of experiments has not been specified correctly. Enter a positive integer: ")
-            try:
-                value = int(user_input)
-                if value <= 0:
-                    raise ValueError
-                self.n_exps = value
-                # Add to extra_cmd if the input is valid
-                self.extra_cmd += f' --n_exps {self.n_exps}'
-            except ValueError:
-                print(f"\nx WARNING! Invalid input '{user_input}'. Expected a positive integer. Exiting.")
-                sys.exit()
+    identifiers = self.df_raw[self.name]
+    if identifiers.str.strip().eq("").any() or identifiers.duplicated().any():
+        fail(f"Identifier column '{self.name}' must contain unique, non-empty values.")
 
-        # Validate tolerance level
-        if self.tolerance not in self.levels_tolerance:
-            self.tolerance = input("\nx WARNING! Enter a valid tolerance level ('tight':1%, 'medium':5%, 'wide':10%): ")
-            self.extra_cmd += f' --tolerance {self.tolerance}'
-            if self.tolerance not in self.levels_tolerance:
-                print(f"\nx WARNING! The tolerance level '{self.tolerance}' is not valid. Exiting.")
-                sys.exit()
+    target = self.df_raw[self.y]
+    has_target = target.notna() & target.astype(str).str.strip().ne("")
+    numeric_target = pd.to_numeric(target, errors="coerce")
+    if (has_target & ~np.isfinite(numeric_target)).any():
+        fail(f"Target column '{self.y}' contains non-finite or non-numeric values.")
+    self.df_raw[self.y] = numeric_target
 
-        # Validate batch column and assign batch number
-        if self.batch_column in self.df_raw.columns:
-            batch_values = pd.to_numeric(self.df_raw[self.batch_column], errors="coerce")
-            self.df_raw[self.batch_column] = batch_values
-            if batch_values.notna().any():
-                max_batch_number = int(batch_values.max())
-            elif valid_y_mask.any():
-                self.df_raw.loc[valid_y_mask, self.batch_column] = 0
-                self.df_raw.to_csv(self.path_csv_name, index=False)
-                max_batch_number = 0
-                print(
-                    f"\no Batch column '{self.batch_column}' had no valid values; "
-                    f"assigned batch 0 to rows with values in '{self.y}'."
-                )
-            else:
-                print(
-                    f"\nx WARNING! '{self.batch_column}' column has no valid values, "
-                    f"and '{self.y}' has no values! Exiting."
-                )
-                sys.exit()
-            self.current_number_batch = max_batch_number + 1
+    mode = str(self.al_mode).strip().lower() if self.al_mode is not None else None
+    self.al_mode = None if mode in ("", "auto") else mode
+    if self.al_mode not in {None, "model", "hit"}:
+        fail(f"Invalid mode '{self.al_mode}'. Choose auto, model, or hit.")
 
-            # Check if there are missing values in y column
-            last_batch = self.df_raw[self.df_raw[self.batch_column] == max_batch_number]
-            if not last_batch[self.y].notna().all():
-                print(f"\nx WARNING! The column '{self.y}' contains missing values. Please check the data before proceeding! Exiting.")
-                sys.exit()
-            # Check if there are values in y but no values in batch column
-            if not self.df_raw[valid_y_mask & self.df_raw[self.batch_column].isna()].empty:
-                print(f"\nx WARNING! The column '{self.y}' contains values, but there are missing entries in the column '{self.batch_column}'. Please fix the data before proceeding. Exiting.")
-                sys.exit()
+    if self.alpha is not None:
+        try:
+            self.alpha = float(self.alpha)
+        except (TypeError, ValueError):
+            fail(f"Invalid alpha '{self.alpha}'. Use a number between 0 and 1.")
+        if not 0 <= self.alpha <= 1:
+            fail(f"Invalid alpha '{self.alpha}'. Use a number between 0 and 1.")
 
-        else:
-            # Create batch column if it doesn't exist when y has valid data
-            if self.y in self.df_raw.columns and valid_y_mask.any():
-                self.df_raw[self.batch_column] = None
-                self.df_raw.loc[valid_y_mask, self.batch_column] = 0
-                self.df_raw.to_csv(self.path_csv_name, index=False)
-                self.current_number_batch = 1
-                print(f"\nx WARNING! Batch column '{self.batch_column}' not found but valid data in '{self.y}'.") 
-                print(f"\no Batch column created successfully!")
-            else:
-                print(f"\nx WARNING! '{self.batch_column}' column not found, and '{self.y}' has no values! Exiting.")
-                sys.exit()
+    self.objective = str(self.objective).strip().lower() if self.objective is not None else None
+    if self.objective == "":
+        self.objective = None
+    if self.objective not in {None, "max", "min"}:
+        fail(f"Invalid objective '{self.objective}'. Choose max or min.")
+    if self.al_mode != "model" and self.objective is None:
+        fail("Choose --objective max or --objective min for auto or hit mode.")
+    if self.al_mode == "model" and self.alpha is not None:
+        fail("--alpha is only available in auto or hit mode.")
 
+    if not isinstance(self.n_exps, int) or isinstance(self.n_exps, bool) or self.n_exps <= 0:
+        fail("--n_exps must be a positive integer.")
+    if self.tolerance not in self.levels_tolerance:
+        fail(f"Invalid tolerance '{self.tolerance}'. Choose tight, medium, or wide.")
 
-        # Check if the 'batch' folder already exists only if the current batch is the maximum of all existing batch folders
-        existing_batches = [
-            int(folder.name.split('_')[1]) for folder in Path.cwd().iterdir()
-            if folder.is_dir() and folder.name.startswith('batch_') and folder.name.split('_')[1].isdigit()
-        ]
-        
-        # Determine the maximum batch number and the path of the current batch if it exists
-        max_existing_batch = max(existing_batches) if existing_batches else 0
-        self.data_path_check = Path.cwd() / f'batch_{self.current_number_batch}'
-        if self.data_path_check.exists():
-            if self.current_number_batch == max_existing_batch:
-                overwrite = input(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
-                if overwrite == 'y':
-                    shutil.rmtree(self.data_path_check)
-                    print(f"\no Directory '{self.data_path_check.name}' has been deleted suscessfully!")
-                else:
-                    # Delete the log file and cancel the actual process
-                    self.log.finalize()
-                    log_file = Path.cwd() / "AL_data.dat"  
-                    if log_file.exists():
-                        log_file.unlink()  # Use .unlink() for a single file 
-                    print("\nx WARNING! Exploratory learning process has been canceled. Exiting.")
-                    exit()
-            else:
-                print(f"\nx WARNING! Directory '{self.data_path_check.name}' already exists and the last batch is 'batch_{max_existing_batch}'. Exiting.")
-                exit()
+    if not has_target.any():
+        fail(f"Target column '{self.y}' has no measured values.")
 
-        # Add batch column to ignore list
-        self.ignore.append(self.batch_column)
-        self.ignore = list(set(self.ignore))
-        self.df_raw.to_csv(self.path_csv_name, index=False)
+    if self.batch_column in self.df_raw:
+        original_batch = self.df_raw[self.batch_column]
+        has_batch = original_batch.notna() & original_batch.astype(str).str.strip().ne("")
+        batch = pd.to_numeric(original_batch, errors="coerce")
+        invalid_batch = has_batch & (~np.isfinite(batch) | batch.lt(0) | batch.mod(1).ne(0))
+        if invalid_batch.any():
+            fail(f"Batch column '{self.batch_column}' must contain non-negative integers or blanks.")
+    else:
+        batch = pd.Series(np.nan, index=self.df_raw.index)
 
-        return self
+    if batch.isna().all():
+        batch.loc[has_target] = 0
+        self.log.write("Assigned measured rows to batch 0 in memory.")
+    if (batch.notna() & ~has_target).any():
+        missing_count = int((batch.notna() & ~has_target).sum())
+        fail(f"Found {missing_count} assigned rows with missing target values in '{self.y}'.")
+    if (batch.isna() & has_target).any():
+        fail(f"Some targets have values but are missing '{self.batch_column}' assignments.")
+    if batch.notna().all():
+        fail("All candidates already have batch assignments.")
+
+    self.df_raw[self.batch_column] = batch
+    self.current_number_batch = int(batch.max()) + 1
+    self.data_path_check = Path.cwd() / f"batch_{self.current_number_batch}"
+    if self.data_path_check.exists():
+        fail(f"Output directory '{self.data_path_check}' already exists. Choose another working directory.")
+
+    ignore = [self.batch_column if column in batch_columns else column for column in self.ignore]
+    metadata = [column for column in self.df_raw if column.lower() == "smiles"]
+    self.ignore = list(dict.fromkeys([*ignore, *metadata, self.batch_column]))
+    self.log.write(
+        f"Validated {len(self.df_raw)} rows: {int(batch.notna().sum())} measured, "
+        f"{int(batch.isna().sum())} available for selection."
+    )
+    return self
 
 
 def resolve_active_learning_strategy(score, objective, mode=None, alpha_override=None):
@@ -585,6 +491,7 @@ def rank_active_learning_candidates(
     predictions_column,
     sd_column,
     selection_size=None,
+    identifier_column=None,
 ):
     """
     Rank candidate rows for active learning using uncertainty-only or hit discovery.
@@ -615,29 +522,25 @@ def rank_active_learning_candidates(
         ranked_df["_selection_penalty"] = 0.0
         ranked_df["_ranking_metric"] = ranked_df[sd_column].astype(float)
         ranked_df["_acquisition_label"] = "uncertainty"
-        ranked_df = ranked_df.sort_values(
-            by=["_ranking_metric", predictions_column],
-            ascending=[False, False],
-        )
-        return ranked_df
-
-    alpha = float(strategy["alpha"])
-    if strategy["objective"] == "max":
+        columns = ["_ranking_metric", predictions_column]
+        ascending = [False, False]
+    elif strategy["objective"] == "max":
+        alpha = float(strategy["alpha"])
         ranked_df["_ranking_metric"] = ranked_df[predictions_column] + alpha * ranked_df[sd_column]
         ranked_df["_acquisition_label"] = "prediction + alpha*uncertainty"
-        ranked_df = ranked_df.sort_values(
-            by=["_ranking_metric", predictions_column, sd_column],
-            ascending=[False, False, False],
-        )
+        columns = ["_ranking_metric", predictions_column, sd_column]
+        ascending = [False, False, False]
     else:
+        alpha = float(strategy["alpha"])
         ranked_df["_ranking_metric"] = ranked_df[predictions_column] - alpha * ranked_df[sd_column]
         ranked_df["_acquisition_label"] = "prediction - alpha*uncertainty"
-        ranked_df = ranked_df.sort_values(
-            by=["_ranking_metric", predictions_column, sd_column],
-            ascending=[True, True, False],
-        )
+        columns = ["_ranking_metric", predictions_column, sd_column]
+        ascending = [True, True, False]
 
-    return ranked_df
+    if identifier_column is not None:
+        columns.append(identifier_column)
+        ascending.append(True)
+    return ranked_df.sort_values(by=columns, ascending=ascending)
 
 
 def _assign_prediction_quartiles(df, predictions_column):
@@ -1037,7 +940,8 @@ def extract_points_from_csv(batch_number):
         dict: A dictionary with the number of Training and test points for No_PFI and PFI models.
     """
     # Define the base path for the batch
-    base_path = Path.cwd() / f'batch_{batch_number}' / f'ROBERT_b{batch_number}' / 'GENERATE' / 'Best_model'
+    batch_path = Path.cwd() / f"batch_{batch_number}"
+    base_path = batch_path / f"ROBERT_b{batch_number}" / "GENERATE" / "Best_model"
     
     points = {}
     
@@ -1076,7 +980,8 @@ def process_batch(batch_number):
     dict 
         A dictionary containing the batch number, RMSE, and SD values for both columns (no_PFI and PFI).
     """
-    pdf_robert_path = Path.cwd() / f'batch_{batch_number}' / f'ROBERT_b{batch_number}' / 'ROBERT_report.pdf'  
+    output_directory = Path.cwd() / f"batch_{batch_number}"
+    pdf_robert_path = output_directory / f"ROBERT_b{batch_number}" / "ROBERT_report.pdf"
     
     try:
         # Open the PDF file
@@ -1099,7 +1004,7 @@ def process_batch(batch_number):
             points = extract_points_from_csv(batch_number)
 
             # Ensure both columns contain data
-            if all(x is not None for x in [rmse_no_PFI, rmse_PFI, sd_no_PFI, sd_PFI]):
+            if all(x is not None for x in [rmse_no_PFI, rmse_PFI, score_no_PFI, score_PFI, sd_no_PFI, sd_PFI]):
                 # Return two separate dictionaries for PFI and no_PFI
                 no_pfi_dict = {
                     'batch': batch_number,
@@ -1121,14 +1026,12 @@ def process_batch(batch_number):
                 
                 return no_pfi_dict, pfi_dict
             else:
-                print(f"x WARNING! Could not find RMSE, SD, score or points in batch {batch_number}")
-                exit()
+                raise ValueError("Report is missing RMSE, score, or uncertainty values.")
 
     except Exception as e:
-        print(f"x WARNING! Fail extracting information from ROBERT report in batch {batch_number}")
-        exit()
+        raise ValueError(f"Could not read ROBERT metrics for batch {batch_number}: {e}") from e
 
-def get_metrics_from_batches():
+def get_metrics_from_batches(logger=None):
     """
     Generates metrics for plotting by processing each batch directory.
 
@@ -1143,19 +1046,22 @@ def get_metrics_from_batches():
     results_plot_PFI = []
 
     # Process each valid batch directory
-    for batch_dir in Path.cwd().glob('batch_*'):
-        if not batch_dir.is_dir():
+    batches = [
+        folder.name.removeprefix("batch_") for folder in Path.cwd().glob("batch_*")
+        if folder.is_dir() and folder.name.removeprefix("batch_").isdigit()
+    ]
+    for batch_suffix in sorted(batches, key=int):
+        if int(batch_suffix) == 0:
             continue
-        if batch_dir.name == 'batch_plots':
+        try:
+            no_pfi_result, pfi_result = process_batch(batch_suffix)
+        except ValueError as error:
+            message = f"Warning: {error} Skipping this batch in convergence monitoring."
+            if logger is None:
+                print(message)
+            else:
+                logger.write(message)
             continue
-
-        batch_suffix = batch_dir.name.split('_', 1)[1] if '_' in batch_dir.name else ""
-        if not batch_suffix.isdigit():
-            continue
-        if batch_suffix == '0':
-            continue
-
-        no_pfi_result, pfi_result = process_batch(batch_suffix)
 
         if no_pfi_result:
             results_plot_no_PFI.append(no_pfi_result)
