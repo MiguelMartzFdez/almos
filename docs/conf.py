@@ -24,7 +24,7 @@ copyright = 'Miguel Martínez Fernández, Susana García Abellán, David Dalmau,
 author = 'Miguel Martínez Fernández, Susana García Abellán, David Dalmau, Juan V. Alegre Requena'
 
 # The full version, including alpha/beta/rc tags
-release = 'v1.3.0'
+release = 'v1.3.1'
 
 # -- General configuration ---------------------------------------------------
 
