@@ -305,6 +305,18 @@ The current GUI supports the most common options for:
   * ``Model mode`` (highest uncertainty)
   * ``Hit mode`` with ``max`` / ``min`` objective and optional ``alpha``
 
+After a workflow completes, **Run Results** gives access to the dataset, its
+folder, and the viewer or candidate ranking when available. Use **Open Run**
+to reopen a batch's ``run.json``. **Continue in AL** loads the output dataset
+and restores the identifier, target, and ignored columns from the run.
+
+To record experiments, select the identifier column in **Active Learning** and
+choose **Import Measurements**. Supply a CSV with the same identifiers and a
+numeric target column, for example ``Name,yield``. If the target column does not
+exist yet, ALMOS creates it in the updated copy. Measurements are accepted for
+assigned rows only, and existing values are protected. Save the new CSV in the
+current campaign or batch folder to run the next round in the same campaign.
+
 
 .. gui-end 
 

@@ -4,6 +4,12 @@
 Versions
 ========
 
+Version 1.3.0
+   -  Preserve campaign inputs and publish batch manifests and full candidate rankings for active learning.
+   -  Protect previous clustering results when publication fails and improve selection controls in the offline chemical space viewer.
+   -  Browse completed runs, continue them in Active Learning, and import experimental measurements from EasyALMOS.
+   -  Require version increases on pull requests to master and publish to PyPI from CircleCI after tests pass.
+
 Version 1.2.0
    -  Add cluster-based coloring and representative highlighting to the chemical space viewer.
    -  Improve EasyALMOS startup, runtime recovery, and macOS architecture handling.

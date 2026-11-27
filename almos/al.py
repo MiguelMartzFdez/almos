@@ -40,15 +40,25 @@ Parameters
 #        used in the active learning process        #
 #####################################################
 
-import pandas as pd
-import time
-import os , sys
+import os
 from pathlib import Path
 import re
+import shlex
 import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
 import matplotlib
+import numpy as np
+import pandas as pd
 matplotlib.use('Agg')  # Use 'Agg' backend for non-interactive plotting
 from almos.utils import (
+    Logger,
+    csv_safe_identifiers,
+    persist_failed_al_log,
+    write_run_manifest,
     load_variables,
     check_dependencies
 )
@@ -85,35 +95,38 @@ class al:
         # load default and user-specified variables
         self.args = load_variables(kwargs, "al")
 
-        # Check runtime dependencies required by AL
-        _ = check_dependencies(self, "al")
-        
-        # run robert model updated and generate predictions
-        self.run_robert_process()
+        try:
+            check_dependencies(self, "al")
+            self.run_robert_process()
+            self.active_learning_process()
+            self.finalize_process(start_time_overall)
+        except (SystemExit, Exception) as error:
+            persist_failed_al_log(self.args, error)
+            raise
 
-        # run active learning process for selecting points for the new batch
-        self.active_learning_process()
+        self.update_convergence_monitoring()
 
-        # Check for convergence in the batches
-        # Get metrics from batches
-        results_plot_no_PFI, results_plot_PFI = get_metrics_from_batches()
-
-        # Initialize EarlyStopping to check for convergence
-        early_stopping = EarlyStopping(
-            logger=self.args.log,
-            rmse_min_delta = self.args.levels_tolerance[self.args.tolerance],
-            sd_min_delta = self.args.levels_tolerance[self.args.tolerance],
-        )
-        
-        results_plot_no_pfi_df, results_plot_pfi_df = early_stopping.check_convergence(
-            results_plot_no_PFI, results_plot_PFI
-        )
-    
-        # Generate plots
-        self.generate_plots(results_plot_no_pfi_df, results_plot_pfi_df)
-
-        # Log the total time and finalize
-        self.finalize_process(start_time_overall)
+    def update_convergence_monitoring(self):
+        """Refresh campaign-wide diagnostics after publishing the selected batch."""
+        try:
+            self.args.log = Logger(self.data_path / "AL", "data", verbose=self.args.verbose, mode="a")
+        except OSError as error:
+            print(f"Warning: could not reopen the completed batch log: {error}")
+            return
+        try:
+            no_pfi, pfi = get_metrics_from_batches(self.args.log)
+            if no_pfi and pfi:
+                tolerance = self.args.levels_tolerance[self.args.tolerance]
+                early_stopping = EarlyStopping(
+                    logger=self.args.log, rmse_min_delta=tolerance, sd_min_delta=tolerance,
+                )
+                self.generate_plots(*early_stopping.check_convergence(no_pfi, pfi))
+            else:
+                self.args.log.write("Convergence monitoring unavailable: no complete batch metrics were found.")
+        except (OSError, ValueError) as error:
+            self.args.log.write(f"Warning: could not update convergence monitoring: {error}")
+        finally:
+            self.args.log.finalize()
 
     def run_robert_process(self):
         """
@@ -174,57 +187,42 @@ class al:
         )
 
         # Main directory for the process
-        self.main_folder = os.getcwd()
-        
-        # Filter rows where value in the batch_column is not NaN for updating the model
-        robert_model_df = self.args.df_raw[self.args.df_raw[self.args.batch_column].notna()]
-
-        # Ensure the folder for ROBERT model results exists
+        self.main_folder = Path.cwd()
         self.robert_folder = f'ROBERT_b{self.args.current_number_batch}'
-        robert_path = Path(self.main_folder) / self.robert_folder
-        robert_path.mkdir(parents=True, exist_ok=True)
-
-        # Create and save the CSV file inside the folder
+        robert_path = Path(tempfile.mkdtemp(prefix=f".{self.robert_folder}-", dir=self.main_folder))
+        self.robert_path = robert_path
         filename_model_csv = robert_path / f"{self.args.base_name}_ROBERT_b{self.args.current_number_batch}.csv"
-        try:
-            robert_model_df.to_csv(filename_model_csv, index=False)
-            print(f"o File successfully saved: {filename_model_csv}")
-
-        except Exception as e:
-            print(f"x WARNING! Could not save the file: {e}")
-            sys.exit()
-
-        # Change to the newly created ROBERT directory
-        os.chdir(robert_path)
-
-        robert_ignore_update = self._sanitize_ignore_columns(robert_model_df.columns)
-        robert_ignore_update_cli = self._format_robert_ignore(robert_ignore_update)
-
-        # Define paths for the source file and destination directory
-        source = os.path.join(self.args.path_csv_name)
-        destination_dir = Path(Path.cwd().parent, self.robert_folder)  # Ensure destination is a directory
-        destination_dir.mkdir(parents=True, exist_ok=True)  # Create the directory if it doesn't exist
-        destination = destination_dir / Path(source).name  # Complete path for the destination file
-
-        # Check if the source file exists before copying
-        if os.path.isfile(source):
-            # Copy the file from source to destination so ROBERT can train and predict in one run
-            shutil.copy(source, destination)
-        else:
-            print(f"o File '{self.args.csv_name}' was not found for generate predictions! Exiting.")
+        destination = robert_path / self.args.csv_name
+        if " " in filename_model_csv.name:
+            filename_model_csv = robert_path / "training.csv"
+        if " " in destination.name:
+            destination = robert_path / "prediction_input.csv"
+        robert_data = self.args.df_raw.copy()
+        identifiers = robert_data[self.args.name]
+        self.robert_identifiers = csv_safe_identifiers(identifiers)
+        robert_data[self.args.name] = self.robert_identifiers
+        if not self.robert_identifiers.equals(identifiers):
+            pd.DataFrame({"candidate_id": identifiers, "robert_id": self.robert_identifiers}).to_csv(
+                robert_path / "candidate_id_mapping.csv", index=False,
+            )
+        robert_model_df = robert_data[robert_data[self.args.batch_column].notna()]
+        robert_model_df.to_csv(filename_model_csv, index=False)
+        robert_data.to_csv(destination, index=False)
 
         robert_ignore_predict = self._sanitize_ignore_columns(self.args.df_raw.columns)
         robert_ignore_predict_cli = self._format_robert_ignore(robert_ignore_predict)
 
         # Build and run the command for updating the ROBERT model
-        command = (
-            f'python -u -m robert --csv_name "{filename_model_csv}" '
-            f'--csv_test "{destination}" '
-            f'--name "{self.args.name}" '
-            f'--y {self.args.y} '
-            f'--ignore "{robert_ignore_predict_cli}" '
-            f'{self.args.robert_keywords}'
-        )
+        keywords = shlex.shlex(self.args.robert_keywords, posix=True)
+        keywords.whitespace_split = True
+        keywords.commenters = ""
+        if os.name == "nt":
+            keywords.escape = ""
+        command = [
+            sys.executable, "-u", "-m", "robert", "--csv_name", filename_model_csv.name,
+            "--csv_test", destination.name, "--names", self.args.name, "--y", self.args.y,
+            "--ignore", robert_ignore_predict_cli, *keywords,
+        ]
 
         write_log_header(self.args.log, "ROBERT Model Update")
         write_log_block(
@@ -232,7 +230,7 @@ class al:
             "Training data prepared",
             [
                 ("Rows used for model update", len(robert_model_df)),
-                ("Working folder", self.robert_folder),
+                ("Working folder", robert_path.name),
                 ("Training CSV", filename_model_csv.name),
                 ("Prediction CSV", destination.name),
                 ("ROBERT ignore list", robert_ignore_predict_cli),
@@ -240,13 +238,13 @@ class al:
         )
 
         # Run the command and check for errors
-        exit_code = os.system(command)
+        exit_code = subprocess.run(command, cwd=robert_path).returncode
         if exit_code != 0:
             self.args.log.write(f"x WARNING! Command failed with exit code {exit_code}. Exiting.\n")
             sys.exit(exit_code)
 
         # Check if the ROBERT model report was generated
-        if os.path.exists('ROBERT_report.pdf'):
+        if (robert_path / "ROBERT_report.pdf").is_file():
             write_log_block(
                 self.args.log,
                 "ROBERT update result",
@@ -257,7 +255,7 @@ class al:
             )
         else:
             self.args.log.write("\nx WARNING! ROBERT model was not generated\n")
-            sys.exit()
+            sys.exit(1)
 
         # Predictions are generated in the same ROBERT run via --csv_test.
         write_log_header(self.args.log, "Prediction Generation")
@@ -315,7 +313,7 @@ class al:
             )
         else:
             self.args.log.write(f"x WARNING! Predictions were not generated in {self.path_predictions}")
-            sys.exit()
+            sys.exit(1)
 
     def _sanitize_ignore_columns(self, available_columns):
         """
@@ -335,46 +333,47 @@ class al:
         return "[" + ",".join(map(str, ignore_columns)) + "]"
 
     def active_learning_process(self):
-        """
-        Main function for the active learning process, including:
-        - Reading and concatenating predictions with the raw data.
-        - Splitting data into experimental and prediction sets.
-        - Ranking candidates either by uncertainty or by hit acquisition.
-        - Updating the dataset and saving results into organized batch folders.
-        
-        This process manages active learning cycles through one acquisition strategy per batch.
-        """
-        
-        # Read predictions from ROBERT and concatenate with the raw data
-        df_predictions = pd.read_csv(self.path_predictions)
-
-        # Move to the parent directory
-        parent_directory = Path.cwd() / '..'
-        os.chdir(parent_directory) 
-        
-        # Add predictions and prediction SD to the original dataframe
+        """Align predictions by identifier, rank eligible candidates, and publish the batch."""
+        identifier_column = self.args.name
         predictions_column = f'{self.args.y}_pred'
         sd_column = f'{predictions_column}_sd'
-        self.args.df_raw[[predictions_column, sd_column]] = df_predictions[[predictions_column, sd_column]]
-
-        # Check if all predictions are equal (firewall)
-        if df_predictions[predictions_column].nunique() == 1:
-            self.args.log.write(
-                "\nx WARNING: All prediction values are identical. Active Learning process will stop.\n"
-                f"Predicted value: {df_predictions[predictions_column].iloc[0]}\n"
-                "This typically means that the machine learning model cannot find a pattern in the data.\n"
-                "Possible reasons:\n"
-                "- The molecular descriptors do not capture enough relevant information about the molecules.\n"
-                "- The problem is too complex for the current model.\n"
-                "- There are not enough data points to train a predictive model.\n"
-                "Please review your data and descriptor selection, or try adding more experiments.\n"
-            )
-            print("\n[ALMOS] Process stopped: all prediction values are identical.")
-            sys.exit(0)
-        
-        # Filter the DataFrame into experimental and predictions data
         df_raw_copy = self.args.df_raw.copy()
-        predictions_df = df_raw_copy[df_raw_copy[self.args.batch_column].isna()]
+        pool_mask = df_raw_copy[self.args.batch_column].isna()
+        pool_ids = self.robert_identifiers.loc[pool_mask]
+        df_predictions = pd.read_csv(self.path_predictions, converters={identifier_column: str})
+        required_columns = {identifier_column, predictions_column, sd_column}
+        missing_columns = required_columns.difference(df_predictions.columns)
+        if missing_columns:
+            self.args.log.write(f"Prediction output is missing columns: {sorted(missing_columns)}.")
+            raise SystemExit(1)
+        prediction_ids = df_predictions[identifier_column]
+        if prediction_ids.str.strip().eq("").any() or prediction_ids.duplicated().any():
+            self.args.log.write("Prediction output must contain unique, non-empty identifiers.")
+            raise SystemExit(1)
+        predicted_index = pd.Index(prediction_ids)
+        missing_ids = pd.Index(pool_ids).difference(predicted_index)
+        unexpected_ids = predicted_index.difference(self.robert_identifiers)
+        if len(missing_ids) or len(unexpected_ids):
+            self.args.log.write(
+                f"Prediction identifiers do not match the input. Missing ({len(missing_ids)}): "
+                f"{missing_ids[:8].tolist()}; unexpected ({len(unexpected_ids)}): {unexpected_ids[:8].tolist()}."
+            )
+            raise SystemExit(1)
+
+        predictions_df = df_raw_copy.loc[pool_mask, [identifier_column]].copy()
+        aligned = df_predictions.set_index(identifier_column).loc[pool_ids, [predictions_column, sd_column]]
+        aligned.index = predictions_df.index
+        predictions_df[[predictions_column, sd_column]] = aligned.apply(pd.to_numeric, errors="coerce")
+        eligible = (
+            np.isfinite(predictions_df[predictions_column])
+            & np.isfinite(predictions_df[sd_column])
+            & predictions_df[sd_column].ge(0)
+        )
+        excluded_predictions = predictions_df.loc[~eligible]
+        predictions_df = predictions_df.loc[eligible]
+        if predictions_df.empty:
+            self.args.log.write("No candidates have finite predictions and valid uncertainty values.")
+            raise SystemExit(1)
 
         write_log_header(self.args.log, f"Batch {self.args.current_number_batch} Selection")
 
@@ -391,8 +390,22 @@ class al:
             predictions_column,
             sd_column,
             selection_size=selected_count,
+            identifier_column=identifier_column,
         )
         selected_candidates = ranked_candidates.head(selected_count).copy()
+        last_score = selected_candidates["_ranking_metric"].iloc[-1]
+        tied_at_cutoff = int(ranked_candidates["_ranking_metric"].eq(last_score).sum())
+        self.selection_summary = {
+            "batch": self.args.current_number_batch,
+            "selected_count": selected_count,
+            "eligible_count": len(ranked_candidates),
+            "excluded_count": len(excluded_predictions),
+            "strategy": strategy["strategy"],
+            "model": self.selected_model_type,
+            "model_score": self.selected_model_score,
+            "objective": strategy["objective"],
+            "alpha": strategy["alpha"],
+        }
 
         acquisition_rows = [
             ("Prediction model used", self.selected_model_type),
@@ -416,7 +429,11 @@ class al:
                 "Ranking rule",
                 selected_candidates["_acquisition_label"].iloc[0] if selected_count else "n/a",
             ),
-            ("Candidates available", len(ranked_candidates)),
+            ("Candidates available", int(pool_mask.sum())),
+            ("Candidates excluded due to invalid predictions", len(excluded_predictions)),
+            ("Candidates tied at the selection cutoff", tied_at_cutoff),
+            ("Final tie-break", f"ascending identifier ({identifier_column})"),
+            ("Experiments requested", self.args.n_exps),
             ("Points selected", selected_count),
         ]
 
@@ -441,27 +458,28 @@ class al:
                 )
             )
 
-        predictions_copy_df = predictions_df.copy()
-        predictions_copy_df.loc[selected_candidates.index, self.args.batch_column] = self.args.current_number_batch
-
-        # Update batch column after exploration and exploitation
-        df_raw_copy[self.args.batch_column] = df_raw_copy[self.args.batch_column].combine_first(predictions_copy_df[self.args.batch_column])
-        # Drop predictions columns and save updated results
-        df_raw_copy.drop([predictions_column, sd_column], axis=1, inplace=True)
+        df_raw_copy.loc[selected_candidates.index, self.args.batch_column] = self.args.current_number_batch
 
         # Build the filename for the updated dataset and save it
         # Sort entire DataFrame by batch descending, keeping NaNs at the end
-        df_raw_copy = df_raw_copy.sort_values(by=self.args.batch_column, ascending=False, na_position='last')
+        df_raw_copy = df_raw_copy.sort_values(by=self.args.batch_column, ascending=False, na_position="last", kind="stable")
         output_file = f"{self.args.base_name}_b{self.args.current_number_batch}.csv"
-        df_raw_copy.to_csv(output_file, index=False)
-
-        # Create a batch directory and move relevant files
         self.data_path = Path.cwd() / f'batch_{self.args.current_number_batch}'
-        self.data_path.mkdir(parents=True, exist_ok=True)
-
-        # Move the files to the proper batch folder
-        shutil.move(self.robert_folder, self.data_path)
-        shutil.move(output_file, self.data_path)
+        ranking_file = "candidate_ranking.csv"
+        ranking = pd.DataFrame({
+            "rank": range(1, len(ranked_candidates) + 1),
+            "candidate_id": ranked_candidates[identifier_column].to_numpy(),
+            "prediction": ranked_candidates[predictions_column].to_numpy(),
+            "uncertainty": ranked_candidates[sd_column].to_numpy(),
+            "ranking_score": ranked_candidates["_ranking_metric"].to_numpy(),
+            "selected": ranked_candidates.index.isin(selected_candidates.index),
+        })
+        self.staging_path = Path(tempfile.mkdtemp(prefix=f".{self.data_path.name}-", dir=self.data_path.parent))
+        df_raw_copy.to_csv(self.staging_path / output_file, index=False)
+        ranking.to_csv(self.staging_path / ranking_file, index=False)
+        if not excluded_predictions.empty:
+            excluded_predictions.to_csv(self.staging_path / "excluded_predictions.csv", index=False)
+        shutil.move(self.robert_path, self.staging_path / self.robert_folder)
 
         write_log_block(
             self.args.log,
@@ -469,7 +487,8 @@ class al:
             [
                 ("Batch folder", f"batch_{self.args.current_number_batch}"),
                 ("Updated dataset", output_file),
-                ("ROBERT folder moved to", str(self.data_path / self.robert_folder)),
+                ("Complete candidate ranking", ranking_file),
+                ("ROBERT results", self.robert_folder),
             ],
         )
 
@@ -500,9 +519,17 @@ class al:
         )
         
     def finalize_process(self, start_time_overall):
-        """Stop the timer, calculate the total time taken and move the .dat file to the proper batch folder."""
+        """Publish the completed batch only after all required artifacts exist."""
         
         elapsed_time = round(time.time() - start_time_overall, 2)
+        log_file = self.args.log.path
+        artifacts = sorted(path.name for path in self.staging_path.iterdir())
+        if log_file is not None:
+            artifacts.append("AL_data.dat")
+        write_run_manifest(
+            self.args, self.staging_path, module="al", input_path=self.args.path_csv_name,
+            artifacts=artifacts, summary={**self.selection_summary, "duration_seconds": elapsed_time},
+        )
 
         write_log_header(self.args.log, "Active Learning Process Completed")
         write_log_block(
@@ -510,13 +537,20 @@ class al:
             "Run summary",
             [
                 ("Final batch number", self.args.current_number_batch),
+                ("Status", "completed"),
                 ("Output folder", f"batch_{self.args.current_number_batch}"),
                 ("Total runtime (s)", f"{elapsed_time:.2f}"),
             ],
         )
         self.args.log.finalize()
 
-        # Move the .dat file to the proper batch folder
-        log_file = Path.cwd() / "AL_data.dat"  # Path to the log file in the current directory
-        log_destination = os.path.join(self.data_path, "AL_data.dat")  # Define the destination path
-        shutil.move(log_file, log_destination)  # Move the file
+        if log_file is not None:
+            shutil.copyfile(log_file, self.staging_path / "AL_data.dat")
+        if self.data_path.exists():
+            raise FileExistsError(f"Output directory '{self.data_path}' already exists.")
+        self.staging_path.rename(self.data_path)
+        if log_file is not None:
+            try:
+                log_file.unlink(missing_ok=True)
+            except OSError as error:
+                print(f"Warning: could not remove the staged log: {error}")

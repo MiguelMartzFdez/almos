@@ -139,9 +139,12 @@ import subprocess
 import sys
 import time
 import warnings
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
+from plotly.offline import get_plotlyjs
 from rdkit import Chem
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
@@ -163,7 +166,13 @@ from almos.cluster_utils import (
 CHEMICAL_SPACE_OUTPUT_DIR = "batch_0/chemical_space"
 EMBEDDING_FIDELITY_MAX_POINTS = 2000
 from almos.argument_parser import CLUSTER_ALGORITHM_CHOICES, var_dict
-from almos.utils import check_dependencies, load_variables
+from almos.utils import (
+    check_dependencies,
+    csv_safe_identifiers,
+    fingerprint_input,
+    load_variables,
+    write_run_manifest,
+)
 
 
 CLUSTER_SELECTION_MODE_CHOICES = {"representative", "exploratory", "natural"}
@@ -175,29 +184,49 @@ class cluster:
     Class containing the CLUSTER module workflow.
     """
 
-    def __init__(self, **kwargs):
-        start_time_overall = time.time()
+    _workspace = Path()
 
-        self.args = load_variables(kwargs, "cluster")
+    def __init__(self, **kwargs):
+        with TemporaryDirectory(
+            prefix=".almos-cluster-", dir=Path.cwd(), ignore_cleanup_errors=True
+        ) as directory:
+            self._workspace = Path(directory)
+            self.args = load_variables(kwargs, "cluster", log_directory=self._workspace)
+            try:
+                self._run()
+            except BaseException as error:
+                self._persist_failure_log(error)
+                raise
+            finally:
+                self._workspace = Path()
+
+    def _run(self):
+        start_time_overall = time.time()
         self.validate_cluster_threshold_options()
 
         if self.args.aqme:
             _ = check_dependencies(self, "cluster_aqme")
 
         self, df_csv_name, file_name = self.checking_cluster()
-        self, descp_file, df_csv_name, csv = self.set_up_cluster(df_csv_name, file_name)
-
+        self.args.input_sha256 = fingerprint_input(self.args.input)
+        staging_directory = self._workspace / "input"
+        staging_directory.mkdir()
+        self, original_input_path, _, csv = self.set_up_cluster(
+            df_csv_name, file_name, staging_directory
+        )
+        descp_file = original_input_path
         if self.args.aqme:
             self, descp_file = self.run_aqme(csv, descp_file)
-
-        self, descriptor_df, descp_file = self.clean_up_cluster(descp_file, csv, file_name)
+        self, descriptor_df, descp_file = self.clean_up_cluster(
+            descp_file, csv, file_name, original_input_path
+        )
 
         coverage_result = self.prepare_coverage_selection_input(descriptor_df)
         natural_selection_result = None
         if self.args.mode == "natural" or self.args.cluster_natural_report:
             natural_selection_result = self.run_natural_clustering_analysis(descriptor_df)
             coverage_result["natural_selection_result"] = natural_selection_result
-        self.save_cluster_outputs(
+        output_paths, selected_count = self.save_cluster_outputs(
             descp_file=descp_file,
             csv=csv,
             file_name=file_name,
@@ -209,21 +238,146 @@ class cluster:
                 natural_selection_result is not None
                 and natural_selection_result.best_candidate is not None
             ):
-                self.save_natural_clustering_report(
-                    descp_file=descp_file,
+                natural_output_paths = self.save_natural_clustering_report(
+                    descriptor_df=descriptor_df,
                     selection_result=natural_selection_result,
                 )
+                output_paths.extend(natural_output_paths)
             else:
                 self.args.log.write(
                     "\nx WARNING. Natural clustering report was requested, but no valid "
                     "clustering model survived filtering."
                 )
 
+        batch_directory = Path("batch_0")
+        log_path = batch_directory / "CLUSTER_data.dat"
+        if self.args.log.path is not None:
+            output_paths.append(log_path)
+        self.args.log.write(f"\nPrimary CLUSTER output files written: {len(output_paths)}")
         elapsed_time = round(time.time() - start_time_overall, 2)
         self.args.log.write(f"\nCoverage-based point selection time: {elapsed_time} seconds")
         self.args.log.finalize()
 
-        shutil.move("CLUSTER_data.dat", "batch_0/CLUSTER_data.dat")
+        if self.args.log.path is not None:
+            self.args.log.path = self.args.log.path.rename(self._output_path(log_path))
+        write_run_manifest(
+            self.args,
+            self._output_path(batch_directory),
+            module="cluster",
+            input_path=self.args.input,
+            artifacts=[Path(path).relative_to(batch_directory).as_posix() for path in output_paths],
+            summary={
+                "mode": "evaluate" if self.args.evaluate else self.args.mode,
+                "selected_count": selected_count,
+            },
+        )
+        self._publish_run(csv[0])
+        if self.args.log.path is not None:
+            self.args.log.path = self.args.initial_dir / log_path
+
+    def _output_path(self, path):
+        return self._workspace / path
+
+    def _persist_failure_log(self, error):
+        try:
+            self.args.log.finalize()
+            log_path = self.args.log.path
+            if log_path is None or not log_path.is_file():
+                return
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write(f"Run failed: {error}\n")
+            failure_log = self.args.initial_dir / "CLUSTER_data.dat"
+            source = self.args.input
+            if not isinstance(source, (str, os.PathLike)) or Path(source).resolve() != failure_log:
+                log_path.replace(failure_log)
+        except (OSError, RuntimeError) as log_error:
+            error.add_note(f"Could not save the CLUSTER failure log: {log_error}")
+
+    def _carry_forward_outputs(self, current, staged, replaced):
+        """Copy previous files that this run did not generate."""
+        source = Path(self.args.input).resolve()
+        if source.is_relative_to(current):
+            relative_source = source.relative_to(current)
+            if relative_source.parts[0] in replaced or (staged / relative_source).exists():
+                raise ValueError(f"CLUSTER output would replace its input file: {source}")
+
+        def ignore_existing_outputs(directory, names):
+            previous_dir = Path(directory)
+            destination = staged / previous_dir.relative_to(current)
+            ignored = set(replaced) if previous_dir == current else set()
+            for name in names:
+                if name in ignored:
+                    continue
+                new_path = destination / name
+                if not new_path.exists():
+                    continue
+                previous_path = previous_dir / name
+                if previous_path.is_symlink() or new_path.is_dir() != previous_path.is_dir():
+                    raise ValueError(f"CLUSTER output conflicts with an existing path: {previous_path}")
+                if not new_path.is_dir():
+                    ignored.add(name)
+            return ignored
+
+        shutil.copytree(current, staged, dirs_exist_ok=True, symlinks=True, ignore=ignore_existing_outputs)
+
+    def _publish_run(self, input_stem):
+        """Publish complete output directories, restoring previous directories on error."""
+        campaign = self.args.initial_dir
+        lock = campaign / ".almos-cluster-publishing"
+        try:
+            lock.mkdir()
+        except FileExistsError as error:
+            raise RuntimeError(f"Another CLUSTER publication holds {lock}") from error
+
+        try:
+            directories = ["aqme", "batch_0"] if self.args.aqme else ["batch_0"]
+            for name in directories:
+                current = campaign / name
+                staged = self._output_path(name)
+                if current.is_symlink() or (current.exists() and not current.is_dir()):
+                    raise ValueError(f"CLUSTER output path must be a directory: {current}")
+                if not current.exists():
+                    continue
+                replaced = self._aqme_artifact_names(input_stem) if name == "aqme" else []
+                if name == "batch_0" and (current / "run.json").is_file():
+                    shutil.copy2(current / "run.json", staged / "run.previous.json")
+                self._carry_forward_outputs(current, staged, replaced)
+
+            self._replace_output_directories(campaign, directories)
+        finally:
+            try:
+                lock.rmdir()
+            except OSError as error:
+                print(f"Warning: could not remove the CLUSTER publication lock {lock}: {error}")
+
+    def _replace_output_directories(self, campaign, directories):
+        backup = campaign / f".almos-cluster-previous-{self.args.run_id}"
+        backup.mkdir()
+        try:
+            for name in directories:
+                current = campaign / name
+                if current.exists():
+                    current.rename(backup / name)
+                self._output_path(name).rename(current)
+        except BaseException as error:
+            restore_error = None
+            for name in reversed(directories):
+                current = campaign / name
+                staged = self._output_path(name)
+                previous = backup / name
+                try:
+                    if not staged.exists():
+                        current.rename(staged)
+                    if previous.exists():
+                        previous.rename(current)
+                except OSError as directory_error:
+                    restore_error = directory_error
+            if restore_error is not None:
+                error.add_note(f"Could not restore CLUSTER outputs. Previous files are in {backup}")
+                raise error from restore_error
+            shutil.rmtree(backup, ignore_errors=True)
+            raise
+        shutil.rmtree(backup, ignore_errors=True)
 
     def prepare_coverage_selection_input(self, descriptor_df):
         """
@@ -711,21 +865,21 @@ class cluster:
                 }
             )
 
-            file_name = file_name.replace("sdf", "csv")
-            df_csv_name.to_csv(file_name, index=False)
-            self.args.log.write(
-                f"\no Converted SDF input into temporary CSV file: {file_name}"
-            )
-
         if input_extension == "csv":
-            df_csv_name = pd.read_csv(self.args.input)
+            csv_columns = pd.read_csv(self.args.input, nrows=0).columns
+            name_column = self.args.name
+            if name_column not in csv_columns:
+                requested_name = name_column or "code_name"
+                name_column = next(
+                    (column for column in csv_columns if column.lower() == requested_name.lower()),
+                    None,
+                )
+            converters = {name_column: str} if name_column is not None else {}
+            df_csv_name = pd.read_csv(self.args.input, converters=converters)
 
             if self.args.name == "" and self.args.aqme is False:
-                code_name_columns = [
-                    column for column in df_csv_name.columns if column.lower() == "code_name"
-                ]
-                if code_name_columns:
-                    self.args.name = code_name_columns[0]
+                if name_column is not None:
+                    self.args.name = name_column
                     self.args.log.write(
                         f"\no No --name column was specified; using '{self.args.name}' as the identifier column"
                     )
@@ -737,6 +891,22 @@ class cluster:
                     )
                     self.args.log.finalize()
                     sys.exit(13)
+
+            batch_columns = [
+                column for column in df_csv_name.columns if column.lower() == "batch"
+            ]
+            if len(batch_columns) > 1:
+                self.args.log.write(
+                    f"\nx WARNING. The input ({file_name}) contains multiple 'batch' columns. "
+                    "Keep a single batch column."
+                )
+                self.args.log.finalize()
+                sys.exit(1)
+            if batch_columns:
+                df_csv_name = df_csv_name.rename(columns={batch_columns[0]: "batch"})
+                self.args.ignore = [
+                    "batch" if column == batch_columns[0] else column for column in self.args.ignore
+                ]
 
             elements = []
             for element in self.args.ignore:
@@ -751,12 +921,8 @@ class cluster:
                 self.args.log.finalize()
                 sys.exit(5)
 
-            batch_columns = [
-                column for column in df_csv_name.columns if column.lower() == "batch"
-            ]
-            if batch_columns:
-                batch_column = batch_columns[0]
-                batch_values = pd.to_numeric(df_csv_name[batch_column], errors="coerce")
+            if "batch" in df_csv_name.columns:
+                batch_values = pd.to_numeric(df_csv_name["batch"], errors="coerce")
                 has_assigned_batch_values = batch_values.notna().any()
                 if self.args.evaluate:
                     if not has_assigned_batch_values:
@@ -775,7 +941,7 @@ class cluster:
                         )
                         self.args.log.finalize()
                         sys.exit(1)
-                    df_csv_name[batch_column] = batch_values
+                    df_csv_name["batch"] = batch_values
                     self.args.log.write(
                         "\no Existing batch assignments detected. Running CLUSTER in evaluation-only mode."
                     )
@@ -912,18 +1078,16 @@ class cluster:
         self.args.log.write(txt_categor)
         return df
 
-    def set_up_cluster(self, df_csv_name, file_name):
+    def set_up_cluster(self, df_csv_name, file_name, staging_directory):
         """
         Prepare the CSV file and working folders.
         """
 
-        if self.args.evaluate and "batch" in df_csv_name.columns:
-            df_csv_name["batch"] = pd.to_numeric(df_csv_name["batch"], errors="coerce")
-        else:
+        if not self.args.evaluate or "batch" not in df_csv_name.columns:
             df_csv_name["batch"] = np.nan
         if "batch" not in self.args.ignore:
             self.args.ignore.append("batch")
-        os.makedirs("batch_0", exist_ok=True)
+        self._output_path("batch_0").mkdir(exist_ok=True)
 
         if self.args.aqme:
             fixed_df = self.fix_cols_names(df_csv_name)
@@ -990,7 +1154,7 @@ class cluster:
                 )
 
             df_csv_name = fixed_df
-            os.makedirs("aqme", exist_ok=True)
+            self._output_path("aqme").mkdir(exist_ok=True)
 
         for col in df_csv_name.columns:
             if col.lower() == "smiles":
@@ -1043,8 +1207,8 @@ class cluster:
                 self.args.ignore.append("code_name")
 
         csv = file_name.rsplit(".", 1)
-        df_csv_name.to_csv(f"{csv[0]}_b0.csv", index=False, header=True)
-        descp_file = f"{csv[0]}_b0.csv"
+        descp_file = Path(staging_directory) / f"{csv[0]}_b0.csv"
+        df_csv_name.to_csv(descp_file, index=False, header=True)
 
         self.args.log.write(f"\no Prepared initial coverage-selection CSV: {descp_file}")
         return self, descp_file, df_csv_name, csv
@@ -1054,36 +1218,46 @@ class cluster:
         Generate descriptors with AQME when requested.
         """
 
-        cmd_qdescp = ["python", "-m", "aqme", "--qdescp", "--input", descp_file]
+        input_path = Path(descp_file).resolve()
+        staging_directory = input_path.parent
+        aqme_input = pd.read_csv(input_path, converters={"code_name": str})
+        self.validate_aqme_code_names(aqme_input, "AQME input")
+        original_ids = aqme_input["code_name"]
+        staged_ids = csv_safe_identifiers(original_ids)
+        self._aqme_id_aliases = (
+            {} if staged_ids.equals(original_ids) else dict(zip(original_ids, staged_ids))
+        )
 
+        aqme_options = []
         if self.args.nprocs != 8:
-            cmd_qdescp += ["--nprocs", f"{self.args.nprocs}"]
+            aqme_options += ["--nprocs", f"{self.args.nprocs}"]
 
         if self.args.aqme_keywords != "":
             cmd_aqme = self.args.aqme_keywords.split()
             for word in cmd_aqme:
                 word = word.replace('"', "").replace("'", "")
-                cmd_qdescp.append(word)
+                aqme_options.append(word)
 
-        exit_error = subprocess.run(cmd_qdescp)
+        if self._aqme_id_aliases:
+            input_path = staging_directory / "aqme_input" / input_path.name
+            input_path.parent.mkdir()
+            aqme_input.assign(code_name=staged_ids).to_csv(input_path, index=False)
+            self.args.log.write(
+                "\no AQME uses generated code names for this run to preserve the original "
+                "identifiers through CSV parsing."
+            )
+
+        cmd_qdescp = [
+            sys.executable, "-m", "aqme", "--qdescp", "--input", str(input_path), *aqme_options
+        ]
+        exit_error = subprocess.run(cmd_qdescp, cwd=staging_directory)
 
         string_cmd = " ".join(cmd_qdescp)
         self.args.log.write(f"\no Command line used in AQME: {string_cmd}")
 
-        files_to_aqme = [
-            f"AQME-ROBERT_denovo_{csv[0]}_b0.csv",
-            f"AQME-ROBERT_interpret_{csv[0]}_b0.csv",
-            f"AQME-ROBERT_full_{csv[0]}_b0.csv",
-            "QDESCP_data.dat",
-            "CSEARCH_data.dat",
-            "CSEARCH",
-            "QDESCP",
-        ]
-        folders = ["CSEARCH", "QDESCP"]
+        files_to_aqme = self._aqme_artifact_names(csv[0])
 
-        if exit_error.returncode != 0 or not os.path.exists(
-            f"AQME-ROBERT_denovo_{csv[0]}_b0.csv"
-        ):
+        if exit_error.returncode != 0 or not (staging_directory / files_to_aqme[0]).is_file():
             self.args.log.write(
                 "\nx WARNING. AQME descriptor generation failed. Check --aqme_keywords and the AQME input."
             )
@@ -1091,18 +1265,18 @@ class cluster:
             sys.exit(12)
 
         for file in files_to_aqme:
-            destination = f"aqme/{file}"
-            if os.path.exists(destination):
-                if file in folders:
-                    shutil.rmtree(destination)
-                else:
-                    os.remove(destination)
+            destination = self._output_path("aqme") / file
+            if destination.is_dir():
+                shutil.rmtree(destination)
+            else:
+                destination.unlink(missing_ok=True)
 
-            if os.path.exists(file):
-                shutil.move(file, destination)
+            staged_file = staging_directory / file
+            if staged_file.exists():
+                shutil.move(staged_file, destination)
 
         descp_file = f"aqme/AQME-ROBERT_{self.args.descp_level}_{csv[0]}_b0.csv"
-        if not os.path.exists(descp_file):
+        if not self._output_path(descp_file).exists():
             self.args.log.write(
                 f"\nx WARNING. The selected AQME descriptor level '{self.args.descp_level}' "
                 f"was not found ({descp_file})."
@@ -1112,22 +1286,72 @@ class cluster:
 
         self.args.log.write(f"\no Using AQME descriptor file: {descp_file}")
 
-        return self, descp_file
+        return self, self._output_path(descp_file)
 
-    def clean_up_cluster(self, descp_file, csv, file_name):
+    @staticmethod
+    def _aqme_artifact_names(input_stem):
+        return [
+            f"AQME-ROBERT_denovo_{input_stem}_b0.csv",
+            f"AQME-ROBERT_interpret_{input_stem}_b0.csv",
+            f"AQME-ROBERT_full_{input_stem}_b0.csv",
+            "QDESCP_data.dat",
+            "CSEARCH_data.dat",
+            "CSEARCH",
+            "QDESCP",
+        ]
+
+    def validate_aqme_code_names(self, dataframe, source):
+        """Return the non-empty, unique code names from an AQME input or output."""
+
+        if "code_name" in dataframe.columns:
+            code_names = pd.Index(dataframe["code_name"])
+            if (
+                code_names.is_unique
+                and not code_names.hasnans
+                and not (code_names.str.strip() == "").any()
+            ):
+                return code_names
+
+        self.args.log.write(
+            f"\nx WARNING. The {source} must contain a 'code_name' column with "
+            "non-empty, unique identifiers."
+        )
+        self.args.log.finalize()
+        sys.exit(18)
+
+    def align_aqme_descriptors(self, original_input_df, descp_df):
+        """Match AQME descriptor rows to the order of the original input."""
+
+        original_ids = self.validate_aqme_code_names(original_input_df, "AQME input")
+        descriptor_ids = self.validate_aqme_code_names(descp_df, "AQME descriptor file")
+        id_aliases = getattr(self, "_aqme_id_aliases", {})
+        expected_ids = original_ids.map(id_aliases) if id_aliases else original_ids
+        positions = descriptor_ids.get_indexer(expected_ids)
+        missing_count = int((positions < 0).sum())
+        if missing_count or len(positions) != len(descriptor_ids):
+            extra_count = len(descriptor_ids) - len(positions) + missing_count
+            self.args.log.write(
+                "\nx WARNING. AQME descriptor 'code_name' values do not match the original input "
+                f"({missing_count} missing, {extra_count} unexpected)."
+            )
+            self.args.log.finalize()
+            sys.exit(18)
+
+        return descp_df.iloc[positions].reset_index(drop=True)
+
+    def clean_up_cluster(self, descp_file, csv, file_name, original_input_path):
         """
         Prepare the descriptor matrix for clustering.
         """
 
         missing_data_cols = []
 
-        original_batch_file = f"batch_0/{csv[0]}_b0.csv"
-        shutil.move(f"{csv[0]}_b0.csv", original_batch_file)
-        if self.args.aqme is False:
-            descp_file = original_batch_file
-
-        original_input_df = pd.read_csv(original_batch_file)
-        descp_df = pd.read_csv(descp_file)
+        original_input_df = pd.read_csv(original_input_path, converters={self.args.name: str})
+        if self.args.aqme:
+            descp_df = pd.read_csv(descp_file, converters={"code_name": str})
+            descp_df = self.align_aqme_descriptors(original_input_df, descp_df)
+        else:
+            descp_df = original_input_df
         descp_df_drop = descp_df.drop(self.args.ignore, axis=1, errors="ignore")
         initial_descriptor_columns = descp_df_drop.columns.tolist()
 
@@ -1205,14 +1429,6 @@ class cluster:
             sys.exit(7)
 
         if self.args.aqme:
-            if len(original_input_df) != len(descp_df_drop):
-                self.args.log.write(
-                    "\nx WARNING. The AQME descriptor file and the original input have different "
-                    "numbers of rows after preprocessing, so the final CSV cannot be aligned safely."
-                )
-                self.args.log.finalize()
-                sys.exit(18)
-
             descriptor_columns = descp_df_drop.columns.tolist()
             original_columns = original_input_df.columns.tolist()
             descp_df = pd.concat(
@@ -1255,8 +1471,8 @@ class cluster:
             removed_summary,
         )
 
-        descp_df.to_csv(f"batch_0/{csv[0]}_b0.csv", index=False, header=True)
-        descp_file = f"batch_0/{csv[0]}_b0.csv"
+        descp_file = self._output_path(f"batch_0/{csv[0]}_b0.csv")
+        descp_df.to_csv(descp_file, index=False, header=True)
 
         self.args.log.write(
             f"\no Final descriptor count after cleanup: {len(descp_df_drop.columns)}"
@@ -2163,13 +2379,13 @@ class cluster:
             return {}
 
         output_folder = "batch_0/selection_diagnostics"
-        os.makedirs(output_folder, exist_ok=True)
+        self._output_path(output_folder).mkdir(exist_ok=True, parents=True)
         saved_paths = {}
 
         pca_embedding = self.compute_pca_2d_embedding(selection_data)
         pca_selected_embedding = pca_embedding[selected_indices]
         pca_output_folder = os.path.join(output_folder, "PCA")
-        os.makedirs(pca_output_folder, exist_ok=True)
+        self._output_path(pca_output_folder).mkdir(exist_ok=True)
         pca_paths = self.save_single_2d_diagnostic_images(
             "PCA",
             pca_embedding,
@@ -2189,7 +2405,7 @@ class cluster:
             try:
                 umap_selected_embedding = umap_context["embedding"][selected_indices]
                 umap_output_folder = os.path.join(output_folder, "UMAP")
-                os.makedirs(umap_output_folder, exist_ok=True)
+                self._output_path(umap_output_folder).mkdir(exist_ok=True)
                 umap_paths = self.save_single_2d_diagnostic_images(
                     "UMAP",
                     umap_context["embedding"],
@@ -2308,7 +2524,7 @@ class cluster:
             output_folder,
             f"{embedding_name.lower()}_area_coverage.png",
         )
-        fig.savefig(area_path)
+        fig.savefig(self._output_path(area_path))
         plt.close(fig)
         saved_paths["area"] = area_path
 
@@ -2394,7 +2610,7 @@ class cluster:
             output_folder,
             f"{embedding_name.lower()}_grid_coverage.png",
         )
-        fig.savefig(grid_path)
+        fig.savefig(self._output_path(grid_path))
         plt.close(fig)
         saved_paths["grid"] = grid_path
 
@@ -2516,7 +2732,7 @@ class cluster:
             output_folder,
             f"{embedding_name.lower()}_dispersion_score.png",
         )
-        fig.savefig(dispersion_path)
+        fig.savefig(self._output_path(dispersion_path))
         plt.close(fig)
         saved_paths["dispersion"] = dispersion_path
 
@@ -2576,7 +2792,7 @@ class cluster:
             return None
 
         output_folder = "batch_0/selection_diagnostics"
-        os.makedirs(output_folder, exist_ok=True)
+        self._output_path(output_folder).mkdir(exist_ok=True, parents=True)
 
         sorted_budgets = sorted(evaluated_budgets)
         avg_gaps = [
@@ -2663,7 +2879,7 @@ class cluster:
         )
         fig.tight_layout()
         output_path = os.path.join(output_folder, "avg_gap_plateau.png")
-        fig.savefig(output_path)
+        fig.savefig(self._output_path(output_path))
         plt.close(fig)
         return output_path
 
@@ -3476,9 +3692,9 @@ class cluster:
             pca_df["pc3"] = pca_embedding["z"]
             if "smiles" in pca_df.columns:
                 pca_df = pca_df[[column for column in pca_df.columns if column != "smiles"] + ["smiles"]]
-            os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+            self._output_path(CHEMICAL_SPACE_OUTPUT_DIR).mkdir(exist_ok=True, parents=True)
             pca_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_pca.csv"
-            pca_df.to_csv(pca_path, index=False)
+            pca_df.to_csv(self._output_path(pca_path), index=False)
             output_paths.append(pca_path)
 
         umap_embedding = embeddings.get("UMAP")
@@ -3488,9 +3704,9 @@ class cluster:
             umap_df["umap_2"] = umap_embedding["y"]
             if "smiles" in umap_df.columns:
                 umap_df = umap_df[[column for column in umap_df.columns if column != "smiles"] + ["smiles"]]
-            os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+            self._output_path(CHEMICAL_SPACE_OUTPUT_DIR).mkdir(exist_ok=True, parents=True)
             umap_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_umap.csv"
-            umap_df.to_csv(umap_path, index=False)
+            umap_df.to_csv(self._output_path(umap_path), index=False)
             output_paths.append(umap_path)
 
         return output_paths
@@ -3631,6 +3847,10 @@ class cluster:
         )
         has_smiles = smiles_column is not None
         name_column = self.resolve_chemical_space_name_column(descp_df)
+        batch_column = next(
+            (column for column in descp_df.columns if column.lower() == "batch"),
+            None,
+        )
         target_column = self.args.y if self.args.y in descp_df.columns else None
         target_values = None
         target_is_numeric = False
@@ -3687,14 +3907,12 @@ class cluster:
                 .astype(float)
                 .tolist()
             ]
-        smiles_values = []
+        records = []
         for index in display_indices:
             row = descp_df.loc[index]
-            smiles_values.append(str(row[smiles_column]) if has_smiles else "")
-        records = []
-        for position, index in enumerate(display_indices):
-            row = descp_df.loc[index]
-            smiles = smiles_values[position]
+            smiles = str(row[smiles_column]) if has_smiles else ""
+            batch = row[batch_column] if batch_column is not None else None
+            target = row[target_column] if target_column is not None else None
             svg = (
                 self.molecule_svg_from_smiles(smiles)
                 if has_smiles and int(index) in selected_index_set
@@ -3704,6 +3922,7 @@ class cluster:
                 {
                     "index": int(index),
                     "name": str(row[name_column]) if name_column is not None else str(index),
+                    "batch": None if pd.isna(batch) else batch,
                     "smiles": smiles,
                     "selected": bool(index in selected_index_set),
                     "selectionRegion": int(
@@ -3712,8 +3931,8 @@ class cluster:
                     "interactive": bool(index in interactive_index_set),
                     "target": (
                         None
-                        if target_column is None
-                        else str(row[target_column])
+                        if pd.isna(target) or not str(target).strip()
+                        else str(target)
                     ),
                     "svg": svg,
                 }
@@ -3763,7 +3982,6 @@ class cluster:
             color_payload["target"] = target_values
         if descriptor_color_payload:
             color_payload["descriptors"] = descriptor_color_payload
-
         html_payload = {
             "embeddings": embedding_payload,
             "colors": color_payload,
@@ -3784,9 +4002,9 @@ class cluster:
             "",
             file_name,
         )
-        os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+        self._output_path(CHEMICAL_SPACE_OUTPUT_DIR).mkdir(exist_ok=True, parents=True)
         viewer_path = f"{CHEMICAL_SPACE_OUTPUT_DIR}/chemical_space_viewer.html"
-        with open(viewer_path, "w", encoding="utf-8") as handle:
+        with self._output_path(viewer_path).open("w", encoding="utf-8") as handle:
             handle.write(html_text)
 
         self.args.log.write("\no 2D chemical space visualization")
@@ -3892,7 +4110,7 @@ class cluster:
         ).replace("</", "<\\/")
         color_options = ["selected", "clusters"]
         if payload["targetColumn"] is not None and payload["targetIsNumeric"]:
-            color_options.insert(2, "target")
+            color_options.append("target")
         color_options.extend(
             f"descriptor::{descriptor}"
             for descriptor in payload.get("descriptorColorColumns", [])
@@ -3913,8 +4131,22 @@ class cluster:
             f'<option value="{embedding}">{embedding}</option>'
             for embedding in payload["embeddings"]
         )
-        plotly_script = '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>'
+        plotly_script = f"<script>{plotly_js or get_plotlyjs()}</script>"
         base_file_name_json = json.dumps(os.path.splitext(file_name)[0])
+        target_filter_html = (
+            """
+      <div>
+        <label for="targetFilter">Target availability</label>
+        <select id="targetFilter">
+          <option value="">Any target status</option>
+          <option value="present">Present</option>
+          <option value="missing">Missing</option>
+        </select>
+      </div>
+            """
+            if payload["targetColumn"] is not None
+            else ""
+        )
 
         return f"""<!DOCTYPE html>
 <html>
@@ -3939,6 +4171,10 @@ class cluster:
     }}
     label {{ font-size: 13px; margin-right: 14px; }}
     select {{ margin-left: 6px; }}
+    .filter-controls {{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }}
+    .filter-controls label {{ margin-right: 0; }}
+    .filter-controls input {{ margin-left: 6px; }}
+    #visibleCount {{ color: #52606d; font-size: 13px; }}
     button {{
       border: 1px solid #9fb3c8;
       border-radius: 6px;
@@ -3948,7 +4184,8 @@ class cluster:
       font-size: 13px;
       padding: 5px 9px;
     }}
-    button:hover {{ background: #d9e2ec; }}
+    button:hover:not(:disabled) {{ background: #d9e2ec; }}
+    button:disabled {{ opacity: 0.55; cursor: default; }}
     .meta {{ font-size: 13px; line-height: 1.45; }}
     .note {{ font-size: 12px; color: #52606d; margin-top: 8px; }}
     .mol svg {{ max-width: 100%; height: auto; }}
@@ -3974,9 +4211,32 @@ class cluster:
       </select>
     </label>
     <button id="savePngButton" type="button">Save PNG</button>
+    <div class="filter-controls">
+      <div>
+        <label for="candidateSearch">Candidate ID</label>
+        <input id="candidateSearch" type="search">
+      </div>
+      <div>
+        <label for="batchFilter">Batch</label>
+        <select id="batchFilter">
+          <option value="">All batches</option>
+        </select>
+      </div>
+      <div>
+        <label for="selectionFilter">Selection</label>
+        <select id="selectionFilter">
+          <option value="">All molecules</option>
+          <option value="selected">Selected</option>
+          <option value="unselected">Unselected</option>
+        </select>
+      </div>
+      {target_filter_html}
+      <button id="resetFiltersButton" type="button">Reset filters</button>
+      <button id="exportCsvButton" type="button" disabled>Export CSV</button>
+      <span id="visibleCount" role="status"></span>
+    </div>
     <div class="note">
       <div>Hover over a molecule to preview its details. Click it to keep those details pinned.</div>
-      <div>All molecules are shown and remain clickable across PCA 2D, PCA 3D, and UMAP.</div>
     </div>
   </header>
   <main>
@@ -3998,16 +4258,40 @@ class cluster:
     const errorBanner = document.getElementById("errorBanner");
     const embeddingSelect = document.getElementById("embeddingSelect");
     const colorSelect = document.getElementById("colorSelect");
+    const candidateSearch = document.getElementById("candidateSearch");
+    const batchFilter = document.getElementById("batchFilter");
+    const selectionFilter = document.getElementById("selectionFilter");
+    const targetFilter = document.getElementById("targetFilter");
+    const resetFiltersButton = document.getElementById("resetFiltersButton");
+    const exportCsvButton = document.getElementById("exportCsvButton");
+    const visibleCount = document.getElementById("visibleCount");
     const savePngButton = document.getElementById("savePngButton");
     const detailsContent = document.getElementById("detailsContent");
     const unpinButton = document.getElementById("unpinButton");
     const initialDetailsHtml = detailsContent.innerHTML;
     const baseFileName = {base_file_name_json};
     const PINNED_TRACE_NAME = "Pinned molecule";
+    const SELECTION_HIGHLIGHT_UID = "almos-selection-highlight";
+    const hasSelectedCandidates = payload.records.some(record => record.selected);
     const CLUSTER_COLORS = [
       "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c",
       "#0891b2", "#ca8a04", "#db2777", "#4f46e5", "#65a30d"
     ];
+    const assignedBatches = [...new Set(payload.records.map(record => record.batch))]
+      .filter(batch => batch !== null && batch !== undefined)
+      .sort((left, right) => left - right);
+    for (const batch of assignedBatches) {{
+      batchFilter.add(new Option(String(batch), `batch:${{batch}}`));
+    }}
+    if (payload.records.some(record => record.batch === null || record.batch === undefined)) {{
+      batchFilter.add(new Option("Unassigned", "unassigned"));
+    }}
+    batchFilter.disabled = assignedBatches.length === 0;
+
+    let visibleIndices = [];
+    let drawRequested = false;
+    let drawing = false;
+    let searchDrawTimeout = null;
     let pinnedTraceIndex = null;
     let hoveredPointIndex = null;
     let native3DClickMoved = false;
@@ -4066,6 +4350,68 @@ class cluster:
       }}
     }};
 
+    function axisBounds(values) {{
+      let min = Infinity;
+      let max = -Infinity;
+      for (const value of values) {{
+        if (value < min) min = value;
+        if (value > max) max = value;
+      }}
+      return [min, max];
+    }}
+
+    function matchingIndices() {{
+      const query = candidateSearch.value.trim().toLowerCase();
+      const batch = batchFilter.value;
+      const selection = selectionFilter.value;
+      const target = targetFilter?.value;
+      const indices = [];
+      payload.records.forEach((record, index) => {{
+        const batchValue = record.batch === null || record.batch === undefined
+          ? "unassigned"
+          : `batch:${{record.batch}}`;
+        const hasTarget = record.target !== null && record.target !== undefined;
+        if (query && !String(record.name).toLowerCase().includes(query)) return;
+        if (batch && batch !== batchValue) return;
+        if (selection && (selection === "selected") !== record.selected) return;
+        if (target && (target === "present") !== hasTarget) return;
+        indices.push(index);
+      }});
+      return indices;
+    }}
+
+    async function requestDraw() {{
+      window.clearTimeout(searchDrawTimeout);
+      searchDrawTimeout = null;
+      drawRequested = true;
+      exportCsvButton.disabled = true;
+      if (drawing) return;
+      drawing = true;
+      try {{
+        while (drawRequested) {{
+          drawRequested = false;
+          await draw();
+        }}
+      }} finally {{
+        drawing = false;
+        exportCsvButton.disabled = searchDrawTimeout !== null || visibleIndices.length === 0;
+      }}
+    }}
+
+    function scheduleSearchDraw() {{
+      window.clearTimeout(searchDrawTimeout);
+      exportCsvButton.disabled = true;
+      searchDrawTimeout = window.setTimeout(requestDraw, 120);
+    }}
+
+    function resetFilters() {{
+      candidateSearch.value = "";
+      batchFilter.value = "";
+      selectionFilter.value = "";
+      if (targetFilter) targetFilter.value = "";
+      requestDraw();
+    }}
+
     async function draw() {{
       errorBanner.style.display = "none";
       errorBanner.textContent = "";
@@ -4077,15 +4423,16 @@ class cluster:
       const isTargetGradient = colorMode === "target";
       const isDescriptorGradient = colorMode.startsWith("descriptor::");
       const descriptorName = isDescriptorGradient ? colorMode.replace("descriptor::", "") : null;
+      visibleIndices = matchingIndices();
+      visibleCount.textContent = `${{visibleIndices.length.toLocaleString()}} of ${{payload.records.length.toLocaleString()}} molecules shown`;
+      hoveredPointIndex = null;
+      plot.style.cursor = "";
       const traces = [];
-      const xMin = Math.min(...coords.x);
-      const xMax = Math.max(...coords.x);
-      const yMin = Math.min(...coords.y);
-      const yMax = Math.max(...coords.y);
+      const [xMin, xMax] = axisBounds(coords.x);
+      const [yMin, yMax] = axisBounds(coords.y);
       const xPad = Math.max((xMax - xMin) * 0.05, 1e-9);
       const yPad = Math.max((yMax - yMin) * 0.05, 1e-9);
-      const zMin = is3D ? Math.min(...coords.z) : null;
-      const zMax = is3D ? Math.max(...coords.z) : null;
+      const [zMin, zMax] = is3D ? axisBounds(coords.z) : [null, null];
       const zPad = is3D ? Math.max((zMax - zMin) * 0.05, 1e-9) : null;
       const backgroundMarkerLine = {{ width: is3D ? 0 : 0.6, color: "#64748b" }};
 
@@ -4094,16 +4441,20 @@ class cluster:
           showScale = false,
           colorValues = null,
           interactive = false,
-          showLegend = true
+          showLegend = true,
+          uid = undefined
         }} = options;
+        // Plotly needs a coordinate entry to keep a legend item for an empty trace.
+        const plotIndices = showLegend && indices.length === 0 ? [null] : indices;
         return {{
           type: is3D ? "scatter3d" : "scattergl",
           mode: "markers",
           name,
+          uid,
           showlegend: showLegend,
-          x: indices.map(i => coords.x[i]),
-          y: indices.map(i => coords.y[i]),
-          z: is3D ? indices.map(i => coords.z[i]) : undefined,
+          x: plotIndices.map(i => i === null ? null : coords.x[i]),
+          y: plotIndices.map(i => i === null ? null : coords.y[i]),
+          z: is3D ? plotIndices.map(i => i === null ? null : coords.z[i]) : undefined,
           customdata: interactive ? indices : undefined,
           hoverinfo: interactive ? "none" : "skip",
           marker: {{
@@ -4115,19 +4466,18 @@ class cluster:
         }};
       }}
 
-      const allIndices = payload.records.map((_, i) => i);
-      const selectedIndices = allIndices.filter(i => payload.records[i].selected);
-      const backgroundIndices = allIndices.filter(i => !payload.records[i].selected);
+      const selectedIndices = visibleIndices.filter(i => payload.records[i].selected);
       const baseMarkerSize = is3D ? 3 : 4;
       const selectedMarkerSize = is3D ? 10 : 12;
 
+      // Base traces retain every visible molecule when the selection highlight is hidden.
       if (isClusterMode) {{
         const selectionRegions = [...new Set(
-          payload.records.map(record => record.selectionRegion)
+          visibleIndices.map(index => payload.records[index].selectionRegion)
         )].filter(region => region !== null && region !== undefined)
           .sort((left, right) => Number(left) - Number(right));
         selectionRegions.forEach(region => {{
-          const clusterIndices = allIndices.filter(
+          const clusterIndices = visibleIndices.filter(
             index => payload.records[index].selectionRegion === region
           );
           traces.push(makeTrace(`Cluster ${{region + 1}}`, clusterIndices, {{
@@ -4138,7 +4488,7 @@ class cluster:
             line: {{ width: is3D ? 0 : 0.6, color: "#475569" }}
           }}, {{ interactive: true, showLegend: false }}));
         }});
-        if (selectedIndices.length > 0) {{
+        if (hasSelectedCandidates) {{
           traces.push(makeTrace("Selected representatives", selectedIndices, {{
             size: selectedMarkerSize,
             opacity: 1.0,
@@ -4146,7 +4496,8 @@ class cluster:
             line: {{ width: 2, color: "#111827" }}
           }}, {{
             colorValues: payload.records.map(record => clusterColor(record.selectionRegion)),
-            interactive: true
+            interactive: true,
+            uid: SELECTION_HIGHLIGHT_UID
           }}));
         }}
       }} else if (isTargetGradient || isDescriptorGradient) {{
@@ -4154,13 +4505,13 @@ class cluster:
           ? payload.colors.target
           : payload.colors.descriptors[descriptorName];
         const gradientIndices = isTargetGradient
-          ? backgroundIndices.filter(i => gradientValues[i] !== null && gradientValues[i] !== undefined)
-          : backgroundIndices;
-        const missingTargetIndices = isTargetGradient
-          ? backgroundIndices.filter(i => gradientValues[i] === null || gradientValues[i] === undefined)
+          ? visibleIndices.filter(i => gradientValues[i] !== null && gradientValues[i] !== undefined)
+          : visibleIndices;
+        const missingValueIndices = isTargetGradient
+          ? visibleIndices.filter(i => gradientValues[i] === null || gradientValues[i] === undefined)
           : [];
-        if (missingTargetIndices.length > 0) {{
-          traces.push(makeTrace(`No ${{colorTitle(colorMode)}} value`, missingTargetIndices, {{
+        if (missingValueIndices.length > 0) {{
+          traces.push(makeTrace(`No ${{colorTitle(colorMode)}} value`, missingValueIndices, {{
             color: "#e5e7eb",
             size: baseMarkerSize,
             opacity: 0.32,
@@ -4177,40 +4528,29 @@ class cluster:
             line: backgroundMarkerLine
           }}, {{ showScale: true, colorValues: gradientValues, interactive: true }}));
         }}
-        if (selectedIndices.length > 0) {{
-          traces.push(makeTrace("Selected", selectedIndices, {{
-            color: "#16a34a",
-            size: selectedMarkerSize,
-            opacity: 1.0,
-            symbol: "circle",
-            line: {{ width: 1.5, color: "#064e3b" }}
-          }}, {{ interactive: true }}));
-        }}
       }} else {{
-        if (backgroundIndices.length > 0) {{
-          traces.push(makeTrace("All molecules", backgroundIndices, {{
-            color: "#d9e2ec",
-            size: baseMarkerSize,
-            opacity: 0.38,
-            symbol: "circle",
-            line: backgroundMarkerLine
-          }}, {{ interactive: true }}));
-        }}
-        if (selectedIndices.length > 0) {{
-          traces.push(makeTrace("Selected", selectedIndices, {{
-            color: "#16a34a",
-            size: selectedMarkerSize,
-            opacity: 1.0,
-            symbol: "circle",
-            line: {{ width: 1.5, color: "#064e3b" }}
-          }}, {{ interactive: true }}));
-        }}
+        traces.push(makeTrace("All molecules", visibleIndices, {{
+          color: "#bcc6d2",
+          size: is3D ? 5 : 6,
+          opacity: 0.92,
+          symbol: "circle",
+          line: {{ width: 1, color: "#1f2937" }}
+        }}, {{ interactive: true }}));
+      }}
+      if (!isClusterMode && hasSelectedCandidates) {{
+        traces.push(makeTrace("Selected", selectedIndices, {{
+          color: "#16a34a",
+          size: selectedMarkerSize,
+          opacity: 1.0,
+          symbol: "circle",
+          line: {{ width: 1.5, color: "#064e3b" }}
+        }}, {{ interactive: true, uid: SELECTION_HIGHLIGHT_UID }}));
       }}
       const pinnedIndexValue = plot.dataset.pinnedPointIndex;
       const pinnedPointIndex = pinnedIndexValue === undefined || pinnedIndexValue === ""
         ? null
         : Number(pinnedIndexValue);
-      const pinnedIndices = pinnedPointIndex === null ? [] : [pinnedPointIndex];
+      const pinnedIndices = visibleIndices.includes(pinnedPointIndex) ? [pinnedPointIndex] : [];
       pinnedTraceIndex = traces.length;
       traces.push(makeTrace(PINNED_TRACE_NAME, pinnedIndices, {{
         color: "#047857",
@@ -4220,6 +4560,8 @@ class cluster:
         line: {{ width: 3, color: "#064e3b" }}
       }}, {{ interactive: true, showLegend: false }}));
       const layout = {{
+        uirevision: embedding,
+        showlegend: true,
         margin: {{ l: 50, r: 20, t: 88, b: 45 }},
         dragmode: is3D ? "turntable" : "pan",
         title: {{
@@ -4311,6 +4653,40 @@ class cluster:
       }});
     }}
 
+    function csvCell(value) {{
+      const cell = String(value ?? "");
+      return /[",\\r\\n]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
+    }}
+
+    function downloadVisibleCsv() {{
+      const embedding = embeddingSelect.value;
+      const coords = payload.embeddings[embedding];
+      const includeTarget = payload.targetColumn !== null;
+      const includeZ = coords.dims === 3;
+      const columns = ["candidate_id", "batch", "selected", "cluster", "SMILES"];
+      if (includeTarget) columns.push("target");
+      columns.push("embedding", "x", "y");
+      if (includeZ) columns.push("z");
+      const rows = [columns.join(",")];
+      for (const index of visibleIndices) {{
+        const record = payload.records[index];
+        const row = [record.name, record.batch, record.selected, clusterNumber(record), record.smiles];
+        if (includeTarget) row.push(record.target);
+        row.push(embedding, coords.x[index], coords.y[index]);
+        if (includeZ) row.push(coords.z[index]);
+        rows.push(row.map(csvCell).join(","));
+      }}
+      const csv = new Blob([rows.join("\\r\\n") + "\\r\\n"], {{ type: "text/csv;charset=utf-8" }});
+      const url = URL.createObjectURL(csv);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = safeFilename(`${{baseFileName}}_${{embedding}}_visible`) + ".csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }}
+
     function escapeHtml(value) {{
       return String(value ?? "").replace(/[&<>"']/g, ch => ({{
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
@@ -4325,14 +4701,21 @@ class cluster:
       return `<p class="empty">${{payload.hasSmiles ? "No valid molecule drawing available." : "No SMILES column available."}}</p>`;
     }}
 
+    function clusterNumber(record) {{
+      return record.selectionRegion === null || record.selectionRegion === undefined
+        ? null
+        : record.selectionRegion + 1;
+    }}
+
     function recordCard(record) {{
       return `
         ${{moleculeBlock(record)}}
         <p><strong>${{escapeHtml(record.name)}}</strong></p>
+        <p>Batch: ${{escapeHtml(record.batch ?? "Unassigned")}}</p>
         <p>selected: ${{record.selected}}</p>
-        <p>cluster: ${{record.selectionRegion === null || record.selectionRegion === undefined ? "NA" : record.selectionRegion + 1}}</p>
+        <p>cluster: ${{clusterNumber(record) ?? "NA"}}</p>
         <p>SMILES: ${{escapeHtml(record.smiles || "NA")}}</p>
-        ${{payload.targetColumn ? `<p>${{escapeHtml(payload.targetColumn)}}: ${{escapeHtml(record.target)}}</p>` : ""}}
+        ${{payload.targetColumn ? `<p>${{escapeHtml(payload.targetColumn)}}: ${{escapeHtml(record.target ?? "NA")}}</p>` : ""}}
       `;
     }}
     function showRecord(pointIndex) {{
@@ -4344,7 +4727,7 @@ class cluster:
       return true;
     }}
     function previewRecord(pointIndex) {{
-      showRecord(pointIndex);
+      if (visibleIndices.includes(pointIndex)) showRecord(pointIndex);
     }}
     function updatePinnedMarker(pointIndex) {{
       if (pinnedTraceIndex === null || typeof Plotly === "undefined") return;
@@ -4361,7 +4744,7 @@ class cluster:
       Plotly.restyle(plot, update, [pinnedTraceIndex]);
     }}
     function pinRecord(pointIndex) {{
-      if (!showRecord(pointIndex)) return;
+      if (drawing || !visibleIndices.includes(pointIndex) || !showRecord(pointIndex)) return;
       plot.dataset.pinnedPointIndex = String(pointIndex);
       unpinButton.disabled = false;
       updatePinnedMarker(pointIndex);
@@ -4369,7 +4752,11 @@ class cluster:
     function restorePinnedRecord() {{
       const pinnedIndex = plot.dataset.pinnedPointIndex;
       if (pinnedIndex !== undefined && pinnedIndex !== "") {{
-        showRecord(Number(pinnedIndex));
+        const pointIndex = Number(pinnedIndex);
+        showRecord(pointIndex);
+        if (!visibleIndices.includes(pointIndex)) {{
+          detailsContent.insertAdjacentHTML("afterbegin", '<p class="note">Pinned molecule is hidden by the current filters.</p>');
+        }}
         return;
       }}
       detailsContent.className = "panel-help";
@@ -4386,7 +4773,11 @@ class cluster:
         plot.removeAllListeners("plotly_click");
         plot.removeAllListeners("plotly_hover");
         plot.removeAllListeners("plotly_unhover");
+        plot.removeAllListeners("plotly_legenddoubleclick");
       }}
+      plot.on("plotly_legenddoubleclick", event => (
+        plot.data[event.curveNumber]?.uid !== SELECTION_HIGHLIGHT_UID
+      ));
       plot.on("plotly_click", event => {{
         if (!event.points || event.points.length === 0) return;
         pinRecord(event.points[0].customdata);
@@ -4423,27 +4814,31 @@ class cluster:
       native3DClickMoved = false;
       native3DPointerStart = null;
     }});
-    draw();
-
-    embeddingSelect.addEventListener("change", draw);
-    colorSelect.addEventListener("change", draw);
+    embeddingSelect.addEventListener("change", requestDraw);
+    colorSelect.addEventListener("change", requestDraw);
+    candidateSearch.addEventListener("input", scheduleSearchDraw);
+    batchFilter.addEventListener("change", requestDraw);
+    selectionFilter.addEventListener("change", requestDraw);
+    targetFilter?.addEventListener("change", requestDraw);
+    resetFiltersButton.addEventListener("click", resetFilters);
+    exportCsvButton.addEventListener("click", downloadVisibleCsv);
     savePngButton.addEventListener("click", downloadCurrentPlot);
     unpinButton.addEventListener("click", clearPinnedRecord);
+    requestDraw();
   </script>
 </body>
 </html>
 """
 
-    def save_natural_clustering_report(self, descp_file, selection_result):
+    def save_natural_clustering_report(self, descriptor_df, selection_result):
         """
         Save optional natural clustering diagnostics.
         """
 
         best_candidate = selection_result.best_candidate
         if best_candidate is None:
-            return
+            return []
 
-        descp_df = pd.read_csv(descp_file)
         summary_rows = []
         for algorithm, candidate in selection_result.best_by_algorithm.items():
             summary_rows.append(
@@ -4463,30 +4858,23 @@ class cluster:
                 }
             )
 
-        pd.DataFrame(summary_rows).to_csv(
-            "batch_0/clustering_model_summary.csv",
-            index=False,
-        )
+        model_summary_path = "batch_0/clustering_model_summary.csv"
+        pd.DataFrame(summary_rows).to_csv(self._output_path(model_summary_path), index=False)
 
-        descriptor_columns = [
-            column for column in selection_result.descriptor_columns if column in descp_df.columns
-        ]
         descriptor_importance_df = compute_cluster_descriptor_importance(
-            descp_df.loc[:, descriptor_columns],
+            descriptor_df,
             best_candidate.labels,
         )
-        descriptor_importance_df.to_csv(
-            "batch_0/cluster_descriptor_importance.csv",
-            index=False,
-        )
+        descriptor_importance_path = "batch_0/cluster_descriptor_importance.csv"
+        descriptor_importance_df.to_csv(self._output_path(descriptor_importance_path), index=False)
 
         self.args.log.write("\no Optional natural clustering report")
         self.args.log.write(
             f"   - Best natural clustering model: {best_candidate.algorithm} "
             f"with parameters {best_candidate.params}"
         )
-        self.args.log.write("   - Saved batch_0/clustering_model_summary.csv")
-        self.args.log.write("   - Saved batch_0/cluster_descriptor_importance.csv")
+        self.args.log.write(f"   - Saved {model_summary_path}")
+        self.args.log.write(f"   - Saved {descriptor_importance_path}")
 
         self.args.log.write("\no Descriptors most associated with the natural cluster separation:")
         if descriptor_importance_df.empty:
@@ -4513,12 +4901,14 @@ class cluster:
                     f"F={row['f_score']:.6g}, eta2={row['eta_squared']:.6g}"
                 )
 
+        return [model_summary_path, descriptor_importance_path]
+
     def save_cluster_outputs(self, descp_file, csv, file_name, coverage_result):
         """
         Save the coverage-based selected point outputs.
         """
 
-        descp_df = pd.read_csv(descp_file)
+        descp_df = pd.read_csv(descp_file, converters={self.args.name: str})
         aqme_output_name_column = getattr(self, "_aqme_output_name_column", None)
         if (
             self.args.aqme
@@ -4563,10 +4953,8 @@ class cluster:
             na_position="last",
             kind="stable",
         )
-        descp_df.to_csv(f"batch_0/{csv[0]}_b0.csv", index=False, header=True)
-        selected_points_file = "batch_0/cluster_selected_points.csv"
-        if os.path.exists(selected_points_file):
-            os.remove(selected_points_file)
+        batch_csv = f"batch_0/{csv[0]}_b0.csv"
+        descp_df.to_csv(self._output_path(batch_csv), index=False, header=True)
 
         coverage_descriptor_importance_df = compute_cluster_descriptor_importance(
             coverage_result["descriptor_df"],
@@ -4575,9 +4963,9 @@ class cluster:
         coverage_descriptor_importance_path = (
             f"{CHEMICAL_SPACE_OUTPUT_DIR}/coverage_descriptor_importance.csv"
         )
-        os.makedirs(CHEMICAL_SPACE_OUTPUT_DIR, exist_ok=True)
+        self._output_path(CHEMICAL_SPACE_OUTPUT_DIR).mkdir(exist_ok=True, parents=True)
         coverage_descriptor_importance_df.to_csv(
-            coverage_descriptor_importance_path,
+            self._output_path(coverage_descriptor_importance_path),
             index=False,
         )
 
@@ -4608,7 +4996,7 @@ class cluster:
                 )
 
         self.args.log.write("\no Saved coverage selection outputs:")
-        self.args.log.write(f"   - batch_0/{csv[0]}_b0.csv")
+        self.args.log.write(f"   - {batch_csv}")
         self.args.log.write(f"   - {coverage_descriptor_importance_path}")
         exported_coordinate_files = []
         if hasattr(self, "_latest_chemical_space_embeddings") and hasattr(
@@ -4625,3 +5013,7 @@ class cluster:
         for exported_path in exported_coordinate_files:
             self.args.log.write(f"   - {exported_path}")
         self.args.log.write(f"\no Selected representative molecules for ({file_name})")
+        output_paths = [
+            batch_csv, coverage_descriptor_importance_path, viewer_path, *exported_coordinate_files
+        ]
+        return output_paths, len(selected_indices)

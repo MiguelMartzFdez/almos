@@ -42,21 +42,29 @@ The AL workflow is currently:
   * in ``--mode model``, by pure uncertainty;
   * in ``--mode hit``, by ``objective`` and optional ``alpha``.
 
-* **Select the next batch** of size ``--n_exps``.
+* **Select the next batch**, up to ``--n_exps`` candidates with valid predictions.
 * **Write the new batch CSV** and log convergence / model-quality information.
 
 The AL module requires a curated CSV file containing:
 
 - Molecular descriptors (numerical input features).
 - A target property column.
+- A unique identifier column. Identifiers are preserved as text.
 - A batch column indicating which datapoints are already labeled (for example,
-  ``batch = 0`` from CLUSTER and later experimental rounds).
+  ``batch = 0`` from CLUSTER and later experimental rounds). If the column is
+  missing or empty, ALMOS assigns measured rows to batch 0 in memory.
+
+ALMOS leaves the input CSV intact. Run the CLI from the campaign directory so
+the batch folders are siblings. A successful run writes the updated CSV,
+``AL_data.dat``, the full eligible candidate ranking in ``candidate_ranking.csv``,
+and a ``run.json`` manifest in the new batch folder. Existing batch directories
+are protected from replacement.
 
 Example usage:
 
 .. code-block:: shell
 
-   al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10
+   al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode auto --objective max
    al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode model
    al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode hit --objective max --alpha 0.5
 
@@ -77,14 +85,14 @@ The most commonly used options in the current AL workflow are:
   * ``model``: select candidates only by predictive uncertainty.
   * ``hit``: select candidates using a confidence-bound acquisition function.
 
-* ``--objective``: only used in ``hit`` mode.
+* ``--objective``: required in ``auto`` and ``hit`` modes.
 
   * ``max``: ranks candidates using an upper confidence bound (UCB), suitable when
     the goal is to maximize the target.
   * ``min``: ranks candidates using a lower confidence bound (LCB), suitable when
     the goal is to minimize the target.
 
-* ``--alpha``: only used in ``hit`` mode. This controls the weight of predictive
+* ``--alpha``: optional in ``auto`` and ``hit`` modes. This controls the weight of predictive
   uncertainty in the acquisition score. Larger values place more emphasis on
   exploration, while smaller values favor exploitation of the predicted optimum.
 
@@ -92,7 +100,7 @@ Typical command-line patterns:
 
 .. code-block:: shell
 
-   al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10
+   al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode auto --objective max
    al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode model
    al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode hit --objective max
    al --csv_name EXAMPLE.csv --y Y_VALUE --name code_name --n_exps 10 --mode hit --objective min --alpha 0.5
@@ -119,7 +127,7 @@ Important options
 * ``--mode hit``: force hit-seeking selection
 * ``--objective max``: use UCB-style ranking
 * ``--objective min``: use LCB-style ranking
-* ``--alpha``: confidence-bound weight used only in hit mode
+* ``--alpha``: confidence-bound weight when the selected strategy is hit-seeking
 * ``--n_exps``: number of points suggested for the next batch
 
 Reference

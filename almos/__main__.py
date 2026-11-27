@@ -16,5 +16,4 @@ if __package__ != 'almos':
     print('ALMOS is not installed! Use: pip install almos (anywhere, using a terminal) or python setup.py install (from the downloaded /almos/almos folder).')
 
 if __name__ == '__main__':
-    almos.main()
-    sys.exit()
+    sys.exit(almos.main())

@@ -3,6 +3,9 @@
 #######################################################
 
 
+from copy import deepcopy
+
+
 var_dict = {
     "varfile": None,
     "extra_cmd": '',
@@ -246,12 +249,12 @@ def set_options(kwargs):
     options = options_add()
     
     # dictionary containing default values for options
-    for key in var_dict:
-        vars(options)[key] = var_dict[key]
+    vars(options).update(deepcopy(var_dict))
     for key in kwargs:
         normalized_key = key if key in var_dict else key.lower()
         if normalized_key in var_dict:
-            vars(options)[normalized_key] = kwargs[key]
+            value = kwargs[key]
+            vars(options)[normalized_key] = deepcopy(value) if isinstance(value, (list, dict)) else value
         else:
             print("Warning! Option: [", key,":",kwargs[key],"] provided but no option exists, try the online documentation to see available options for each module.",)
 

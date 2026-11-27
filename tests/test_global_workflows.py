@@ -121,6 +121,7 @@ def test_format_lists_logger_and_check_dependencies(monkeypatch, tmp_path):
     assert (tmp_path / "demo_log.dat").read_text(encoding="utf-8").strip() == "hello"
 
     fake_self = SimpleNamespace(args=SimpleNamespace(log=CaptureLog()))
+    monkeypatch.setattr(utils_module.sys, "prefix", str(tmp_path))
 
     conda_commands = {"conda", "conda.bat"}
     monkeypatch.setattr(utils_module.shutil, "which", lambda name: name in conda_commands)
@@ -128,7 +129,7 @@ def test_format_lists_logger_and_check_dependencies(monkeypatch, tmp_path):
     def fake_run_success(cmd, **kwargs):
         if cmd == ["obabel", "-H"]:
             return SimpleNamespace()
-        if cmd[:3] == ["python", "-m", "aqme"]:
+        if cmd[:3] == [sys.executable, "-m", "aqme"]:
             return SimpleNamespace(stdout="")
         if cmd[0] in conda_commands:
             return SimpleNamespace(stdout="# packages\nglib 1\ngtk3 1\npango 1\nmscorefonts 1\n")
@@ -197,6 +198,7 @@ def test_utils_additional_cli_and_dependency_branches(monkeypatch, tmp_path, cap
     assert "no option exists" in capsys.readouterr().out
 
     fake_self = SimpleNamespace(args=SimpleNamespace(log=CaptureLog()))
+    monkeypatch.setattr(utils_module.sys, "prefix", str(tmp_path))
     monkeypatch.setattr(utils_module.shutil, "which", lambda name: True if name == "pip" else False)
     monkeypatch.setattr(
         utils_module.subprocess,
@@ -208,6 +210,17 @@ def test_utils_additional_cli_and_dependency_branches(monkeypatch, tmp_path, cap
     monkeypatch.setattr(utils_module.shutil, "which", lambda name: False)
     with pytest.raises(SystemExit):
         utils_module.check_dependencies(SimpleNamespace(args=SimpleNamespace(log=CaptureLog())), "al")
+
+
+def test_al_dependencies_use_active_prefix_metadata_without_conda_command(monkeypatch, tmp_path):
+    records = tmp_path / "conda-meta"
+    records.mkdir()
+    for name in ("glib", "gtk3", "pango", "mscorefonts"):
+        (records / f"{name}-1.0-build.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(utils_module.sys, "prefix", str(tmp_path))
+    monkeypatch.setattr(utils_module.shutil, "which", lambda _name: None)
+
+    utils_module.check_dependencies(SimpleNamespace(args=SimpleNamespace(log=CaptureLog())), "al")
 
 
 def build_al_args(tmp_path):
@@ -236,6 +249,8 @@ def build_al_args(tmp_path):
         al_mode="hit",
         alpha=0.5,
         log=CaptureLog(),
+        run_id="test-active-learning",
+        started_at="2026-11-19T09:00:00+00:00",
     )
 
 
@@ -243,20 +258,20 @@ def test_al_methods_cover_workflow_blocks(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     args = build_al_args(tmp_path)
     args.df_raw.to_csv(args.path_csv_name, index=False)
+    args.input_sha256 = utils_module.fingerprint_input(args.path_csv_name)
 
     al_instance = object.__new__(ALClass)
     al_instance.args = args
 
-    def fake_system(command):
-        cwd = Path.cwd()
-        pred_df = pd.DataFrame({"ee_pred": [1.5, 2.5, 3.5], "ee_pred_sd": [0.1, 0.2, 0.3]})
+    def fake_run(command, *, cwd):
+        pred_df = pd.DataFrame({"Name": ["a", "b", "c"], "ee_pred": [1.5, 2.5, 3.5], "ee_pred_sd": [0.1, 0.2, 0.3]})
         (cwd / "ROBERT_report.pdf").write_text("report", encoding="utf-8")
         (cwd / "PREDICT" / "csv_test").mkdir(parents=True, exist_ok=True)
         pred_df.to_csv(cwd / "PREDICT" / "csv_test" / "A_b0_No_PFI.csv", index=False)
         pred_df.to_csv(cwd / "PREDICT" / "csv_test" / "A_b0_PFI.csv", index=False)
-        return 0
+        return SimpleNamespace(returncode=0)
 
-    monkeypatch.setattr("almos.al.os.system", fake_system)
+    monkeypatch.setattr("almos.al.subprocess.run", fake_run)
     monkeypatch.setattr("almos.al.get_scores_from_robert_report", lambda _pdf_path: (6, 8))
     al_instance.run_robert_process()
 
@@ -264,13 +279,8 @@ def test_al_methods_cover_workflow_blocks(monkeypatch, tmp_path):
     assert al_instance.selected_model_score == 8
     assert al_instance.path_predictions.name.endswith("_PFI.csv")
 
-    monkeypatch.setattr(
-        "almos.al.shutil.move",
-        lambda src, dst: Path(dst).parent.mkdir(parents=True, exist_ok=True),
-    )
-    (tmp_path / al_instance.robert_folder).mkdir(exist_ok=True)
     al_instance.active_learning_process()
-    assert (tmp_path / "A_b1.csv").exists() or (tmp_path / "batch_1").exists()
+    assert (al_instance.staging_path / "A_b1.csv").exists()
 
     called_models = []
     monkeypatch.setattr("almos.al.plot_metrics_subplots", lambda df, model_type, **kwargs: called_models.append(model_type))
@@ -280,15 +290,11 @@ def test_al_methods_cover_workflow_blocks(monkeypatch, tmp_path):
     )
     assert called_models == ["no_PFI", "PFI"]
 
-    al_instance.data_path = tmp_path / "batch_1"
-    al_instance.data_path.mkdir(exist_ok=True)
-    (tmp_path / "AL_data.dat").write_text("log", encoding="utf-8")
-    monkeypatch.setattr(
-        "almos.al.shutil.move",
-        lambda src, dst: Path(dst).write_text(Path(src).read_text(encoding="utf-8"), encoding="utf-8"),
-    )
+    args.log.path = tmp_path / "pending_AL_data.dat"
+    args.log.path.write_text("log", encoding="utf-8")
     al_instance.finalize_process(0.0)
     assert (al_instance.data_path / "AL_data.dat").exists()
+    assert (al_instance.data_path / "A_b1.csv").exists()
 
 
 def test_cluster_utils_cleanup_helpers_and_importance():
