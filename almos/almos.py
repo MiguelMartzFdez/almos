@@ -41,6 +41,7 @@ def main():
     
     if not args.cluster and not args.al:
         print('x  No module was specified in the command line! (i.e. --cluster for Clustering Execution). If you did specify a module, check that you are using quotation marks when using options (i.e. --csv_name "*.csv").\n')
+        return 2
 
     # Cluster
     if args.cluster:
@@ -51,4 +52,4 @@ def main():
         al(**vars(args))
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

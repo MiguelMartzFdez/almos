@@ -94,6 +94,26 @@ CLUSTER Protocol in ALMOS
 5. If a dataset already contains a user-defined ``batch = 0`` selection, the user can
    skip reselection and evaluate that selection directly with ``--evaluate``.
 
+Click **Selected** in the legend to toggle the highlight while keeping those
+molecules visible. The **Selection** dropdown filters which molecules are shown
+and keeps the legend available.
+
+Outputs in ``batch_0`` include ``CLUSTER_data.dat``, the selected dataset, a portable
+chemical-space viewer, and ``run.json`` with the input fingerprint and effective
+settings. The HTML includes its plotting library and can be opened without an
+Internet connection. ALMOS stages converted inputs separately from campaign files.
+CLUSTER publishes the batch and any AQME outputs after completing the reports and
+manifest. A failed run preserves the input and the previous completed results.
+When logging is enabled, the failure log is saved as ``CLUSTER_data.dat`` in the
+working directory. A successful rerun keeps unrelated campaign files and saves the
+prior batch manifest as ``batch_0/run.previous.json``.
+The previous manifest records provenance. Open ``run.json`` to browse the
+current files. If the process is forcibly interrupted during publication, check
+the hidden CLUSTER backup and publication lock in the working directory before
+retrying.
+AQME-generated output folders such as ``aqme/CSEARCH`` and ``aqme/QDESCP`` are
+replaced as a unit. Store custom files outside those folders.
+
 Example
 +++++++
 
