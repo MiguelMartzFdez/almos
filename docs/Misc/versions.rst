@@ -4,6 +4,12 @@
 Versions
 ========
 
+Version 1.3.3
+   -  Refresh EasyALMOS with a consistent light theme for forms, dropdowns, dialogs, and an expandable workflow log.
+   -  Show live Clustering and Active Learning milestones with counts reported by ALMOS and preserve completed steps when a run is stopped or fails.
+   -  Reopen results from a completed batch folder, with direct access to the Chemical Space viewer and the option to continue in Active Learning.
+   -  Put the summary and output files first in new run manifests while preserving the reproducibility metadata.
+
 Version 1.3.2
    -  Run the CircleCI GitHub App workflow for pull requests into master and pushes to master.
    -  Keep development checks on the OAuth pipeline and avoid duplicate checks on master pushes.

@@ -12,6 +12,7 @@ import pytest
 
 import almos.almos as almos_main_module
 from almos.campaign import import_measurements
+from almos.progress import PROGRESS_ENV, PROGRESS_PREFIX, read_progress
 
 
 def write_csv(path, rows):
@@ -20,6 +21,10 @@ def write_csv(path, rows):
 
 def read_text(path):
     return Path(path).read_text(encoding="utf-8")
+
+
+def stage_events(stdout):
+    return [event for line in stdout.splitlines() if (event := read_progress(line)) is not None]
 
 
 def robert_runtime_available():
@@ -31,8 +36,9 @@ def robert_runtime_available():
     return result.returncode == 0, result.stderr.strip() or result.stdout.strip()
 
 
-def test_cluster_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch):
+def test_cluster_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(PROGRESS_ENV, "1")
     csv_path = tmp_path / "cluster_input.csv"
     write_csv(
         csv_path,
@@ -61,17 +67,28 @@ def test_cluster_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch):
 
     output_df = pd.read_csv(batch_dir / "cluster_input_b0.csv")
     assert "batch" in output_df.columns
-    assert int(output_df["batch"].fillna(-1).eq(0).sum()) >= 1
+    selected = int(output_df["batch"].fillna(-1).eq(0).sum())
+    assert selected >= 1
+    events = stage_events(capsys.readouterr().out)
+    assert [step for step, _ in events] == [
+        "cluster_input", "cluster_cleanup", "cluster_budget", "cluster_selection", "cluster_viewer", "cluster_publish",
+    ]
+    assert events[2:4] == [
+        ("cluster_budget", f"{selected} points"),
+        ("cluster_selection", f"{selected} points selected"),
+    ]
 
     dat_text = read_text(batch_dir / "CLUSTER_data.dat")
     assert "Coverage selection input preparation" in dat_text
     assert "2D chemical space visualization" in dat_text
     assert "Saved batch_0/chemical_space/chemical_space_viewer.html" in dat_text
+    assert PROGRESS_PREFIX not in dat_text
 
 
 @pytest.mark.parametrize("manifest_fails", [False, True])
-def test_al_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch, manifest_fails):
+def test_al_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch, capsys, manifest_fails):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(PROGRESS_ENV, "1")
     csv_path = tmp_path / "A_b0.csv"
     write_csv(
         csv_path,
@@ -147,6 +164,8 @@ def test_al_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch, manifest_fail
         assert not (tmp_path / "batch_1").exists()
         assert not (tmp_path / "batch_plots").exists()
         assert "Cannot write the run manifest" in read_text(tmp_path / "AL_data.dat")
+        events = stage_events(capsys.readouterr().out)
+        assert events[-1] == ("al_selection", "1 of 2 candidates selected")
         return
 
     almos_main_module.main()
@@ -170,6 +189,13 @@ def test_al_cli_end_to_end_short_entrypoint(tmp_path, monkeypatch, manifest_fail
     assert manifest["input"]["sha256"] == sha256(csv_path.read_bytes()).hexdigest()
     assert manifest["summary"]["selected_count"] == 1
     assert "candidate_ranking.csv" in manifest["artifacts"]
+    assert stage_events(capsys.readouterr().out) == [
+        ("al_input", "2 training rows"),
+        ("al_model", "Model report generated"),
+        ("al_predictions", "2 valid No_PFI predictions"),
+        ("al_selection", "1 of 2 candidates selected"),
+        ("al_publish", "batch_1"),
+    ]
 
     dat_text = read_text(batch_dir / "AL_data.dat")
     assert "ROBERT Model Update" in dat_text
@@ -197,7 +223,7 @@ def test_invalid_al_input_has_nonzero_exit_and_persisted_diagnostic(tmp_path, mo
 
 
 @pytest.mark.slow
-def test_al_full_real_end_to_end_with_robert(tmp_path):
+def test_al_full_real_end_to_end_with_robert(tmp_path, monkeypatch):
     available, diagnostic = robert_runtime_available()
     if not available:
         pytest.skip(f"ROBERT runtime not available in this environment: {diagnostic}")
@@ -218,6 +244,7 @@ def test_al_full_real_end_to_end_with_robert(tmp_path):
     write_csv(measured, {"Name": rows["Name"][:12], "ee": target[:12]})
     assert import_measurements(source, measured, csv_path, "Name", "ee") == 12
     assert "ee" not in pd.read_csv(source, nrows=0).columns
+    monkeypatch.setenv(PROGRESS_ENV, "1")
 
     result = subprocess.run(
         [
@@ -242,8 +269,14 @@ def test_al_full_real_end_to_end_with_robert(tmp_path):
         ],
         cwd=tmp_path,
         text=True,
+        capture_output=True,
     )
-    assert result.returncode == 0
+    assert result.returncode == 0, result.stdout + result.stderr
+    events = stage_events(result.stdout)
+    assert [step for step, _ in events] == [
+        "al_input", "al_model", "al_predictions", "al_selection", "al_publish",
+    ]
+    assert events[3:] == [("al_selection", "2 of 4 candidates selected"), ("al_publish", "batch_1")]
 
     batch_dir = tmp_path / "batch_1"
     assert (batch_dir / "AL_data.dat").exists()

@@ -54,6 +54,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 matplotlib.use('Agg')  # Use 'Agg' backend for non-interactive plotting
+from almos.progress import report_progress
 from almos.utils import (
     Logger,
     csv_safe_identifiers,
@@ -104,6 +105,7 @@ class al:
             persist_failed_al_log(self.args, error)
             raise
 
+        report_progress("al_publish", self.data_path.name)
         self.update_convergence_monitoring()
 
     def update_convergence_monitoring(self):
@@ -238,6 +240,7 @@ class al:
         )
 
         # Run the command and check for errors
+        report_progress("al_input", f"{len(robert_model_df)} training rows")
         exit_code = subprocess.run(command, cwd=robert_path).returncode
         if exit_code != 0:
             self.args.log.write(f"x WARNING! Command failed with exit code {exit_code}. Exiting.\n")
@@ -256,6 +259,7 @@ class al:
         else:
             self.args.log.write("\nx WARNING! ROBERT model was not generated\n")
             sys.exit(1)
+        report_progress("al_model", "Model report generated")
 
         # Predictions are generated in the same ROBERT run via --csv_test.
         write_log_header(self.args.log, "Prediction Generation")
@@ -374,6 +378,7 @@ class al:
         if predictions_df.empty:
             self.args.log.write("No candidates have finite predictions and valid uncertainty values.")
             raise SystemExit(1)
+        report_progress("al_predictions", f"{len(predictions_df)} valid {self.selected_model_type} predictions")
 
         write_log_header(self.args.log, f"Batch {self.args.current_number_batch} Selection")
 
@@ -442,6 +447,7 @@ class al:
             "Acquisition decision",
             acquisition_rows,
         )
+        report_progress("al_selection", f"{selected_count} of {len(ranked_candidates)} candidates selected")
 
         if selected_count:
             ranked_preview = build_selected_candidates_preview(

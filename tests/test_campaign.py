@@ -1,8 +1,11 @@
 import csv
+import json
+from types import SimpleNamespace
 
 import pytest
 
 from almos.campaign import import_measurements, read_run_result
+from almos.utils import write_run_manifest
 
 
 @pytest.mark.parametrize(
@@ -78,3 +81,33 @@ def test_previous_manifest_is_not_opened_against_current_artifacts(tmp_path):
 
     with pytest.raises(ValueError, match="provenance"):
         read_run_result(previous)
+
+
+
+def test_run_manifest_puts_results_before_technical_settings(tmp_path):
+    source = tmp_path / "campaign.csv"
+    source.write_text("Name,target\na,1\n", encoding="utf-8")
+    args = SimpleNamespace(
+        run_id="sample",
+        started_at="2026-11-27T12:00:00+00:00",
+        input_sha256="sample-digest",
+        name="Name",
+        y="target",
+        ignore=[],
+        n_points=3,
+        cluster_kmeans_bo_max_evaluations=30,
+    )
+
+    write_run_manifest(
+        args, tmp_path, module="cluster", input_path=source,
+        artifacts=["campaign_b0.csv"], summary={"selected_count": 3},
+    )
+    manifest = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
+    keys = list(manifest)
+
+    assert keys.index("summary") < keys.index("artifacts") < keys.index("effective_options")
+    assert list(manifest["effective_options"]) == [
+        "name", "y", "ignore", "n_points", "cluster_kmeans_bo_max_evaluations",
+    ]
+    assert manifest["effective_options"]["cluster_kmeans_bo_max_evaluations"] == 30
+    assert manifest["input"]["sha256"] == "sample-digest"

@@ -166,6 +166,7 @@ from almos.cluster_utils import (
 CHEMICAL_SPACE_OUTPUT_DIR = "batch_0/chemical_space"
 EMBEDDING_FIDELITY_MAX_POINTS = 2000
 from almos.argument_parser import CLUSTER_ALGORITHM_CHOICES, var_dict
+from almos.progress import report_progress
 from almos.utils import (
     check_dependencies,
     csv_safe_identifiers,
@@ -214,12 +215,15 @@ class cluster:
         self, original_input_path, _, csv = self.set_up_cluster(
             df_csv_name, file_name, staging_directory
         )
+        report_progress("cluster_input", f"{len(df_csv_name)} rows")
         descp_file = original_input_path
         if self.args.aqme:
             self, descp_file = self.run_aqme(csv, descp_file)
+            report_progress("cluster_aqme", "Descriptors generated")
         self, descriptor_df, descp_file = self.clean_up_cluster(
             descp_file, csv, file_name, original_input_path
         )
+        report_progress("cluster_cleanup", f"{len(descriptor_df.columns)} descriptors retained")
 
         coverage_result = self.prepare_coverage_selection_input(descriptor_df)
         natural_selection_result = None
@@ -274,6 +278,7 @@ class cluster:
         self._publish_run(csv[0])
         if self.args.log.path is not None:
             self.args.log.path = self.args.initial_dir / log_path
+        report_progress("cluster_publish", f"{len(output_paths)} files in {batch_directory.name}")
 
     def _output_path(self, path):
         return self._workspace / path
@@ -1506,6 +1511,9 @@ class cluster:
             )
             self.args.log.finalize()
             sys.exit(19)
+
+        if automatic_points:
+            report_progress("cluster_budget", f"{target_points} points")
 
         if self.args.mode == "natural":
             selected_indices = self.select_natural_cluster_representatives(
@@ -4938,12 +4946,15 @@ class cluster:
             descp_df["batch"] = pd.NA
             for index in selected_indices:
                 descp_df.loc[index, "batch"] = 0
+        action = "evaluated" if self.args.evaluate else "selected"
+        report_progress("cluster_selection", f"{len(selected_indices)} points {action}")
         viewer_path = self.build_chemical_space_viewer(
             descp_df=descp_df,
             selected_indices=selected_indices,
             coverage_result=coverage_result,
             file_name=file_name,
         )
+        report_progress("cluster_viewer", "Interactive HTML generated")
         descp_df = descp_df[
             [column for column in descp_df.columns if column != "batch"] + ["batch"]
         ]

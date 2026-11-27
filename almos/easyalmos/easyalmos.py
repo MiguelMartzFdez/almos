@@ -15,13 +15,27 @@ import pandas as pd
 import psutil
 from ansi2html import Ansi2HTMLConverter
 from PySide6.QtCore import QThread, QTimer, Qt, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices, QIcon, QPixmap, QWheelEvent
+from PySide6.QtGui import (
+    QColor,
+    QDesktopServices,
+    QDragEnterEvent,
+    QDropEvent,
+    QIcon,
+    QKeySequence,
+    QPalette,
+    QPixmap,
+    QResizeEvent,
+    QWheelEvent,
+)
 from PySide6.QtWidgets import (
     QApplication,
+    QBoxLayout,
     QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
@@ -42,143 +56,237 @@ from PySide6.QtWidgets import (
 )
 
 from almos.campaign import RunResult, import_measurements, read_run_result
+from almos.easyalmos.progress import WorkflowProgress
+from almos.package_versions import ALMOS_VERSION
+from almos.progress import PROGRESS_ENV, read_progress
 
 
 APP_STYLESHEET = """
 QMainWindow {
-    background: #f4f0e8;
+    background: #eef3f1;
 }
-QTabWidget::pane {
-    border: 1px solid #d8d0c4;
-    background: #fbfaf7;
-    border-radius: 12px;
+QWidget {
+    font-size: 13px;
 }
-QScrollArea {
-    background: #f4f0e8;
+QDialog {
+    background: #f7faf8;
+}
+QMenu, QToolTip {
+    background: #ffffff;
+    color: #20342d;
+    border: 1px solid #c7d6ce;
+}
+QMenu::item:selected {
+    background: #d9ece2;
+    color: #154a36;
+}
+QToolTip {
+    padding: 4px 6px;
+}
+QFrame#appHeader, QFrame#resultsPanel, QFrame#workflowProgress {
+    background: #ffffff;
+    border: 1px solid #d9e4de;
+    border-radius: 14px;
+}
+QLabel#appTitle {
+    color: #14392c;
+    font-size: 24px;
+    font-weight: 700;
+}
+QTabWidget::pane, QScrollArea {
     border: none;
+    background: transparent;
 }
-QScrollArea > QWidget > QWidget {
-    background: #f4f0e8;
+QWidget#workflowPage, QWidget#workflowContent {
+    background: #eef3f1;
 }
 QTabBar::tab {
-    background: #e7dece;
-    color: #47382b;
-    padding: 10px 18px;
-    margin-right: 4px;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    font-weight: 600;
+    background: #e4ebe7;
+    color: #364f44;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin: 0 6px 4px 0;
+    font-weight: 700;
 }
 QTabBar::tab:selected {
-    background: #fbfaf7;
-    color: #2e241d;
+    background: #d9ece2;
+    color: #154a36;
+    border-color: #91bba8;
+}
+QTabBar::tab:!selected:hover {
+    background: #dfe8e3;
 }
 QGroupBox {
-    background: #fffdf8;
-    border: 1px solid #ddd3c6;
-    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid #d9e4de;
+    border-radius: 11px;
     margin-top: 12px;
-    font-weight: 600;
-    color: #2e241d;
+    font-weight: 700;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 14px;
+    left: 12px;
     padding: 0 6px;
+    background: #ffffff;
 }
-QLabel {
-    color: #3f3328;
+QLabel#sectionTitle {
+    color: #244d3d;
+    font-weight: 700;
+}
+QLabel#resultTitle {
+    color: #14392c;
+    font-size: 17px;
+    font-weight: 700;
+}
+QLabel#secondaryText {
+    color: #526961;
+}
+QLabel#datasetName {
+    background: #edf5f0;
+    border: 1px solid #d3e2d9;
+    border-radius: 7px;
+    padding: 7px 10px;
+}
+QLabel#batchFolderHelp {
+    color: #3e6153;
+    background: #f5f9f7;
+    border: 1px solid #d3e2d9;
+    border-radius: 8px;
+    padding: 9px;
 }
 QLineEdit, QComboBox, QListWidget, QTextEdit {
-    background: white;
-    border: 1px solid #cdbfae;
-    border-radius: 8px;
-    padding: 7px 9px;
-    color: #2e241d;
+    background: #ffffff;
+    border: 1px solid #c7d6ce;
+    border-radius: 7px;
+    padding: 5px 8px;
 }
 QLineEdit:focus, QComboBox:focus, QListWidget:focus, QTextEdit:focus {
-    border: 1px solid #9f7a4f;
+    border-color: #318265;
+}
+QLineEdit:disabled, QComboBox:disabled {
+    background: #f1f4f2;
+    color: #64766d;
+}
+QComboBox QAbstractItemView {
+    background: #ffffff;
+    color: #20342d;
+    border: 1px solid #c7d6ce;
+    selection-background-color: #d9ece2;
+    selection-color: #154a36;
+}
+QListWidget::item {
+    padding: 3px 5px;
+}
+QListWidget::item:selected {
+    background: #d9ece2;
+    color: #154a36;
+}
+QScrollBar:vertical {
+    background: #eef3f1;
+    width: 9px;
+}
+QScrollBar::handle:vertical {
+    background: #b9cdc3;
+    border-radius: 4px;
+    min-height: 26px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #8eafa1;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
 }
 QPushButton {
-    background: #8e6c48;
-    color: white;
-    border: none;
-    border-radius: 9px;
-    padding: 8px 14px;
+    background: #ffffff;
+    color: #224a3b;
+    border: 1px solid #c7d6ce;
+    border-radius: 7px;
+    padding: 7px 12px;
     font-weight: 600;
 }
 QPushButton:hover {
-    background: #775636;
+    background: #e8f2ed;
 }
-QPushButton:disabled {
-    background: #bdb4a7;
-    color: #f4f4f4;
+QPushButton[variant="primary"] {
+    background: #23694c;
+    border-color: #23694c;
+    color: #ffffff;
+    padding: 8px 13px;
 }
-QCheckBox {
-    color: #3f3328;
+QPushButton[variant="primary"]:hover {
+    background: #18523b;
+}
+QPushButton[variant="stop"] {
+    border-color: #d9b9b4;
+    color: #922f2b;
+}
+QPushButton[variant="stop"]:hover {
+    background: #f9eeec;
+}
+QPushButton:focus {
+    border-color: #318265;
+}
+QPushButton[variant="primary"]:focus {
+    border-color: #82c8ad;
+}
+QPushButton:disabled, QPushButton[variant="primary"]:disabled, QPushButton[variant="stop"]:disabled {
+    background: #edf2ef;
+    border-color: #dfe7e2;
+    color: #64766d;
 }
 QProgressBar {
-    border: 1px solid #d0c4b7;
-    border-radius: 8px;
-    background: #f0ebe3;
+    border: none;
+    border-radius: 4px;
+    background: #dce8e1;
 }
 QProgressBar::chunk {
-    background: #7e9f6e;
-    border-radius: 8px;
+    background: #318265;
+    border-radius: 4px;
+}
+QTextEdit#runLog {
+    background: #fbfdfc;
+    border-color: #c7d6ce;
+    color: #20342d;
+    padding: 8px;
+    font-family: Consolas, monospace;
 }
 """
 
-LIST_STYLE = """
-QListWidget {
-    border: 1px solid #d2c4b1;
-    padding: 4px;
-    font-family: Consolas;
-    font-size: 12px;
-    background: white;
-}
-QListWidget::item:selected {
-    background: #9f7a4f;
-    color: white;
-}
-"""
 
-RUN_BUTTON_STYLE = """
-QPushButton {
-    background-color: #6b8e5f;
-    color: white;
-    font-size: 14px;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-}
-QPushButton:hover {
-    background-color: #58764f;
-}
-QPushButton:disabled {
-    background-color: #b0b0b0;
-    color: #eeeeee;
-}
-"""
-
-STOP_BUTTON_STYLE = """
-QPushButton {
-    background-color: #b74a3d;
-    color: white;
-    font-size: 14px;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-}
-QPushButton:hover {
-    background-color: #98392d;
-}
-QPushButton:disabled {
-    background-color: #b0b0b0;
-    color: #eeeeee;
-}
-"""
+def apply_light_theme(app: QApplication):
+    app.setAttribute(Qt.AA_DontUseNativeDialogs)
+    style_hints = app.styleHints()
+    if hasattr(style_hints, "setColorScheme"):
+        style_hints.setColorScheme(Qt.ColorScheme.Light)
+    if app.styleSheet() != APP_STYLESHEET:
+        app.setStyle("Fusion")
+        app.setStyleSheet(APP_STYLESHEET)
+    palette = app.style().standardPalette()
+    for role, color in {
+        QPalette.Window: "#eef3f1",
+        QPalette.WindowText: "#20342d",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#f2f7f4",
+        QPalette.Text: "#20342d",
+        QPalette.Button: "#ffffff",
+        QPalette.ButtonText: "#224a3b",
+        QPalette.Highlight: "#d9ece2",
+        QPalette.HighlightedText: "#154a36",
+        QPalette.PlaceholderText: "#526961",
+        QPalette.ToolTipBase: "#ffffff",
+        QPalette.ToolTipText: "#20342d",
+        QPalette.Link: "#1a634a",
+        QPalette.LinkVisited: "#62517c",
+    }.items():
+        palette.setColor(role, QColor(color))
+    for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
+        palette.setColor(QPalette.Disabled, role, QColor("#64766d"))
+    if app.palette() != palette:
+        app.setPalette(palette)
 
 
 class NoScrollComboBox(QComboBox):
@@ -238,18 +346,22 @@ class DualListSelector(QWidget):
 
         left_layout = QVBoxLayout()
         left_label = QLabel(available_title)
-        left_label.setStyleSheet("font-weight: 700; font-size: 13px;")
+        left_label.setObjectName("sectionTitle")
         self.available_list = QListWidget()
         self.available_list.setSelectionMode(QListWidget.MultiSelection)
-        self.available_list.setStyleSheet(LIST_STYLE)
+        self.available_list.setMaximumHeight(140)
         left_layout.addWidget(left_label)
         left_layout.addWidget(self.available_list)
 
         button_layout = QVBoxLayout()
         button_layout.setAlignment(Qt.AlignCenter)
-        self.add_button = QPushButton(">>")
+        self.add_button = QPushButton("→")
+        self.add_button.setToolTip("Ignore selected columns")
+        self.add_button.setAccessibleName("Ignore selected columns")
         self.add_button.setFixedSize(44, 34)
-        self.remove_button = QPushButton("<<")
+        self.remove_button = QPushButton("←")
+        self.remove_button.setToolTip("Restore selected columns")
+        self.remove_button.setAccessibleName("Restore selected columns")
         self.remove_button.setFixedSize(44, 34)
         button_layout.addStretch()
         button_layout.addWidget(self.add_button, alignment=Qt.AlignCenter)
@@ -258,10 +370,10 @@ class DualListSelector(QWidget):
 
         right_layout = QVBoxLayout()
         right_label = QLabel(selected_title)
-        right_label.setStyleSheet("font-weight: 700; font-size: 13px;")
+        right_label.setObjectName("sectionTitle")
         self.selected_list = QListWidget()
         self.selected_list.setSelectionMode(QListWidget.MultiSelection)
-        self.selected_list.setStyleSheet(LIST_STYLE)
+        self.selected_list.setMaximumHeight(140)
         right_layout.addWidget(right_label)
         right_layout.addWidget(self.selected_list)
 
@@ -305,6 +417,7 @@ class DualListSelector(QWidget):
 class WorkerThread(QThread):
     output_received = Signal(str)
     error_received = Signal(str)
+    step_completed = Signal(str, str)
     process_finished = Signal(int)
     request_stop = Signal()
 
@@ -314,20 +427,25 @@ class WorkerThread(QThread):
         self.working_dir = working_dir
         self.process = None
         self._stop_requested = False
-        self.ansi_converter = Ansi2HTMLConverter(dark_bg=True)
+        self._stop_lock = threading.Lock()
+        self.ansi_converter = Ansi2HTMLConverter(dark_bg=False)
         self.is_windows = platform.system() == "Windows"
         self.request_stop.connect(self._handle_stop)
 
     def run(self):
         exit_code = -1
         try:
+            if self._stop_requested:
+                return
+            environment = {**os.environ, PROGRESS_ENV: "1"}
             if self.is_windows:
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = 0
-                self.process = subprocess.Popen(
+                process = subprocess.Popen(
                     self.command,
                     cwd=self.working_dir,
+                    env=environment,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -338,9 +456,10 @@ class WorkerThread(QThread):
                     shell=False,
                 )
             else:
-                self.process = subprocess.Popen(
+                process = subprocess.Popen(
                     self.command,
                     cwd=self.working_dir,
+                    env=environment,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -350,13 +469,21 @@ class WorkerThread(QThread):
                     shell=False,
                 )
 
-            process = self.process
+            with self._stop_lock:
+                self.process = process
+                stop_requested = self._stop_requested
+            if stop_requested:
+                self._terminate_process(process)
 
             def read_stdout():
                 try:
                     for line in process.stdout:
                         if self._stop_requested:
                             break
+                        event = read_progress(line)
+                        if event is not None:
+                            self.step_completed.emit(*event)
+                            continue
                         formatted_line = self.ansi_converter.convert(line.rstrip(), full=False)
                         self.output_received.emit(formatted_line)
                 except Exception as exc:
@@ -386,18 +513,26 @@ class WorkerThread(QThread):
             if self.process is not None:
                 self._handle_stop()
         finally:
-            self.process = None
-            self.process_finished.emit(-1 if self._stop_requested else exit_code)
+            with self._stop_lock:
+                self.process = None
+                stop_requested = self._stop_requested
+            self.process_finished.emit(-1 if stop_requested else exit_code)
 
     def stop(self):
         self.request_stop.emit()
 
     def _handle_stop(self):
-        self._stop_requested = True
-        if not self.process:
-            return
+        with self._stop_lock:
+            if self._stop_requested:
+                return
+            self._stop_requested = True
+            process = self.process
+        if process is not None:
+            self._terminate_process(process)
+
+    def _terminate_process(self, process):
         try:
-            parent = psutil.Process(self.process.pid)
+            parent = psutil.Process(process.pid)
             processes = parent.children(recursive=True)
             processes.append(parent)
             for proc in processes:
@@ -411,6 +546,8 @@ class WorkerThread(QThread):
                     proc.kill()
                 except Exception:
                     pass
+        except psutil.NoSuchProcess:
+            pass
         except Exception as exc:
             self.error_received.emit(f"Error stopping process: {exc}")
 
@@ -430,7 +567,7 @@ def stop_process(widget):
     if worker is not None and worker.isRunning():
         widget.manual_stop = True
         widget.console_output.append(
-            "<br><b><span style='color:orangered;'>Stopping ALMOS...</span></b>"
+            "<br><b><span style='color:#805010;'>Stopping ALMOS...</span></b>"
         )
         widget.progress.setRange(0, 100)
         widget.stop_button.setDisabled(True)
@@ -440,6 +577,9 @@ def stop_process(widget):
 class BaseWorkflowTab(QWidget):
     running_changed = Signal(bool)
     result_ready = Signal(object)
+    progress_started = Signal(str, object)
+    step_completed = Signal(str, str)
+    progress_finished = Signal(int, bool)
     workflow_module = ""
     success_title = "Success"
     success_message = "Process completed successfully."
@@ -448,6 +588,7 @@ class BaseWorkflowTab(QWidget):
 
     def __init__(self, progress_bar: QProgressBar, console_output: QTextEdit):
         super().__init__()
+        self.setObjectName("workflowPage")
         self.progress = progress_bar
         self.console_output = console_output
         self.worker: WorkerThread | None = None
@@ -469,6 +610,7 @@ class BaseWorkflowTab(QWidget):
         worker.setParent(self)
         worker.output_received.connect(self.append_output)
         worker.error_received.connect(self.append_error)
+        worker.step_completed.connect(self.step_completed)
         worker.process_finished.connect(self.on_process_finished)
         worker.finished.connect(worker.deleteLater)
         self.worker = worker
@@ -477,6 +619,7 @@ class BaseWorkflowTab(QWidget):
         self.run_button.setDisabled(True)
         self.stop_button.setDisabled(False)
         self.progress.setRange(0, 0)
+        self.progress_started.emit(self.workflow_title, self.progress_steps(command))
         self.running_changed.emit(True)
 
         try:
@@ -488,15 +631,16 @@ class BaseWorkflowTab(QWidget):
 
     @Slot(str)
     def append_output(self, message: str):
-        self.console_output.append(f"<span style='color:white;'>{message}</span>")
+        self.console_output.append(f"<span style='color:#20342d;'>{message}</span>")
 
     @Slot(str)
     def append_error(self, message: str):
         html_message = escape(message).replace("\n", "<br>")
-        self.console_output.append(f"<span style='color:#ff8b8b;'>{html_message}</span>")
+        self.console_output.append(f"<span style='color:#922f2b;'>{html_message}</span>")
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select CSV File", "", "CSV Files (*.csv)")
+        directory = self.working_directory() or ""
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select CSV File", directory, "CSV Files (*.csv)")
         if file_path:
             self.load_dataset(file_path)
 
@@ -515,6 +659,9 @@ class BaseWorkflowTab(QWidget):
         self.file_chip.setText(filename)
         self.file_chip.setToolTip(file_path)
         self.all_columns = list(dataset.columns)
+        rows, columns = dataset.shape
+        self.file_summary.setText(f"Rows {rows:,} · Columns {columns:,}")
+        self.file_summary.show()
         self.name_dropdown.clear()
         self.y_dropdown.clear()
         self.name_dropdown.addItem("Select a name column")
@@ -564,20 +711,43 @@ class BaseWorkflowTab(QWidget):
             return str(source.parent.parent)
         return str(source.parent)
 
+    def _build_file_section(self):
+        group = QGroupBox("Input Dataset")
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(14, 16, 14, 12)
+
+        row = QHBoxLayout()
+        self.file_button = QPushButton("Select CSV…")
+        self.file_button.clicked.connect(self.select_file)
+        self.file_chip = QLabel("No file selected")
+        self.file_chip.setObjectName("datasetName")
+        self.file_chip.setTextFormat(Qt.PlainText)
+        self.file_chip.setWordWrap(True)
+        row.addWidget(self.file_button)
+        row.addWidget(self.file_chip, stretch=1)
+        layout.addLayout(row)
+
+        self.file_summary = QLabel()
+        self.file_summary.setObjectName("secondaryText")
+        self.file_summary.hide()
+        layout.addWidget(self.file_summary)
+        self.content_layout.addWidget(group)
+        return layout
+
     def _build_action_row(self, layout, run_label: str, run_handler):
         row = QHBoxLayout()
         self.run_button = QPushButton(run_label)
-        self.run_button.setStyleSheet(RUN_BUTTON_STYLE)
+        self.run_button.setProperty("variant", "primary")
         self.run_button.clicked.connect(run_handler)
         self.run_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         row.addWidget(self.run_button, stretch=1)
 
         self.stop_button = QPushButton("Stop")
-        self.stop_button.setStyleSheet(STOP_BUTTON_STYLE)
+        self.stop_button.setProperty("variant", "stop")
         self.stop_button.clicked.connect(lambda: stop_process(self))
         self.stop_button.setDisabled(True)
-        self.stop_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        row.addWidget(self.stop_button, stretch=1)
+        self.stop_button.setMinimumWidth(82)
+        row.addWidget(self.stop_button)
         layout.addLayout(row)
         self.content_layout.addStretch()
 
@@ -590,6 +760,7 @@ class BaseWorkflowTab(QWidget):
         self.run_button.setDisabled(False)
         self.stop_button.setDisabled(True)
         self.progress.setRange(0, 100)
+        self.progress_finished.emit(exit_code, manual_stop)
         self.running_changed.emit(False)
 
         if manual_stop:
@@ -598,34 +769,55 @@ class BaseWorkflowTab(QWidget):
             return
 
         if exit_code == 0:
-            self.console_output.append("<span style='color:#92d36e;'>Process finished successfully.</span>")
+            self.console_output.append("<span style='color:#23694c;'>Process finished successfully.</span>")
             result = self.completed_result(context)
             if result is not None:
                 self.result_ready.emit(result)
-            QMessageBox.information(self, self.success_title, self.success_message)
+            else:
+                QMessageBox.information(self, self.success_title, self.success_message)
         else:
-            self.console_output.append("<span style='color:#ffb366;'>Process did not complete correctly.</span>")
+            self.console_output.append("<span style='color:#922f2b;'>Process did not complete correctly.</span>")
             QMessageBox.warning(self, "Warning", self.failure_message)
 
 
 class ClusteringTab(BaseWorkflowTab):
     workflow_module = "cluster"
+    workflow_title = "Clustering"
     success_title = "Clustering Completed"
     success_message = "Clustering completed successfully."
     failure_message = "Clustering did not complete successfully."
     target_placeholder = "Optional target column"
 
+    @staticmethod
+    def progress_steps(command: list[str]) -> tuple[tuple[str, str], ...]:
+        evaluate = "--evaluate" in command
+        steps = [("cluster_input", "Prepare input")]
+        if "--aqme" in command and not evaluate:
+            steps.append(("cluster_aqme", "Generate AQME descriptors"))
+        steps.append(("cluster_cleanup", "Clean descriptors"))
+        if not evaluate and "--n_points" not in command:
+            steps.append(("cluster_budget", "Choose point count automatically"))
+        steps.extend((
+            ("cluster_selection", "Evaluate selected points" if evaluate else "Select points"),
+            ("cluster_viewer", "Build Chemical Space"),
+            ("cluster_publish", "Save batch outputs"),
+        ))
+        return tuple(steps)
+
     def __init__(self, progress_bar: QProgressBar, console_output: QTextEdit):
         super().__init__(progress_bar, console_output)
 
         outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 2, 0, 0)
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QScrollArea.NoFrame)
         scroll_content = QWidget()
+        scroll_content.setObjectName("workflowContent")
         scroll_content.setAutoFillBackground(True)
         self.content_layout = QVBoxLayout(scroll_content)
-        self.content_layout.setSpacing(14)
+        self.content_layout.setContentsMargins(0, 3, 4, 4)
+        self.content_layout.setSpacing(9)
         scroll_area.setWidget(scroll_content)
         outer_layout.addWidget(scroll_area)
 
@@ -634,32 +826,11 @@ class ClusteringTab(BaseWorkflowTab):
         self._build_ignore_section()
         self._build_action_row(outer_layout, "Run Clustering", self.run_clustering)
 
-    def _build_file_section(self):
-        group = QGroupBox("Input Dataset")
-        layout = QVBoxLayout(group)
-
-        self.file_summary = QLabel("Choose a CSV file to launch a clustering workflow.")
-        self.file_summary.setWordWrap(True)
-        self.file_summary.setStyleSheet("color: #6f5a45;")
-        layout.addWidget(self.file_summary)
-
-        row = QHBoxLayout()
-        self.file_button = QPushButton("Select CSV File")
-        self.file_button.clicked.connect(self.select_file)
-        self.file_chip = QLabel("No file selected")
-        self.file_chip.setStyleSheet(
-            "background:#efe5d5; border:1px solid #d9c8af; border-radius:8px; padding:8px 10px;"
-        )
-        self.file_chip.setWordWrap(True)
-        row.addWidget(self.file_button)
-        row.addWidget(self.file_chip, stretch=1)
-        layout.addLayout(row)
-
-        self.content_layout.addWidget(group)
-
     def _build_cluster_options_section(self):
-        group = QGroupBox("Workflow Options")
+        group = QGroupBox("Batch Selection")
         layout = QFormLayout(group)
+        layout.setContentsMargins(14, 16, 14, 12)
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         layout.setLabelAlignment(Qt.AlignLeft)
         layout.setFormAlignment(Qt.AlignTop)
 
@@ -672,14 +843,15 @@ class ClusteringTab(BaseWorkflowTab):
         layout.addRow("Target column", self.y_dropdown)
 
         self.n_points_entry = QLineEdit()
-        self.n_points_entry.setPlaceholderText("Optional. Leave blank to use ALMOS autobudget.")
+        self.n_points_entry.setPlaceholderText("Automatic if left blank")
         layout.addRow("Points to select", self.n_points_entry)
 
-        self.evaluate_checkbox = QCheckBox("Evaluate an existing batch=0 selection instead of selecting new points")
+        self.evaluate_checkbox = QCheckBox("Evaluate an existing batch 0")
+        self.evaluate_checkbox.setToolTip("Analyze the rows already assigned to batch 0 in the CSV.")
         self.evaluate_checkbox.toggled.connect(self.update_option_states)
         layout.addRow("Evaluation mode", self.evaluate_checkbox)
 
-        self.aqme_checkbox = QCheckBox("Enable AQME workflow")
+        self.aqme_checkbox = QCheckBox("Generate descriptors with AQME")
         self.aqme_checkbox.toggled.connect(self.update_option_states)
         layout.addRow("AQME", self.aqme_checkbox)
 
@@ -687,13 +859,6 @@ class ClusteringTab(BaseWorkflowTab):
         self.descp_combo.addItems(["interpret", "full", "denovo"])
         self.descp_combo.setCurrentText("interpret")
         layout.addRow("Descriptor level", self.descp_combo)
-
-        self.cluster_hint = QLabel(
-            "Use the default autobudget for most runs. `--evaluate` is useful when the CSV already contains `batch = 0` selections and you only want ALMOS to analyse them."
-        )
-        self.cluster_hint.setWordWrap(True)
-        self.cluster_hint.setStyleSheet("color: #6f5a45;")
-        layout.addRow("", self.cluster_hint)
 
         self.content_layout.addWidget(group)
         self.update_option_states()
@@ -767,21 +932,35 @@ class ClusteringTab(BaseWorkflowTab):
 
 class ActiveLearningTab(BaseWorkflowTab):
     workflow_module = "al"
+    workflow_title = "Active Learning"
     success_title = "Active Learning Completed"
     success_message = "Active Learning completed successfully."
     failure_message = "Active Learning did not complete successfully."
+
+    @staticmethod
+    def progress_steps(_command: list[str]) -> tuple[tuple[str, str], ...]:
+        return (
+            ("al_input", "Prepare training data"),
+            ("al_model", "Run ROBERT"),
+            ("al_predictions", "Verify predictions"),
+            ("al_selection", "Rank and select candidates"),
+            ("al_publish", "Save batch outputs"),
+        )
 
     def __init__(self, progress_bar: QProgressBar, console_output: QTextEdit):
         super().__init__(progress_bar, console_output)
 
         outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 2, 0, 0)
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QScrollArea.NoFrame)
         scroll_content = QWidget()
+        scroll_content.setObjectName("workflowContent")
         scroll_content.setAutoFillBackground(True)
         self.content_layout = QVBoxLayout(scroll_content)
-        self.content_layout.setSpacing(14)
+        self.content_layout.setContentsMargins(0, 3, 4, 4)
+        self.content_layout.setSpacing(9)
         scroll_area.setWidget(scroll_content)
         outer_layout.addWidget(scroll_area)
 
@@ -791,36 +970,17 @@ class ActiveLearningTab(BaseWorkflowTab):
         self._build_action_row(outer_layout, "Run Active Learning", self.run_active_learning)
 
     def _build_file_section(self):
-        group = QGroupBox("Input Dataset")
-        layout = QVBoxLayout(group)
-
-        self.file_summary = QLabel("Choose the current AL dataset CSV (for example `A_b0.csv`).")
-        self.file_summary.setWordWrap(True)
-        self.file_summary.setStyleSheet("color: #6f5a45;")
-        layout.addWidget(self.file_summary)
-
-        row = QHBoxLayout()
-        self.file_button = QPushButton("Select CSV File")
-        self.file_button.clicked.connect(self.select_file)
-        self.file_chip = QLabel("No file selected")
-        self.file_chip.setStyleSheet(
-            "background:#efe5d5; border:1px solid #d9c8af; border-radius:8px; padding:8px 10px;"
-        )
-        self.file_chip.setWordWrap(True)
-        row.addWidget(self.file_button)
-        row.addWidget(self.file_chip, stretch=1)
-        layout.addLayout(row)
-
-        self.import_measurements_button = QPushButton("Import Measurements...")
+        layout = super()._build_file_section()
+        self.import_measurements_button = QPushButton("Import Measurements…")
         self.import_measurements_button.setEnabled(False)
         self.import_measurements_button.clicked.connect(self.import_measurement_file)
         layout.addWidget(self.import_measurements_button, alignment=Qt.AlignLeft)
 
-        self.content_layout.addWidget(group)
-
     def _build_learning_options_section(self):
         group = QGroupBox("Selection Strategy")
         layout = QFormLayout(group)
+        layout.setContentsMargins(14, 16, 14, 12)
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.n_exps_entry = QLineEdit()
         self.n_exps_entry.setPlaceholderText("Default: 1")
@@ -857,7 +1017,7 @@ class ActiveLearningTab(BaseWorkflowTab):
 
         self.strategy_hint = QLabel()
         self.strategy_hint.setWordWrap(True)
-        self.strategy_hint.setStyleSheet("color: #6f5a45;")
+        self.strategy_hint.setObjectName("secondaryText")
         layout.addRow("", self.strategy_hint)
 
         self.content_layout.addWidget(group)
@@ -1012,125 +1172,263 @@ class ActiveLearningTab(BaseWorkflowTab):
 class ALMOSApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        apply_light_theme(QApplication.instance())
         self.setWindowTitle("EasyALMOS")
-        self.resize(980, 920)
-        self.setStyleSheet(APP_STYLESHEET)
+        self.setAcceptDrops(True)
         self.result: RunResult | None = None
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(18, 18, 18, 18)
+        main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(12)
-
-        with as_file(files("almos") / "icons" / "almos_logo.png") as logo_path:
-            if logo_path.exists():
-                pixmap = QPixmap(str(logo_path)).scaled(330, 92, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                logo_label = QLabel()
-                logo_label.setPixmap(pixmap)
-                logo_label.setAlignment(Qt.AlignCenter)
-                main_layout.addWidget(logo_label)
-
-        with as_file(files("almos") / "icons" / "almos_icon.png") as icon_path:
-            if icon_path.exists():
-                self.setWindowIcon(QIcon(str(icon_path)))
+        main_layout.addWidget(self.build_header())
 
         self.console_output = QTextEdit()
+        self.console_output.setObjectName("runLog")
         self.console_output.setReadOnly(True)
+        self.console_output.setAcceptDrops(False)
         self.console_output.setMinimumHeight(110)
-        self.console_output.setMaximumHeight(235)
-        self.console_output.setStyleSheet(
-            """
-            QTextEdit {
-                background-color: #14110f;
-                color: #f4efe8;
-                padding: 8px;
-                font-family: Consolas, monospace;
-                font-size: 14px;
-                line-height: 1.35;
-                border-radius: 12px;
-                border: 1px solid #3a322b;
-            }
-            """
-        )
-        self.progress = QProgressBar()
-        self.progress.setFixedHeight(12)
+        self.progress_panel = WorkflowProgress()
+        self.progress = self.progress_panel.bar
 
         self.tabs = QTabWidget()
         self.clustering_tab = ClusteringTab(self.progress, self.console_output)
         self.active_learning_tab = ActiveLearningTab(self.progress, self.console_output)
         self.clustering_tab.running_changed.connect(self.active_learning_tab.run_button.setDisabled)
         self.active_learning_tab.running_changed.connect(self.clustering_tab.run_button.setDisabled)
-        self.clustering_tab.result_ready.connect(self.show_result)
-        self.active_learning_tab.result_ready.connect(self.show_result)
+        for tab in (self.clustering_tab, self.active_learning_tab):
+            tab.progress_started.connect(self.progress_panel.begin)
+            tab.step_completed.connect(self.progress_panel.complete_step)
+            tab.progress_finished.connect(self.progress_panel.finish)
+            tab.result_ready.connect(self.show_result)
         self.tabs.addTab(self.clustering_tab, "Clustering")
         self.tabs.addTab(self.active_learning_tab, "Active Learning")
-        main_layout.addWidget(self.tabs, stretch=1)
-        main_layout.addWidget(self.progress)
-        main_layout.addWidget(self.build_results_panel())
+        self.workspace = QWidget()
+        self.workspace_layout = QBoxLayout(QBoxLayout.LeftToRight, self.workspace)
+        self.workspace_layout.setContentsMargins(0, 0, 0, 0)
+        self.workspace_layout.setSpacing(14)
+        self.workspace_layout.addWidget(self.tabs, stretch=3)
+        self.results_panel = self.build_results_panel()
+        self.workspace_layout.addWidget(self.results_panel, 1, Qt.AlignTop)
+        main_layout.addWidget(self.workspace, stretch=1)
+        main_layout.addWidget(self.progress_panel)
 
+        footer = QHBoxLayout()
         self.log_button = QPushButton("Show Log")
         self.log_button.setCheckable(True)
         self.log_button.toggled.connect(self.toggle_log)
-        main_layout.addWidget(self.log_button, alignment=Qt.AlignLeft)
+        footer.addWidget(self.log_button)
+        self.expand_log_button = QPushButton("Expand Log")
+        self.expand_log_button.setCheckable(True)
+        self.expand_log_button.toggled.connect(self.toggle_log_size)
+        self.expand_log_button.hide()
+        footer.addWidget(self.expand_log_button)
+        footer.addStretch()
+        main_layout.addLayout(footer)
         main_layout.addWidget(self.console_output)
         self.console_output.hide()
+        self.setMinimumSize(620, 600)
+        self.resize(1120, 790)
+
+    def build_header(self):
+        header = QFrame()
+        header.setObjectName("appHeader")
+        layout = QHBoxLayout(header)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(10)
+
+        with as_file(files("almos") / "icons" / "almos_icon.png") as icon_path:
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+                logo = QLabel()
+                logo.setPixmap(QPixmap(str(icon_path)).scaled(42, 42, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                logo.setAlignment(Qt.AlignCenter)
+                layout.addWidget(logo)
+
+        branding = QVBoxLayout()
+        branding.setSpacing(0)
+        title = QLabel("EasyALMOS")
+        title.setObjectName("appTitle")
+        version = QLabel(f"Version {ALMOS_VERSION}")
+        version.setObjectName("secondaryText")
+        branding.addWidget(title)
+        branding.addWidget(version)
+        layout.addLayout(branding)
+        layout.addStretch()
+
+        return header
+
+    def resizeEvent(self, event: QResizeEvent):
+        compact = event.size().width() < 880
+        direction = QBoxLayout.TopToBottom if compact else QBoxLayout.LeftToRight
+        if direction != self.workspace_layout.direction():
+            self.workspace_layout.setDirection(direction)
+            self.workspace_layout.setStretch(1, 0 if compact else 1)
+            self.results_toggle.setVisible(compact)
+            self.results_toggle.setChecked(not compact or self.result is None)
+        super().resizeEvent(event)
 
     def toggle_log(self, visible: bool):
         self.console_output.setVisible(visible)
+        self.expand_log_button.setVisible(visible)
+        if not visible:
+            self.expand_log_button.setChecked(False)
         self.log_button.setText("Hide Log" if visible else "Show Log")
 
+    def toggle_log_size(self, expanded: bool):
+        self.workspace.setVisible(not expanded)
+        self.centralWidget().layout().setStretchFactor(self.console_output, int(expanded))
+        self.expand_log_button.setText("Restore Log" if expanded else "Expand Log")
+
     def build_results_panel(self):
-        group = QGroupBox("Run Results")
+        group = QFrame()
+        group.setObjectName("resultsPanel")
+        group.setMinimumWidth(290)
         layout = QVBoxLayout(group)
-        self.results_summary = QLabel("Complete a workflow or open a saved run.")
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+
+        heading = QLabel("Run Results")
+        heading.setObjectName("sectionTitle")
+        header = QHBoxLayout()
+        header.addWidget(heading, stretch=1)
+        self.open_batch_folder_button = QPushButton("Open Batch Folder…")
+        self.open_batch_folder_button.setShortcut(QKeySequence(QKeySequence.StandardKey.Open))
+        self.open_batch_folder_button.clicked.connect(self.open_batch_folder)
+        header.addWidget(self.open_batch_folder_button)
+        self.results_toggle = QPushButton("Hide Details")
+        self.results_toggle.setCheckable(True)
+        self.results_toggle.setChecked(True)
+        self.results_toggle.hide()
+        header.addWidget(self.results_toggle)
+        layout.addLayout(header)
+        self.results_summary = QLabel("No batch open")
+        self.results_summary.setObjectName("resultTitle")
         self.results_summary.setWordWrap(True)
         layout.addWidget(self.results_summary)
-        row = QHBoxLayout()
-        open_run = QPushButton("Open Run...")
-        open_run.clicked.connect(self.open_saved_run)
-        row.addWidget(open_run)
-        self.open_folder_button = QPushButton("Open Folder")
-        self.open_dataset_button = QPushButton("Open Dataset")
-        self.open_viewer_button = QPushButton("Open Viewer")
+
+        self.results_details = QWidget()
+        details_layout = QVBoxLayout(self.results_details)
+        details_layout.setContentsMargins(0, 0, 0, 0)
+        details_layout.setSpacing(10)
+        layout.addWidget(self.results_details)
+        self.results_toggle.toggled.connect(self.toggle_results_details)
+
+        self.result_file = QLabel()
+        self.result_file.setObjectName("datasetName")
+        self.result_file.setTextFormat(Qt.PlainText)
+        self.result_file.setWordWrap(True)
+        self.result_file.hide()
+        self.result_count = QLabel()
+        self.result_count.setObjectName("secondaryText")
+        self.result_count.hide()
+        details = QHBoxLayout()
+        details.addWidget(self.result_file, stretch=1)
+        details.addWidget(self.result_count)
+        details_layout.addLayout(details)
+
+        actions = QGridLayout()
+        actions.setColumnStretch(0, 1)
+        actions.setColumnStretch(1, 1)
+        self.open_folder_button = QPushButton("Show Folder")
+        self.open_dataset_button = QPushButton("Open CSV")
+        self.open_viewer_button = QPushButton("Open Chemical Space")
+        self.open_viewer_button.setToolTip("Open the interactive chemical space map in your browser")
         self.open_ranking_button = QPushButton("Open Ranking")
         self.continue_al_button = QPushButton("Continue in AL")
-        for button, attribute in (
-            (self.open_folder_button, "directory"),
-            (self.open_dataset_button, "dataset"),
-            (self.open_viewer_button, "viewer"),
-            (self.open_ranking_button, "ranking"),
+        for button, attribute, row, column, span in (
+            (self.open_dataset_button, "dataset", 0, 0, 1),
+            (self.open_folder_button, "directory", 0, 1, 1),
+            (self.open_viewer_button, "viewer", 1, 0, 2),
+            (self.open_ranking_button, "ranking", 2, 0, 2),
         ):
             button.setEnabled(False)
+            button.hide()
             button.clicked.connect(lambda _checked, key=attribute: self.open_result_path(key))
-            row.addWidget(button)
+            actions.addWidget(button, row, column, 1, span)
+        details_layout.addLayout(actions)
+        self.continue_al_button.setProperty("variant", "primary")
         self.continue_al_button.setEnabled(False)
+        self.continue_al_button.hide()
         self.continue_al_button.clicked.connect(self.continue_active_learning)
-        row.addWidget(self.continue_al_button)
-        row.addStretch()
-        layout.addLayout(row)
+        details_layout.addWidget(self.continue_al_button)
+
+        self.batch_folder_help = QLabel(
+            "Choose or drop batch_0 for Clustering, or a completed batch such as batch_1 for Active Learning. "
+            "The folder contains the files EasyALMOS needs to reopen the results and continue the campaign."
+        )
+        self.batch_folder_help.setObjectName("batchFolderHelp")
+        self.batch_folder_help.setWordWrap(True)
+        details_layout.addWidget(self.batch_folder_help)
         return group
+
+    def toggle_results_details(self, visible: bool):
+        self.results_details.setVisible(visible)
+        self.results_toggle.setText("Hide Details" if visible else "Show Details")
 
     @Slot(object)
     def show_result(self, result: RunResult):
         self.result = result
         label = "Clustering" if result.module == "cluster" else "Active Learning"
-        count = f" · {result.selected_count} selected" if result.selected_count is not None else ""
-        self.results_summary.setText(f"{label} · Batch {result.batch}{count}")
+        self.results_summary.setText(f"{label} · Batch {result.batch}")
         self.results_summary.setToolTip(str(result.directory))
-        self.open_folder_button.setEnabled(True)
-        self.open_dataset_button.setEnabled(result.dataset is not None)
-        self.open_viewer_button.setEnabled(result.viewer is not None)
-        self.open_ranking_button.setEnabled(result.ranking is not None)
-        self.continue_al_button.setEnabled(result.dataset is not None)
+        count = result.selected_count
+        self.result_count.setText(f"{count:,} selected" if count is not None else "")
+        self.result_count.setVisible(count is not None)
+        self.result_file.setText(result.dataset.name if result.dataset else "")
+        self.result_file.setToolTip(str(result.dataset) if result.dataset else "")
+        self.result_file.setVisible(result.dataset is not None)
+        for button, path in (
+            (self.open_folder_button, result.directory),
+            (self.open_dataset_button, result.dataset),
+            (self.open_viewer_button, result.viewer),
+            (self.open_ranking_button, result.ranking),
+            (self.continue_al_button, result.dataset),
+        ):
+            button.setEnabled(path is not None)
+            button.setVisible(path is not None)
+        self.results_toggle.setChecked(True)
 
-    def open_saved_run(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Open ALMOS Run", "", "ALMOS Run (run.json)")
+    def run_picker_directory(self) -> str:
+        if self.result is not None:
+            return str(self.result.directory.parent)
+        return self.tabs.currentWidget().working_directory() or ""
+
+    def open_batch_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "Open Completed Batch Folder", self.run_picker_directory())
         if path:
-            try:
-                self.show_result(read_run_result(path))
-            except (OSError, ValueError) as exc:
-                QMessageBox.warning(self, "Could Not Open Run", str(exc))
+            self.load_batch_folder(Path(path))
+
+    def load_batch_folder(self, folder: Path):
+        try:
+            if not folder.is_dir():
+                raise ValueError("Select the completed batch folder itself, such as batch_0 for Clustering.")
+            self.show_result(read_run_result(folder))
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Could Not Open Batch", str(exc))
+
+    @staticmethod
+    def dropped_batch_folder(event: QDropEvent) -> Path | None:
+        urls = event.mimeData().urls()
+        if len(urls) != 1 or not urls[0].isLocalFile():
+            return None
+        path = Path(urls[0].toLocalFile())
+        return path if path.is_dir() else None
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if self.dropped_batch_folder(event) is not None:
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event: QDropEvent):
+        path = self.dropped_batch_folder(event)
+        if path is None:
+            super().dropEvent(event)
+            return
+        event.acceptProposedAction()
+        self.load_batch_folder(path)
 
     def open_result_path(self, attribute: str):
         path = getattr(self.result, attribute, None)
@@ -1165,6 +1463,8 @@ class ALMOSApp(QMainWindow):
                 item.setSelected(column in ignored and column not in (identifier, target))
             selector.move_to_selected()
         self.tabs.setCurrentWidget(tab)
+        if self.workspace_layout.direction() == QBoxLayout.TopToBottom:
+            self.results_toggle.setChecked(False)
 
     def closeEvent(self, event):
         running = any(
