@@ -305,10 +305,20 @@ The current GUI supports the most common options for:
   * ``Model mode`` (highest uncertainty)
   * ``Hit mode`` with ``max`` / ``min`` objective and optional ``alpha``
 
-After a workflow completes, **Run Results** gives access to the dataset, its
-folder, and the viewer or candidate ranking when available. Use **Open Run**
-to reopen a batch's ``run.json``. **Continue in AL** loads the output dataset
-and restores the identifier, target, and ignored columns from the run.
+After a workflow completes, its outputs appear in **Run Results**. Use
+**Open Chemical Space** to view the interactive clustering map in your browser
+when the HTML is available. The panel also links to the output dataset, its
+folder, and the candidate ranking when available. Use **Open Batch Folder**
+or drop the completed batch folder onto the window. Choose ``batch_0`` for
+Clustering or the saved batch for Active Learning (for example, ``batch_1``).
+**Continue in AL** loads the output dataset and restores the identifier,
+target, and ignored columns from the run.
+
+The progress panel checks off stages as ALMOS finishes them and shows details
+such as the descriptor count, the automatically chosen selection size, or the
+number of candidates with valid predictions. **Hide Steps** folds the checklist.
+Use **Show Log** to open the workflow output and **Expand Log** to give it more
+space in the window.
 
 To record experiments, select the identifier column in **Active Learning** and
 choose **Import Measurements**. Supply a CSV with the same identifiers and a

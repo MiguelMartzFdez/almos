@@ -24,8 +24,15 @@ class RunResult:
 
 
 def read_run_result(manifest_path):
-    """Read a completed manifest and resolve its existing local artifacts."""
-    manifest_path = Path(manifest_path).resolve()
+    """Open a completed run by its manifest or batch directory."""
+    location = Path(manifest_path).resolve()
+    if location.is_dir():
+        manifest_path = location / "run.json"
+        if not manifest_path.is_file():
+            raise ValueError("Select a completed batch folder such as batch_0 for Clustering or batch_1 for Active Learning.")
+        manifest_path = manifest_path.resolve()
+    else:
+        manifest_path = location
     if manifest_path.name == "run.previous.json":
         raise ValueError("The previous manifest is a provenance record. Open the current run.json to browse results.")
     directory = manifest_path.parent

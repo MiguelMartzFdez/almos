@@ -327,7 +327,7 @@ def fingerprint_input(input_path):
 
 
 def write_run_manifest(args, output_directory, *, module, input_path, artifacts, summary):
-    """Write the effective configuration and artifacts for a completed run."""
+    """Write run results first, followed by the full reproducibility metadata."""
     input_path = Path(input_path).resolve()
     dependencies = {}
     for package in ("aqme", "robert", "pandas", "scikit-learn"):
@@ -336,19 +336,26 @@ def write_run_manifest(args, output_directory, *, module, input_path, artifacts,
         except PackageNotFoundError:
             dependencies[package] = None
 
+    workflow_options = (
+        ("mode", "n_points", "evaluate", "aqme", "descp_level")
+        if module == "cluster"
+        else ("al_mode", "n_exps", "objective", "alpha", "batch_column")
+    )
+    primary_options = ("name", "y", "ignore", *workflow_options)
+    option_order = (*primary_options, *sorted(var_dict.keys() - set(primary_options)))
     manifest = {
         "schema_version": 1,
-        "run_id": args.run_id,
         "module": module,
         "status": "completed",
+        "summary": summary,
+        "artifacts": [Path(artifact).as_posix() for artifact in artifacts],
+        "input": {"path": str(input_path), "sha256": args.input_sha256},
+        "run_id": args.run_id,
         "started_at": args.started_at,
         "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "almos_version": almos_version,
         "dependencies": dependencies,
-        "input": {"path": str(input_path), "sha256": args.input_sha256},
-        "effective_options": {key: getattr(args, key) for key in var_dict if hasattr(args, key)},
-        "summary": summary,
-        "artifacts": [Path(artifact).as_posix() for artifact in artifacts],
+        "effective_options": {key: getattr(args, key) for key in option_order if hasattr(args, key)},
     }
     output = Path(output_directory) / "run.json"
     temporary = output.with_name(f".run-{args.run_id}.json")
