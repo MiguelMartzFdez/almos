@@ -1,5 +1,9 @@
 # Publishing ALMOS to PyPI
 
+The GitHub App runs the workflow for pull requests targeting `master` and pushes
+to `master`. The OAuth pipeline runs tests and coverage on development pushes.
+A push to `master` runs the workflow only through the GitHub App.
+
 `check-pr-version` runs on pull requests into `master` and compares `ALMOS_VERSION` in
 `almos/package_versions.py` with the current version on `master`. Any strictly higher
 public PEP 440 version passes, including a patch release. Set the version you want to

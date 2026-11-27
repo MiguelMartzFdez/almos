@@ -4,6 +4,10 @@
 Versions
 ========
 
+Version 1.3.2
+   -  Run the CircleCI GitHub App workflow for pull requests into master and pushes to master.
+   -  Keep development checks on the OAuth pipeline and avoid duplicate checks on master pushes.
+
 Version 1.3.1
    -  Prepare the 1.3 series for publication through the CircleCI GitHub App pipeline.
 
